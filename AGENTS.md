@@ -21,6 +21,11 @@ on this host is the `podman-docker` shim, transparently execing `podman`/`podman
   commit environment-specific overrides into the tracked `docker-compose.yaml`.
 - **Secrets**: `.env` (gitignored) holds real generated secrets (`SECRET_KEY_BASE`,
   `POSTGRES_PASSWORD`, `REDIS_PASSWORD`); create it from `.env.example` if missing.
+- **Committing**: the pre-commit hook (husky + `lint-staged`) shells out to `npx`, which needs a
+  Node toolchain this host doesn't have. Run `git commit` inside the `vite` container instead of
+  on the host: `docker compose exec vite git commit -m "..."`. The container also has no git
+  identity configured (no host `~/.gitconfig` mount), so pass it inline the first time or whenever
+  it's missing: `docker compose exec vite git -c user.name="Your Name" -c user.email="you@example.com" commit -m "..."`.
 
 ## Build / Test / Lint
 
