@@ -1,23 +1,46 @@
 # Chatwoot Development Guidelines
 
+## Container-Based Development (Preferred Mode for This Fork)
+
+This fork has no host-level Ruby/Node toolchain. All development happens inside containers
+managed by Docker Compose, running on rootless Podman with SELinux enforcing (the `docker` CLI
+on this host is the `podman-docker` shim, transparently execing `podman`/`podman-compose`).
+
+- **This is the preferred and default dev mode for this fork.** Do not install a host-level
+  `rbenv`/Ruby/Node toolchain to work around it; fix container issues instead of bypassing the
+  container environment.
+- **Start the stack**: `docker compose up -d` (services: `rails` on :3000, `vite` on :3036,
+  `sidekiq`, `postgres` on :5432, `redis` on :6379, `mailhog` on :1025/:8025)
+- **Stop the stack**: `docker compose down` (add `-v` only if you explicitly intend to wipe
+  volumes/data — confirm with the user first)
+- **Run a one-off command**: `docker compose exec <service> <command>` (e.g.
+  `docker compose exec rails bundle exec rspec spec/path/to/file_spec.rb`)
+- **Tail logs**: `docker compose logs -f <service>` or `docker logs -f chatwoot_<service>_1`
+- **Local-only overrides**: rootless Podman + SELinux tweaks (e.g. `:z` volume relabeling) live in
+  the untracked `docker-compose.override.yaml`, merged automatically by `docker compose`. Never
+  commit environment-specific overrides into the tracked `docker-compose.yaml`.
+- **Secrets**: `.env` (gitignored) holds real generated secrets (`SECRET_KEY_BASE`,
+  `POSTGRES_PASSWORD`, `REDIS_PASSWORD`); create it from `.env.example` if missing.
+
 ## Build / Test / Lint
 
-- **Setup**: `bundle install && pnpm install`
-- **Run Dev**: `pnpm dev` or `overmind start -f ./Procfile.dev`
-- **Seed Local Test Data**: `bundle exec rails db:seed` (quickly populates minimal data for standard feature verification)
-- **Seed Search Test Data**: `bundle exec rails search:setup_test_data` (bulk fixture generation for search/performance/manual load scenarios)
+All commands below assume the stack is already up (`docker compose up -d`); prefix ad hoc Ruby/JS
+commands with `docker compose exec <service>`.
+
+- **Setup**: `docker compose build && docker compose up -d` (dependencies install automatically
+  via the container entrypoints on boot)
+- **Run Dev**: `docker compose up -d`
+- **Seed Local Test Data**: `docker compose exec rails bundle exec rails db:seed` (quickly populates minimal data for standard feature verification)
+- **Seed Search Test Data**: `docker compose exec rails bundle exec rails search:setup_test_data` (bulk fixture generation for search/performance/manual load scenarios)
 - **Seed Account Sample Data (richer test data)**: `Seeders::AccountSeeder` is available as an internal utility and is exposed through Super Admin `Accounts#seed`, but can be used directly in dev workflows too:
   - UI path: Super Admin → Accounts → Seed (enqueues `Internal::SeedAccountJob`).
-  - CLI path: `bundle exec rails runner "Internal::SeedAccountJob.perform_now(Account.find(<id>))"` (or call `Seeders::AccountSeeder.new(account: Account.find(<id>)).perform!` directly).
-- **Lint JS/Vue**: `pnpm eslint` / `pnpm eslint:fix`
-- **Lint Ruby**: `bundle exec rubocop -a`
-- **Test JS**: `pnpm test` or `pnpm test:watch`
-- **Test Ruby**: `bundle exec rspec spec/path/to/file_spec.rb`
-- **Single Test**: `bundle exec rspec spec/path/to/file_spec.rb:LINE_NUMBER`
-- **Run Project**: `overmind start -f Procfile.dev`
-- **Ruby Version**: Manage Ruby via `rbenv` and install the version listed in `.ruby-version` (e.g., `rbenv install $(cat .ruby-version)`)
-- **rbenv setup**: Before running any `bundle` or `rspec` commands, init rbenv in your shell (`eval "$(rbenv init -)"`) so the correct Ruby/Bundler versions are used
-- Always prefer `bundle exec` for Ruby CLI tasks (rspec, rake, rubocop, etc.)
+  - CLI path: `docker compose exec rails bundle exec rails runner "Internal::SeedAccountJob.perform_now(Account.find(<id>))"` (or call `Seeders::AccountSeeder.new(account: Account.find(<id>)).perform!` directly).
+- **Lint JS/Vue**: `docker compose exec vite pnpm eslint` / `docker compose exec vite pnpm eslint:fix`
+- **Lint Ruby**: `docker compose exec rails bundle exec rubocop -a`
+- **Test JS**: `docker compose exec vite pnpm test` or `docker compose exec vite pnpm test:watch`
+- **Test Ruby**: `docker compose exec rails bundle exec rspec spec/path/to/file_spec.rb`
+- **Single Test**: `docker compose exec rails bundle exec rspec spec/path/to/file_spec.rb:LINE_NUMBER`
+- Always prefer `bundle exec` for Ruby CLI tasks (rspec, rake, rubocop, etc.), run inside the `rails` container.
 
 ## Code Style
 

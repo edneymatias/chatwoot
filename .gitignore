@@ -30,6 +30,9 @@ master.key
 # Ignore env files
 .env
 
+# Local container-env overrides (podman/SELinux/rootless tweaks), not part of the tracked stack
+docker-compose.override.yaml
+
 public/uploads
 public/packs*
 public/assets/administrate*
@@ -104,3 +107,6 @@ CLAUDE.local.md
 .pnpm-store/*
 local/
 Procfile.worktree
+
+# Headroom
+.tokensave/
