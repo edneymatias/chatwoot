@@ -377,4 +377,35 @@ describe('ActionCableConnector - Copilot Tests', () => {
       expect(mockDispatch).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('opportunity updated event handlers', () => {
+    it('should register the opportunity_updated event handler', () => {
+      expect(Object.keys(actionCable.events)).toContain('opportunity_updated');
+      expect(actionCable.events.opportunity_updated).toBe(
+        actionCable.onOpportunityUpdated
+      );
+    });
+
+    it('should dispatch opportunities/updateOpportunity when opportunity_updated is received', () => {
+      const opportunityData = {
+        id: 123,
+        pipeline_stage_id: 4,
+        status: 'open',
+        contact_id: 55,
+        assignee_id: 9,
+        updated_at: '2026-07-31T12:00:00.000Z',
+        account_id: 1,
+      };
+
+      actionCable.onReceived({
+        event: 'opportunity_updated',
+        data: opportunityData,
+      });
+
+      expect(mockDispatch).toHaveBeenCalledWith(
+        'opportunities/updateOpportunity',
+        opportunityData
+      );
+    });
+  });
 });

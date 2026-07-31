@@ -728,6 +728,17 @@ const menuItems = computed(() => {
         },
       ],
     },
+    ...(hasOpportunities.value
+      ? [
+          {
+            name: 'Opportunities',
+            label: t('SIDEBAR.OPPORTUNITIES'),
+            icon: 'i-lucide-kanban',
+            to: accountScopedRoute('opportunities_index'),
+            activeOn: ['opportunities_index'],
+          },
+        ]
+      : []),
     {
       name: 'Portals',
       label: t('SIDEBAR.HELP_CENTER.TITLE'),

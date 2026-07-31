@@ -308,6 +308,7 @@
     }
   },
   "SIDEBAR": {
+    "OPPORTUNITIES": "Opportunities",
     "NO_ITEMS": "No items",
     "CURRENTLY_VIEWING_ACCOUNT": "Currently viewing:",
     "SWITCH": "Switch",

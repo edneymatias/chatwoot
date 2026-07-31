@@ -15,6 +15,7 @@ import Suspended from './suspended/Index.vue';
 import NoAccounts from './noAccounts/Index.vue';
 import OnboardingAccountDetails from './onboarding/Index.vue';
 import OnboardingInboxSetup from './onboarding/InboxSetup.vue';
+import { FEATURE_FLAGS } from '../../featureFlags';
 
 export default {
   routes: [
@@ -33,6 +34,17 @@ export default {
         ...notificationRoutes,
         ...helpcenterRoutes.routes,
         ...campaignsRoutes.routes,
+        {
+          path: 'opportunities',
+          name: 'opportunities_index',
+          roles: ['administrator', 'agent', 'custom_role'],
+          component: () =>
+            import('dashboard/components-next/Opportunities/KanbanBoard.vue'),
+          meta: {
+            featureFlag: FEATURE_FLAGS.OPPORTUNITIES,
+            permissions: ['administrator', 'agent', 'custom_role'],
+          },
+        },
       ],
     },
     {

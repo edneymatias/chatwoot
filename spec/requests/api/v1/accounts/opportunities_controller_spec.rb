@@ -4,6 +4,12 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
   let(:account) { create(:account) }
   let(:admin) { create(:user, account: account, role: :administrator) }
   let(:agent) { create(:user, account: account, role: :agent) }
+  let(:custom_role) { create(:custom_role, account: account, permissions: ['conversation_manage']) }
+  let(:custom_role_user) do
+    user = create(:user, account: account, role: :agent)
+    user.account_users.find_by(account_id: account.id).update!(custom_role: custom_role)
+    user
+  end
   let(:stage) { account.pipeline_stages.create!(name: 'Test Stage') }
   let(:contact) { create(:contact, account: account) }
 
@@ -28,6 +34,14 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
     it 'works for agents too' do
       get "/api/v1/accounts/#{account.id}/opportunities",
           headers: agent.create_new_auth_token,
+          as: :json
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it 'works for custom_role sessions too' do
+      get "/api/v1/accounts/#{account.id}/opportunities",
+          headers: custom_role_user.create_new_auth_token,
           as: :json
 
       expect(response).to have_http_status(:ok)

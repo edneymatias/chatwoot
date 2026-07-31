@@ -34,4 +34,65 @@ RSpec.describe Opportunity, type: :model do
       expect(opp.errors[:pipeline_stage]).to include('must belong to the same account')
     end
   end
+
+  describe 'broadcasts' do
+    let(:account) { create(:account) }
+    let(:pipeline_stage) { account.pipeline_stages.create!(name: 'Stage 1') }
+    let(:contact) { create(:contact, account: account) }
+    let(:assignee) { create(:user, account: account) }
+
+    it 'broadcasts opportunity_updated on create' do
+      expect(ActionCableBroadcastJob).to receive(:perform_later).with(
+        ["account_#{account.id}"],
+        'opportunity_updated',
+        hash_including(
+          id: anything,
+          pipeline_stage_id: pipeline_stage.id,
+          status: 'open',
+          contact_id: contact.id,
+          assignee_id: assignee.id,
+          updated_at: anything,
+          account_id: account.id
+        )
+      )
+
+      Opportunity.create!(
+        account: account,
+        pipeline_stage: pipeline_stage,
+        contact: contact,
+        assignee: assignee,
+        title: 'New Opp',
+        status: 'open'
+      )
+    end
+
+    it 'broadcasts opportunity_updated on update' do
+      opp = Opportunity.create!(
+        account: account,
+        pipeline_stage: pipeline_stage,
+        contact: contact,
+        assignee: assignee,
+        title: 'New Opp',
+        status: 'open'
+      )
+
+      new_stage = account.pipeline_stages.create!(name: 'Stage 2')
+
+      expect(ActionCableBroadcastJob).to receive(:perform_later).with(
+        ["account_#{account.id}"],
+        'opportunity_updated',
+        hash_including(
+          id: opp.id,
+          pipeline_stage_id: new_stage.id,
+          status: 'won',
+          contact_id: contact.id,
+          assignee_id: assignee.id,
+          updated_at: anything,
+          account_id: account.id
+        )
+      )
+
+      opp.update!(pipeline_stage: new_stage, status: 'won')
+    end
+  end
 end

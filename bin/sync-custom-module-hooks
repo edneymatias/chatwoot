@@ -1,0 +1,121 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'json'
+
+MANIFEST = if ENV['TEST_MANIFEST']
+             JSON.parse(ENV['TEST_MANIFEST'], symbolize_names: true)
+           else
+             [
+               {
+                 file: 'app/javascript/dashboard/helper/actionCable.js',
+                 anchor: "      'conversation.updated': this.onConversationUpdated,",
+                 insert: "      opportunity_updated: this.onOpportunityUpdated,"
+               },
+               {
+                 file: 'app/javascript/dashboard/helper/actionCable.js',
+                 anchor: '  onConversationUpdated = data => {',
+                 insert: "  onOpportunityUpdated = data => {\n    this.app.$store.dispatch('opportunities/updateOpportunity', data);\n  };\n\n"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/dashboard.routes.js',
+                 anchor: "import OnboardingInboxSetup from './onboarding/InboxSetup.vue';",
+                 insert: "import { FEATURE_FLAGS } from '../../featureFlags';"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/dashboard.routes.js',
+                 anchor: '        ...campaignsRoutes.routes,',
+                 insert: "        {\n          path: 'opportunities',\n          name: 'opportunities_index',\n          roles: ['administrator', 'agent', 'custom_role'],\n          component: () =>\n            import('dashboard/components-next/Opportunities/KanbanBoard.vue'),\n          meta: {\n            featureFlag: FEATURE_FLAGS.OPPORTUNITIES,\n            permissions: ['administrator', 'agent', 'custom_role'],\n          },\n        },"
+               },
+               {
+                 file: 'app/javascript/dashboard/components-next/sidebar/Sidebar.vue',
+                 anchor: "    {\n      name: 'Portals',",
+                 insert: "    ...(hasOpportunities.value\n      ? [\n          {\n            name: 'Opportunities',\n            label: t('SIDEBAR.OPPORTUNITIES'),\n            icon: 'i-lucide-kanban',\n            to: accountScopedRoute('opportunities_index'),\n            activeOn: ['opportunities_index'],\n          },\n        ]\n      : []),\n"
+               },
+               {
+                 file: 'app/javascript/dashboard/components-next/sidebar/Sidebar.vue',
+                 anchor: "          to: accountScopedRoute('macros_wrapper'),\n        },",
+                 insert: "        ...(hasOpportunities.value\n          ? [\n              {\n                name: 'Settings Pipeline Stages',\n                label: t('SIDEBAR.PIPELINE_STAGES'),\n                icon: 'i-lucide-kanban',\n                to: accountScopedRoute('pipeline_stages_index'),\n              },\n            ]\n          : []),"
+               },
+               # Settings routes
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/settings.routes.js',
+                 anchor: "import macros from './macros/macros.routes';",
+                 insert: "import pipelineStages from './pipelineStages/pipelineStages.routes';"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/settings.routes.js',
+                 anchor: '    ...macros.routes,',
+                 insert: '    ...pipelineStages.routes,'
+               },
+               # store/index.js
+               {
+                 file: 'app/javascript/dashboard/store/index.js',
+                 anchor: "import captainCustomTools from './captain/customTools';",
+                 insert: "import pipelineStages from './modules/pipelineStages';\nimport opportunities from './modules/opportunities';"
+               },
+               {
+                 file: 'app/javascript/dashboard/store/index.js',
+                 anchor: '    captainCustomTools,',
+                 insert: "    pipelineStages,\n    opportunities,"
+               },
+               # featureFlags.js
+               {
+                 file: 'app/javascript/dashboard/featureFlags.js',
+                 anchor: 'export const FEATURE_FLAGS = {',
+                 insert: "  OPPORTUNITIES: 'opportunities',"
+               },
+               # i18n index.js
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/en/index.js',
+                 anchor: "import macros from './macros.json';",
+                 insert: "import opportunities from './opportunities.json';"
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/en/index.js',
+                 anchor: '  ...macros,',
+                 insert: '  ...opportunities,'
+               },
+             ]
+           end
+
+mode = ARGV[0] == '--check' ? :check : :apply
+failures = false
+
+MANIFEST.each do |entry|
+  file_path = entry[:file]
+  anchor = entry[:anchor]
+  insert_text = entry[:insert]
+
+  unless File.exist?(file_path)
+    puts "ERROR: file not found: #{file_path}"
+    failures = true
+    break
+  end
+
+  content = File.read(file_path)
+
+  if content.include?(insert_text)
+    puts "present   #{file_path} (already has insert)" if mode == :check
+    next
+  end
+
+  unless content.include?(anchor)
+    warn "ERROR: anchor not found in #{file_path}: `#{anchor}`"
+    failures = true
+    break
+  end
+
+  if mode == :apply
+    new_content = content.sub(anchor, "#{anchor}\n#{insert_text}")
+    File.write(file_path, new_content)
+    puts "inserted  #{file_path}"
+  else
+    puts "missing   #{file_path}"
+    failures = true
+  end
+end
+
+puts "All #{MANIFEST.size} wiring points present." if mode == :check && !failures
+
+exit(failures ? 1 : 0)

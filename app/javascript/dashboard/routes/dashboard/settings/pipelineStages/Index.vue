@@ -39,6 +39,7 @@ const onEdit = stage => {
 };
 
 const onDelete = async stage => {
+  // eslint-disable-next-line no-alert
   if (window.confirm(t('PIPELINE_STAGES_MGMT.DELETE.CONFIRM'))) {
     try {
       await store.dispatch('pipelineStages/delete', stage.id);
@@ -114,7 +115,9 @@ const onChange = event => {
                   <span
                     v-if="element.description"
                     class="text-xs text-n-slate-11"
-                    >{{ element.description }}</span>
+                  >
+                    {{ element.description }}
+                  </span>
                 </div>
               </div>
               <div
@@ -122,14 +125,14 @@ const onChange = event => {
               >
                 <Button
                   variant="ghost"
-                  icon="edit"
+                  icon="i-lucide-pencil"
                   size="sm"
                   @click="onEdit(element)"
                 />
                 <Button
                   variant="ghost"
                   color-scheme="alert"
-                  icon="delete"
+                  icon="i-lucide-trash"
                   size="sm"
                   @click="onDelete(element)"
                 />

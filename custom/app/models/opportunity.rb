@@ -12,6 +12,8 @@ class Opportunity < ApplicationRecord
   validates :title, :contact_id, :pipeline_stage_id, :account_id, presence: true
   validate :pipeline_stage_belongs_to_account
 
+  after_commit :broadcast_opportunity_updated, on: %i[create update]
+
   private
 
   def pipeline_stage_belongs_to_account
@@ -20,5 +22,18 @@ class Opportunity < ApplicationRecord
     return unless pipeline_stage&.account_id != account_id
 
     errors.add(:pipeline_stage, 'must belong to the same account')
+  end
+
+  def broadcast_opportunity_updated
+    payload = {
+      id: id,
+      pipeline_stage_id: pipeline_stage_id,
+      status: status,
+      contact_id: contact_id,
+      assignee_id: assignee_id,
+      updated_at: updated_at,
+      account_id: account_id
+    }
+    ActionCableBroadcastJob.perform_later(["account_#{account_id}"], 'opportunity_updated', payload)
   end
 end
