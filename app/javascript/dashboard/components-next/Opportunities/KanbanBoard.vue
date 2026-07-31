@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import KanbanColumn from './KanbanColumn.vue';
 import OpportunityDetailView from './OpportunityDetailView.vue';
@@ -11,6 +11,10 @@ const store = useStore();
 const stages = computed(
   () => store.getters['pipelineStages/stagesSortedByPosition']
 );
+
+onMounted(() => {
+  store.dispatch('pipelineStages/fetch');
+});
 
 const pendingMove = ref({});
 const selectedOpportunityId = ref(null);
