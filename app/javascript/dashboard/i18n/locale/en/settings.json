@@ -338,6 +338,7 @@
     "HOME": "Home",
     "AGENTS": "Agents",
     "AGENT_BOTS": "Bots",
+    "PIPELINE_STAGES": "Pipeline Stages",
     "AUDIT_LOGS": "Audit Logs",
     "INBOXES": "Inboxes",
     "NOTIFICATIONS": "Notifications",

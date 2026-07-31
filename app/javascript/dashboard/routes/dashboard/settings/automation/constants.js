@@ -152,6 +152,10 @@ export const AUTOMATIONS = {
         key: 'send_attachment',
         name: 'SEND_ATTACHMENT',
       },
+      {
+        key: 'create_opportunity',
+        name: 'CREATE_OPPORTUNITY',
+      },
     ],
   },
   conversation_created: {
@@ -285,6 +289,10 @@ export const AUTOMATIONS = {
       {
         key: 'send_attachment',
         name: 'SEND_ATTACHMENT',
+      },
+      {
+        key: 'create_opportunity',
+        name: 'CREATE_OPPORTUNITY',
       },
     ],
   },
@@ -432,6 +440,10 @@ export const AUTOMATIONS = {
         key: 'send_attachment',
         name: 'SEND_ATTACHMENT',
       },
+      {
+        key: 'create_opportunity',
+        name: 'CREATE_OPPORTUNITY',
+      },
     ],
   },
   conversation_opened: {
@@ -568,6 +580,10 @@ export const AUTOMATIONS = {
         key: 'send_attachment',
         name: 'SEND_ATTACHMENT',
       },
+      {
+        key: 'create_opportunity',
+        name: 'CREATE_OPPORTUNITY',
+      },
     ],
   },
   conversation_resolved: {
@@ -681,6 +697,10 @@ export const AUTOMATIONS = {
       {
         key: 'send_attachment',
         name: 'SEND_ATTACHMENT',
+      },
+      {
+        key: 'create_opportunity',
+        name: 'CREATE_OPPORTUNITY',
       },
     ],
   },
@@ -798,6 +818,11 @@ export const AUTOMATION_ACTION_TYPES = [
   {
     key: 'change_priority',
     label: 'CHANGE_PRIORITY',
+    inputType: 'search_select',
+  },
+  {
+    key: 'create_opportunity',
+    label: 'CREATE_OPPORTUNITY',
     inputType: 'search_select',
   },
   {

@@ -43,6 +43,6 @@ class Api::V1::Accounts::PipelineStagesController < Api::V1::Accounts::BaseContr
   end
 
   def pipeline_stage_params
-    params.require(:pipeline_stage).permit(:name)
+    params.require(:pipeline_stage).permit(:name, :description, :position)
   end
 end

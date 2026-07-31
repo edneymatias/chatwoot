@@ -100,6 +100,13 @@ const hasDataImport = computed(() => {
   );
 });
 
+const hasOpportunities = computed(() => {
+  return isFeatureEnabledonAccount.value(
+    accountId.value,
+    FEATURE_FLAGS.OPPORTUNITIES
+  );
+});
+
 const fetchConversationUnreadCounts = ([currentAccountId, isEnabled]) => {
   if (!currentAccountId) return;
 
@@ -870,6 +877,16 @@ const menuItems = computed(() => {
           icon: 'i-lucide-toy-brick',
           to: accountScopedRoute('macros_wrapper'),
         },
+        ...(hasOpportunities.value
+          ? [
+              {
+                name: 'Settings Pipeline Stages',
+                label: t('SIDEBAR.PIPELINE_STAGES'),
+                icon: 'i-lucide-kanban',
+                to: accountScopedRoute('pipeline_stages_index'),
+              },
+            ]
+          : []),
         {
           name: 'Settings Canned Responses',
           label: t('SIDEBAR.CANNED_RESPONSES'),

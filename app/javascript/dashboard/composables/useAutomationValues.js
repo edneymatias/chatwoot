@@ -27,6 +27,9 @@ export default function useAutomationValues() {
   const labels = useMapGetter('labels/getLabels');
   const teams = useMapGetter('teams/getTeams');
   const slaPolicies = useMapGetter('sla/getSLA');
+  const pipelineStages = computed(
+    () => getters['pipelineStages/stagesSortedByPosition'].value
+  );
 
   const booleanFilterOptions = computed(() => [
     { id: true, name: t('FILTER.ATTRIBUTE_LABELS.TRUE') },
@@ -141,6 +144,7 @@ export default function useAutomationValues() {
       type,
       addNoneToListFn: addNoneToList,
       priorityOptions: priorityOptions.value,
+      pipelineStages: pipelineStages.value,
     });
   };
 
