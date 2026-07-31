@@ -44,6 +44,17 @@ export default {
             featureFlag: FEATURE_FLAGS.OPPORTUNITIES,
             permissions: ['administrator', 'agent', 'custom_role'],
           },
+          children: [
+            {
+              path: 'conversations/:conversationId',
+              name: 'opportunities_conversation',
+              roles: ['administrator', 'agent', 'custom_role'],
+              component: () =>
+                import(
+                  'dashboard/components-next/Opportunities/OpportunityConversationDrawer.vue'
+                ),
+            },
+          ],
         },
       ],
     },

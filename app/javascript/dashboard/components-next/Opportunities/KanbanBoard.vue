@@ -1,12 +1,27 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
 import { useStore } from 'vuex';
+import { useRoute, useRouter } from 'vue-router';
 import KanbanColumn from './KanbanColumn.vue';
-import OpportunityDetailView from './OpportunityDetailView.vue';
 
 const emit = defineEmits(['cardClick']);
 
 const store = useStore();
+const route = useRoute();
+const router = useRouter();
+
+const isDrawerOpen = computed(
+  () => route.name === 'opportunities_conversation'
+);
+
+const closeDrawer = () => {
+  if (isDrawerOpen.value) {
+    router.push({
+      name: 'opportunities_index',
+      params: { accountId: route.params.accountId },
+    });
+  }
+};
 
 const stages = computed(
   () => store.getters['pipelineStages/stagesSortedByPosition']
@@ -17,7 +32,6 @@ onMounted(() => {
 });
 
 const pendingMove = ref({});
-const selectedOpportunityId = ref(null);
 
 const onStatusChanged = ({ id, status }) => {
   store.dispatch('opportunities/setStatus', { id, status });
@@ -55,13 +69,12 @@ const onCardAdded = ({ id, toStageId, toIndex }) => {
 };
 
 const onCardClick = opportunityId => {
-  selectedOpportunityId.value = opportunityId;
   emit('cardClick', opportunityId);
 };
 </script>
 
 <template>
-  <div class="flex h-full w-full overflow-hidden bg-n-slate-1">
+  <div class="flex h-full w-full overflow-hidden bg-n-slate-1 relative">
     <div class="flex flex-grow overflow-x-auto p-4 gap-4">
       <KanbanColumn
         v-for="stage in stages"
@@ -73,11 +86,42 @@ const onCardClick = opportunityId => {
         @status-changed="onStatusChanged"
       />
     </div>
-    <OpportunityDetailView
-      v-if="selectedOpportunityId"
-      :opportunity-id="selectedOpportunityId"
-      @close="selectedOpportunityId = null"
-      @status-changed="onStatusChanged"
-    />
+
+    <!-- Backdrop for Drawer -->
+    <transition name="fade">
+      <div
+        v-if="isDrawerOpen"
+        class="absolute inset-0 z-[39] bg-black/20 dark:bg-black/40 backdrop-blur-sm transition-all"
+        @click="closeDrawer"
+      />
+    </transition>
+
+    <router-view v-slot="{ Component }">
+      <transition name="slide-right">
+        <component :is="Component" />
+      </transition>
+    </router-view>
   </div>
 </template>
+
+<style scoped>
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.3s ease-out;
+}
+
+.slide-right-enter-from,
+.slide-right-leave-to {
+  transform: translateX(100%);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

@@ -28,6 +28,11 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  insert: "        {\n          path: 'opportunities',\n          name: 'opportunities_index',\n          roles: ['administrator', 'agent', 'custom_role'],\n          component: () =>\n            import('dashboard/components-next/Opportunities/KanbanBoard.vue'),\n          meta: {\n            featureFlag: FEATURE_FLAGS.OPPORTUNITIES,\n            permissions: ['administrator', 'agent', 'custom_role'],\n          },\n        },"
                },
                {
+                 file: 'app/javascript/dashboard/routes/dashboard/dashboard.routes.js',
+                 anchor: "            permissions: ['administrator', 'agent', 'custom_role'],\n          },",
+                 insert: "          children: [\n            {\n              path: 'conversations/:conversationId',\n              name: 'opportunities_conversation',\n              roles: ['administrator', 'agent', 'custom_role'],\n              component: () =>\n                import('dashboard/components-next/Opportunities/OpportunityConversationDrawer.vue'),\n            },\n          ],"
+               },
+               {
                  file: 'app/javascript/dashboard/components-next/sidebar/Sidebar.vue',
                  anchor: "    {\n      name: 'Portals',",
                  insert: "    ...(hasOpportunities.value\n      ? [\n          {\n            name: 'Opportunities',\n            label: t('SIDEBAR.OPPORTUNITIES'),\n            icon: 'i-lucide-kanban',\n            to: accountScopedRoute('opportunities_index'),\n            activeOn: ['opportunities_index'],\n          },\n        ]\n      : []),\n"

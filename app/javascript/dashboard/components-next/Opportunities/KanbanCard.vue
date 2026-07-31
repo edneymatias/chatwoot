@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 const props = defineProps({
   opportunity: {
@@ -8,19 +9,40 @@ const props = defineProps({
   },
 });
 
-defineEmits(['click', 'status-changed']);
+defineEmits(['statusChanged']);
+const router = useRouter();
 
 const statusBadgeClass = computed(() => {
   if (props.opportunity.status === 'won') return 'bg-n-green-3 text-n-green-11';
   if (props.opportunity.status === 'lost') return 'bg-n-red-3 text-n-red-11';
   return 'bg-n-slate-3 text-n-slate-11';
 });
+
+const handleCardClick = () => {
+  if (!props.opportunity.origin_conversation_id) return;
+  router.push({
+    name: 'opportunities_conversation',
+    params: {
+      conversationId:
+        props.opportunity.origin_conversation_display_id ||
+        props.opportunity.origin_conversation_id,
+    },
+  });
+};
+
+const cardClass = computed(() => {
+  if (props.opportunity.origin_conversation_id) {
+    return 'cursor-pointer hover:bg-n-surface-2 group';
+  }
+  return 'opacity-50 grayscale border-dashed bg-transparent group';
+});
 </script>
 
 <template>
   <div
-    class="bg-n-surface-1 border border-n-weak rounded-md p-3 shadow-sm cursor-pointer hover:bg-n-surface-2 transition-colors duration-200 group relative"
-    @click="$emit('click', opportunity.id)"
+    class="bg-n-surface-1 border border-n-weak rounded-md p-3 shadow-sm transition-colors duration-200 relative"
+    :class="cardClass"
+    @click="handleCardClick"
   >
     <div class="flex justify-between items-start mb-2 gap-2">
       <h3
@@ -92,7 +114,7 @@ const statusBadgeClass = computed(() => {
           $emit('statusChanged', { id: opportunity.id, status: 'open' })
         "
       >
-        <fluent-icon icon="arrow-counterclockwise" size="14" />
+        <fluent-icon icon="arrow-reply" size="14" />
       </button>
     </div>
   </div>

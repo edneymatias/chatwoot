@@ -87,7 +87,7 @@ const submit = async () => {
 </script>
 
 <template>
-  <woot-modal show :on-close="onClose" size="modal-medium">
+  <woot-modal show size="modal-medium" @close="onClose">
     <woot-modal-header :header-title="$t('OPPORTUNITIES.CREATE_MODAL.TITLE')" />
 
     <div class="p-6 pt-2 flex flex-col gap-4">
@@ -111,13 +111,12 @@ const submit = async () => {
           v-if="selectedContact"
           class="flex items-center justify-between px-3 py-2 border border-n-weak rounded-md bg-n-surface-2 text-sm"
         >
-          <span
-            >{{ selectedContact.name }}
-            <span
-v-if="selectedContact.email" class="text-n-slate-11"
-              >({{ selectedContact.email }})</span
-            ></span
-          >
+          <span>
+            {{ selectedContact.name }}
+            <span v-if="selectedContact.email" class="text-n-slate-11">
+              ({{ selectedContact.email }})
+            </span>
+          </span>
           <button
             class="text-n-slate-11 hover:text-n-slate-12 text-xs"
             @click="selectedContact = null"

@@ -14,6 +14,12 @@ class Opportunity < ApplicationRecord
 
   after_commit :broadcast_opportunity_updated, on: %i[create update]
 
+  def as_json(options = {})
+    super(options).merge(
+      'origin_conversation_display_id' => origin_conversation&.display_id
+    )
+  end
+
   private
 
   def pipeline_stage_belongs_to_account
@@ -32,7 +38,8 @@ class Opportunity < ApplicationRecord
       contact_id: contact_id,
       assignee_id: assignee_id,
       updated_at: updated_at,
-      account_id: account_id
+      account_id: account_id,
+      origin_conversation_display_id: origin_conversation&.display_id
     }
     ActionCableBroadcastJob.perform_later(["account_#{account_id}"], 'opportunity_updated', payload)
   end

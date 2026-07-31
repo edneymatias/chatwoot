@@ -5,7 +5,7 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
   before_action :check_authorization
 
   def index
-    @opportunities = policy_scope(Opportunity).includes(:contact, :pipeline_stage, :assignee)
+    @opportunities = policy_scope(Opportunity).includes(:contact, :pipeline_stage, :assignee, :origin_conversation)
     @opportunities = @opportunities.where(pipeline_stage_id: params[:pipeline_stage_id]) if params[:pipeline_stage_id].present?
     @opportunities = @opportunities.page(params[:page]) if params[:page].present?
     render json: @opportunities
