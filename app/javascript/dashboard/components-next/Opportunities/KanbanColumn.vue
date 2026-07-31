@@ -100,7 +100,7 @@ const onChange = event => {
         <template #item="{ element }">
           <KanbanCard
             :opportunity="element"
-            @card-click="$emit('cardClick', $event)"
+            @click="$emit('cardClick', $event)"
             @status-changed="$emit('statusChanged', $event)"
           />
         </template>
