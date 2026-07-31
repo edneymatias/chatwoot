@@ -217,5 +217,82 @@ RSpec.describe AutomationRules::ActionService do
         expect(conversation.reload.assignee).to eq(agent)
       end
     end
+
+    describe '#perform with create_opportunity action' do
+      let(:contact) { conversation.contact }
+      let!(:pipeline_stage) { PipelineStage.create!(name: 'Test Stage', account: account) }
+
+      before do
+        rule.actions = [{ action_name: 'create_opportunity', action_params: { pipeline_stage_id: pipeline_stage.id } }]
+        rule.save!
+      end
+
+      it 'creates exactly one Opportunity scoped to account/contact/stage with status open and default title' do
+        expect do
+          described_class.new(rule, account, conversation).perform
+        end.to change(Opportunity, :count).by(1)
+
+        opportunity = Opportunity.last
+        expect(opportunity.account).to eq(account)
+        expect(opportunity.contact).to eq(contact)
+        expect(opportunity.pipeline_stage).to eq(pipeline_stage)
+        expect(opportunity.origin_conversation).to eq(conversation)
+        expect(opportunity.status).to eq('open')
+        expect(opportunity.title).to eq("#{contact.name} - #{Date.current}")
+      end
+
+      it 'creates exactly one Opportunity with a supplied title_template' do
+        rule.actions = [{ action_name: 'create_opportunity',
+                          action_params: { pipeline_stage_id: pipeline_stage.id, title_template: 'Custom Title' } }]
+        rule.save!
+
+        expect do
+          described_class.new(rule, account, conversation).perform
+        end.to change(Opportunity, :count).by(1)
+
+        opportunity = Opportunity.last
+        expect(opportunity.title).to eq('Custom Title')
+      end
+
+      it 'raises error for nonexistent/cross-account pipeline_stage_id' do
+        other_account = create(:account)
+        other_stage = PipelineStage.create!(name: 'Other Stage', account: other_account)
+        rule.actions = [{ action_name: 'create_opportunity', action_params: { pipeline_stage_id: other_stage.id } }]
+        rule.save!
+
+        tracker = double
+        allow(ChatwootExceptionTracker).to receive(:new).and_return(tracker)
+        expect(tracker).to receive(:capture_exception)
+
+        expect do
+          described_class.new(rule, account, conversation).perform
+        end.not_to change(Opportunity, :count)
+      end
+
+      it 'is idempotent on sequential runs for the same conversation' do
+        expect do
+          described_class.new(rule, account, conversation).perform
+        end.to change(Opportunity, :count).by(1)
+
+        expect do
+          described_class.new(rule, account, conversation).perform
+        end.not_to change(Opportunity, :count)
+      end
+
+      it 'is idempotent if an Opportunity already exists with the same origin_conversation_id (simulated race)' do
+        Opportunity.create!(
+          account: account,
+          contact: contact,
+          pipeline_stage_id: pipeline_stage.id,
+          origin_conversation: conversation,
+          status: :open,
+          title: 'Existing Opportunity'
+        )
+
+        expect do
+          described_class.new(rule, account, conversation).perform
+        end.not_to change(Opportunity, :count)
+      end
+    end
   end
 end
