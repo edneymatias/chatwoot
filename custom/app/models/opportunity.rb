@@ -16,7 +16,10 @@ class Opportunity < ApplicationRecord
 
   def as_json(options = {})
     super(options).merge(
-      'origin_conversation_display_id' => origin_conversation&.display_id
+      'origin_conversation_display_id' => origin_conversation&.display_id,
+      'created_at' => created_at.to_i,
+      'contact' => contact ? { 'id' => contact.id, 'name' => contact.name, 'email' => contact.email, 'avatar_url' => contact.avatar_url } : nil,
+      'assignee' => assignee ? { 'id' => assignee.id, 'name' => assignee.name, 'avatar_url' => assignee.avatar_url } : nil
     )
   end
 

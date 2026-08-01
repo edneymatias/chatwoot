@@ -4,7 +4,7 @@ module Custom::AutomationRules::ActionService
   def create_opportunity(params)
     return if Opportunity.exists?(origin_conversation_id: @conversation.id)
 
-    title = params[:title_template].presence || "#{@conversation.contact.name} - #{Date.current}"
+    title = params[:title_template].presence || "Oportunidade ##{@conversation.display_id}"
 
     begin
       Opportunity.create!(

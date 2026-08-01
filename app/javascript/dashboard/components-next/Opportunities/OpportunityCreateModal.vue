@@ -7,6 +7,10 @@ const props = defineProps({
     type: Number,
     default: null,
   },
+  defaultStageId: {
+    type: Number,
+    default: null,
+  },
 });
 
 const emit = defineEmits(['close', 'created']);
@@ -14,7 +18,7 @@ const emit = defineEmits(['close', 'created']);
 const store = useStore();
 
 const title = ref('');
-const selectedStageId = ref('');
+const selectedStageId = ref(props.defaultStageId || '');
 const searchQuery = ref('');
 const searchResults = ref([]);
 const selectedContact = ref(null);

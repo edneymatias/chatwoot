@@ -238,7 +238,7 @@ RSpec.describe AutomationRules::ActionService do
         expect(opportunity.pipeline_stage).to eq(pipeline_stage)
         expect(opportunity.origin_conversation).to eq(conversation)
         expect(opportunity.status).to eq('open')
-        expect(opportunity.title).to eq("#{contact.name} - #{Date.current}")
+        expect(opportunity.title).to eq("Oportunidade ##{conversation.display_id}")
       end
 
       it 'creates exactly one Opportunity with a supplied title_template' do

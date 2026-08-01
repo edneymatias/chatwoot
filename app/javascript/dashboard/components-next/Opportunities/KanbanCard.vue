@@ -1,6 +1,8 @@
 <script setup>
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
+import { dynamicTime, shortTimestamp } from 'shared/helpers/timeHelper';
 
 const props = defineProps({
   opportunity: {
@@ -51,23 +53,33 @@ const cardClass = computed(() => {
       >
         {{ opportunity.title }}
       </h3>
-      <span
-        v-if="opportunity.status && opportunity.status !== 'open'"
-        class="text-[10px] px-1.5 py-0.5 rounded-full capitalize shrink-0 font-medium"
-        :class="statusBadgeClass"
-      >
-        {{
-          $t(`OPPORTUNITIES.BOARD.STATUS.${opportunity.status.toUpperCase()}`)
-        }}
-      </span>
+      <div class="flex items-center gap-2 shrink-0">
+        <span
+          v-if="opportunity.status && opportunity.status !== 'open'"
+          class="text-[10px] px-1.5 py-0.5 rounded-full capitalize font-medium"
+          :class="statusBadgeClass"
+        >
+          {{
+            $t(`OPPORTUNITIES.BOARD.STATUS.${opportunity.status.toUpperCase()}`)
+          }}
+        </span>
+        <span v-if="opportunity.created_at" class="text-xs text-n-slate-10">
+          {{ shortTimestamp(dynamicTime(opportunity.created_at)) }}
+        </span>
+      </div>
     </div>
 
     <div class="flex items-center text-xs text-n-slate-11 mb-1">
       <div
         v-if="opportunity.contact"
-        class="flex items-center truncate max-w-[60%]"
+        class="flex items-center truncate max-w-[60%] gap-1.5"
         :title="opportunity.contact.name"
       >
+        <Avatar
+          :name="opportunity.contact.name"
+          :src="opportunity.contact.avatar_url"
+          :size="24"
+        />
         <span class="truncate">{{ opportunity.contact.name }}</span>
       </div>
       <div v-if="opportunity.contact && opportunity.assignee" class="mx-1.5">

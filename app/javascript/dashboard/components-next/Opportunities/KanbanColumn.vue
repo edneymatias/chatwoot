@@ -17,6 +17,7 @@ const emit = defineEmits([
   'cardAdded',
   'cardClick',
   'statusChanged',
+  'addCard',
 ]);
 
 const store = useStore();
@@ -81,11 +82,20 @@ const onChange = event => {
       >
         {{ stage.name }}
       </h2>
-      <span
-        class="text-xs font-medium text-n-slate-11 bg-n-slate-3 px-2 py-0.5 rounded-full"
-      >
-        {{ cards.length }}
-      </span>
+      <div class="flex items-center gap-2">
+        <span
+          class="text-xs font-medium text-n-slate-11 bg-n-slate-3 px-2 py-0.5 rounded-full"
+        >
+          {{ cards.length }}
+        </span>
+        <button
+          class="flex items-center justify-center p-1 rounded hover:bg-n-slate-3 text-n-slate-11 hover:text-n-slate-12 transition-colors"
+          :title="$t('OPPORTUNITIES.CREATE_MODAL.TITLE')"
+          @click="$emit('addCard', stage.id)"
+        >
+          <fluent-icon icon="add" size="14" />
+        </button>
+      </div>
     </div>
 
     <div class="flex-1 overflow-y-auto p-2 min-h-0">

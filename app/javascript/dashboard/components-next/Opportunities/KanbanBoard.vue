@@ -3,12 +3,26 @@ import { computed, ref, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
 import KanbanColumn from './KanbanColumn.vue';
+import OpportunityCreateModal from './OpportunityCreateModal.vue';
 
 const emit = defineEmits(['cardClick']);
 
 const store = useStore();
 const route = useRoute();
 const router = useRouter();
+
+const isCreateModalOpen = ref(false);
+const modalDefaultStageId = ref(null);
+
+const openCreateModal = stageId => {
+  modalDefaultStageId.value = stageId;
+  isCreateModalOpen.value = true;
+};
+
+const closeCreateModal = () => {
+  isCreateModalOpen.value = false;
+  modalDefaultStageId.value = null;
+};
 
 const isDrawerOpen = computed(
   () => route.name === 'opportunities_conversation'
@@ -84,6 +98,7 @@ const onCardClick = opportunityId => {
         @card-removed="onCardRemoved"
         @card-click="onCardClick"
         @status-changed="onStatusChanged"
+        @add-card="openCreateModal"
       />
     </div>
 
@@ -95,6 +110,12 @@ const onCardClick = opportunityId => {
         @click="closeDrawer"
       />
     </transition>
+
+    <OpportunityCreateModal
+      v-if="isCreateModalOpen"
+      :default-stage-id="modalDefaultStageId"
+      @close="closeCreateModal"
+    />
 
     <router-view v-slot="{ Component }">
       <transition name="slide-right">
