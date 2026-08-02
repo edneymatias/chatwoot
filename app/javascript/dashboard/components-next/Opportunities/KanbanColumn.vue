@@ -18,6 +18,8 @@ const emit = defineEmits([
   'cardClick',
   'statusChanged',
   'addCard',
+  'completeFields',
+  'editCard',
 ]);
 
 const store = useStore();
@@ -98,30 +100,32 @@ const onChange = event => {
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-2 min-h-0">
-      <Draggable
-        :model-value="cards"
-        item-key="id"
-        group="kanban-cards"
-        class="min-h-[50px] h-full flex flex-col gap-2"
-        ghost-class="opacity-50"
-        @change="onChange"
-      >
-        <template #item="{ element }">
-          <KanbanCard
-            :opportunity="element"
-            @click="$emit('cardClick', $event)"
-            @status-changed="$emit('statusChanged', $event)"
-          />
-        </template>
-      </Draggable>
+    <Draggable
+      :model-value="cards"
+      item-key="id"
+      group="kanban-cards"
+      class="flex-1 overflow-y-auto p-2 min-h-0 flex flex-col gap-2"
+      ghost-class="opacity-50"
+      @change="onChange"
+    >
+      <template #item="{ element }">
+        <KanbanCard
+          :opportunity="element"
+          @click="$emit('cardClick', $event)"
+          @status-changed="$emit('statusChanged', $event)"
+          @complete-fields="$emit('completeFields', $event)"
+          @edit-card="$emit('editCard', $event)"
+        />
+      </template>
 
-      <IntersectionObserver v-if="hasMore" @observed="onObserved" />
-      <div v-if="isFetching" class="flex justify-center p-4">
-        <span class="text-xs text-n-slate-11">{{
-          $t('OPPORTUNITIES.BOARD.LOADING')
-        }}</span>
-      </div>
-    </div>
+      <template #footer>
+        <IntersectionObserver v-if="hasMore" @observed="onObserved" />
+        <div v-if="isFetching" class="flex justify-center p-4">
+          <span class="text-xs text-n-slate-11">{{
+            $t('OPPORTUNITIES.BOARD.LOADING')
+          }}</span>
+        </div>
+      </template>
+    </Draggable>
   </div>
 </template>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_31_015312) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_01_082517) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1141,11 +1141,25 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_31_015312) do
     t.integer "status", default: 0
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "custom_attributes", default: {}
+    t.decimal "value"
     t.index ["account_id"], name: "index_matias_opportunities_on_account_id"
     t.index ["assignee_id"], name: "index_matias_opportunities_on_assignee_id"
     t.index ["contact_id"], name: "index_matias_opportunities_on_contact_id"
     t.index ["origin_conversation_id"], name: "index_matias_opportunities_on_origin_conversation_id", unique: true, where: "(origin_conversation_id IS NOT NULL)"
     t.index ["pipeline_stage_id"], name: "index_matias_opportunities_on_pipeline_stage_id"
+  end
+
+  create_table "matias_pipeline_stage_required_fields", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "pipeline_stage_id", null: false
+    t.bigint "custom_attribute_definition_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "custom_attribute_definition_id"], name: "idx_matias_pipeline_stage_req_fields_on_acc_and_attr_def", unique: true
+    t.index ["account_id"], name: "index_matias_pipeline_stage_required_fields_on_account_id"
+    t.index ["custom_attribute_definition_id"], name: "idx_on_custom_attribute_definition_id_e0abc8d608"
+    t.index ["pipeline_stage_id"], name: "idx_on_pipeline_stage_id_9310ca4b8e"
   end
 
   create_table "matias_pipeline_stages", force: :cascade do |t|
@@ -1154,6 +1168,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_31_015312) do
     t.integer "position", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "requires_deal_value", default: false
     t.index ["account_id"], name: "index_matias_pipeline_stages_on_account_id"
   end
 
@@ -1535,6 +1550,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_31_015312) do
   add_foreign_key "matias_opportunities", "conversations", column: "origin_conversation_id"
   add_foreign_key "matias_opportunities", "matias_pipeline_stages", column: "pipeline_stage_id"
   add_foreign_key "matias_opportunities", "users", column: "assignee_id"
+  add_foreign_key "matias_pipeline_stage_required_fields", "accounts"
+  add_foreign_key "matias_pipeline_stage_required_fields", "custom_attribute_definitions"
+  add_foreign_key "matias_pipeline_stage_required_fields", "matias_pipeline_stages", column: "pipeline_stage_id"
   add_foreign_key "matias_pipeline_stages", "accounts"
   add_foreign_key "user_sessions", "users"
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).

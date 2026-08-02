@@ -4,6 +4,8 @@ import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
 import KanbanColumn from './KanbanColumn.vue';
 import OpportunityCreateModal from './OpportunityCreateModal.vue';
+import OpportunityBackfillModal from './OpportunityBackfillModal.vue';
+import StageTransitionRequirementsModal from './StageTransitionRequirementsModal.vue';
 
 const emit = defineEmits(['cardClick']);
 
@@ -14,6 +16,9 @@ const router = useRouter();
 const isCreateModalOpen = ref(false);
 const modalDefaultStageId = ref(null);
 
+const isBackfillModalOpen = ref(false);
+const backfillOpportunityId = ref(null);
+
 const openCreateModal = stageId => {
   modalDefaultStageId.value = stageId;
   isCreateModalOpen.value = true;
@@ -22,6 +27,16 @@ const openCreateModal = stageId => {
 const closeCreateModal = () => {
   isCreateModalOpen.value = false;
   modalDefaultStageId.value = null;
+};
+
+const openBackfillModal = opportunityId => {
+  backfillOpportunityId.value = opportunityId;
+  isBackfillModalOpen.value = true;
+};
+
+const closeBackfillModal = () => {
+  isBackfillModalOpen.value = false;
+  backfillOpportunityId.value = null;
 };
 
 const isDrawerOpen = computed(
@@ -51,6 +66,39 @@ const onStatusChanged = ({ id, status }) => {
   store.dispatch('opportunities/setStatus', { id, status });
 };
 
+const isRequirementsModalOpen = ref(false);
+const requirementsModalData = ref({});
+
+const closeRequirementsModal = () => {
+  isRequirementsModalOpen.value = false;
+  requirementsModalData.value = {};
+};
+
+const executeMoveCard = async (id, move) => {
+  try {
+    await store.dispatch('opportunities/moveCard', {
+      id,
+      fromStageId: move.fromStageId,
+      toStageId: move.toStageId,
+      toIndex: move.toIndex,
+    });
+  } catch (error) {
+    if (
+      error.response?.status === 422 &&
+      error.response?.data?.missing_required_fields
+    ) {
+      const missing = error.response.data.missing_required_fields;
+      requirementsModalData.value = {
+        opportunity: store.state.opportunities.byId[id],
+        destinationStageId: move.toStageId,
+        toIndex: move.toIndex,
+        initialMissingFields: missing,
+      };
+      isRequirementsModalOpen.value = true;
+    }
+  }
+};
+
 const dispatchMoveIfComplete = id => {
   const move = pendingMove.value[id];
   if (
@@ -59,12 +107,56 @@ const dispatchMoveIfComplete = id => {
     move.toStageId !== undefined &&
     move.toIndex !== undefined
   ) {
-    store.dispatch('opportunities/moveCard', {
-      id,
-      fromStageId: move.fromStageId,
-      toStageId: move.toStageId,
-      toIndex: move.toIndex,
+    const fromStage = store.getters['pipelineStages/stageById'](
+      move.fromStageId
+    );
+    const toStage = store.getters['pipelineStages/stageById'](move.toStageId);
+    const opportunity = store.state.opportunities.byId[id];
+
+    const isForwardMove =
+      (toStage?.position ?? Infinity) > (fromStage?.position ?? Infinity);
+
+    if (!isForwardMove) {
+      executeMoveCard(id, move);
+      delete pendingMove.value[id];
+      return;
+    }
+
+    let isMissingFields = false;
+    const requiredDefs = toStage?.required_custom_attribute_definitions || [];
+    const requiresDealValue = toStage?.requires_deal_value || false;
+    const attrs = opportunity.custom_attributes || {};
+
+    requiredDefs.forEach(def => {
+      if (
+        attrs[def.attribute_key] === undefined ||
+        attrs[def.attribute_key] === null ||
+        attrs[def.attribute_key] === ''
+      ) {
+        isMissingFields = true;
+      }
     });
+
+    if (
+      requiresDealValue &&
+      (opportunity.value === undefined ||
+        opportunity.value === null ||
+        opportunity.value === '')
+    ) {
+      isMissingFields = true;
+    }
+
+    if (isMissingFields) {
+      requirementsModalData.value = {
+        opportunity,
+        destinationStageId: move.toStageId,
+        toIndex: move.toIndex,
+      };
+      isRequirementsModalOpen.value = true;
+    } else {
+      executeMoveCard(id, move);
+    }
+
     delete pendingMove.value[id];
   }
 };
@@ -99,6 +191,8 @@ const onCardClick = opportunityId => {
         @card-click="onCardClick"
         @status-changed="onStatusChanged"
         @add-card="openCreateModal"
+        @complete-fields="openBackfillModal"
+        @edit-card="openBackfillModal"
       />
     </div>
 
@@ -117,9 +211,24 @@ const onCardClick = opportunityId => {
       @close="closeCreateModal"
     />
 
+    <OpportunityBackfillModal
+      v-if="isBackfillModalOpen"
+      :opportunity-id="backfillOpportunityId"
+      @close="closeBackfillModal"
+    />
+
+    <StageTransitionRequirementsModal
+      v-if="isRequirementsModalOpen"
+      :opportunity="requirementsModalData.opportunity"
+      :destination-stage-id="requirementsModalData.destinationStageId"
+      :to-index="requirementsModalData.toIndex"
+      :initial-missing-fields="requirementsModalData.initialMissingFields"
+      @close="closeRequirementsModal"
+    />
+
     <router-view v-slot="{ Component }">
       <transition name="slide-right">
-        <component :is="Component" />
+        <component :is="Component" v-if="Component" />
       </transition>
     </router-view>
   </div>

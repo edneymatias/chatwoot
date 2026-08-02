@@ -151,7 +151,7 @@ class ActionCableConnector extends BaseActionCableConnector {
   };
 
   onOpportunityUpdated = data => {
-    this.app.$store.dispatch('opportunities/updateOpportunity', data);
+    this.app.$store.dispatch('opportunities/syncOpportunity', data);
   };
 
   onConversationUnreadCountChanged = () => {

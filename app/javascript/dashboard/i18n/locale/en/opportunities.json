@@ -10,7 +10,9 @@
       "ACTIONS": {
         "MARK_WON": "Mark as Won",
         "MARK_LOST": "Mark as Lost",
-        "REOPEN": "Reopen"
+        "REOPEN": "Reopen",
+        "COMPLETE_FIELDS": "Complete Fields",
+        "EDIT": "Edit Opportunity"
       }
     },
     "CREATE_MODAL": {
@@ -34,7 +36,19 @@
       "ORIGIN_CONVERSATION_LABEL": "Origin Conversation",
       "VIEW_CONVERSATION": "View Conversation",
       "NOT_FOUND": "Opportunity not found."
-    }
+    },
+    "REQUIREMENTS_MODAL": {
+      "TITLE": "Missing requirements",
+      "REQUIRED_SECTION": "Required for this stage",
+      "OPTIONAL_SECTION": "Optional (from previous stages)",
+      "CANCEL": "Cancel",
+      "SUBMIT": "Submit"
+    },
+    "BACKFILL_MODAL": {
+      "CANCEL": "Cancel",
+      "SUBMIT": "Save"
+    },
+    "DEAL_VALUE": "Deal Value"
   },
   "PIPELINE_STAGES_MGMT": {
     "HEADER": "Pipeline Stages",
@@ -43,10 +57,18 @@
       "EMPTY_STATE": "No pipeline stages found."
     },
     "ADD": {
-      "TITLE": "Add Pipeline Stage"
+      "TITLE": "Add Pipeline Stage",
+      "API": {
+        "SUCCESS_MESSAGE": "Pipeline stage added successfully.",
+        "ERROR_MESSAGE": "Failed to add pipeline stage. Please try again."
+      }
     },
     "EDIT": {
-      "TITLE": "Edit Pipeline Stage"
+      "TITLE": "Edit Pipeline Stage",
+      "API": {
+        "SUCCESS_MESSAGE": "Pipeline stage updated successfully.",
+        "ERROR_MESSAGE": "Failed to update pipeline stage. Please try again."
+      }
     },
     "FORM": {
       "NAME_LABEL": "Name",
@@ -62,6 +84,13 @@
       "SUCCESS": "Pipeline stage deleted successfully.",
       "ERROR": "Failed to delete pipeline stage.",
       "ERROR_OCCUPIED": "Cannot delete stage because it contains opportunities."
+    },
+    "REQUIREMENTS": {
+      "TITLE": "Stage Requirements",
+      "DEAL_VALUE_LABEL": "Deal Value",
+      "DEAL_VALUE_HELP": "Require Deal Value for this stage",
+      "ATTRIBUTES_LABEL": "Required Custom Attributes",
+      "NO_ATTRIBUTES": "No opportunity custom attributes available."
     }
   }
 }

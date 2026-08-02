@@ -5,9 +5,10 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
   before_action :check_authorization
 
   def index
-    @opportunities = policy_scope(Opportunity).includes(:contact, :pipeline_stage, :assignee, :origin_conversation).order(created_at: :desc)
+    @opportunities = policy_scope(Opportunity).includes(:pipeline_stage, :origin_conversation, contact: { avatar_attachment: :blob },
+                                                                                               assignee: { avatar_attachment: :blob }).order(created_at: :desc)
     @opportunities = @opportunities.where(pipeline_stage_id: params[:pipeline_stage_id]) if params[:pipeline_stage_id].present?
-    @opportunities = @opportunities.page(params[:page]) if params[:page].present?
+    @opportunities = @opportunities.page(params[:page]).per(10) if params[:page].present?
     render json: @opportunities
   end
 
@@ -27,6 +28,11 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
   def update
     if @opportunity.update(opportunity_update_params)
       render json: @opportunity
+    elsif @opportunity.missing_required_fields.present?
+      render json: {
+        error: @opportunity.errors.full_messages.join(', '),
+        missing_required_fields: @opportunity.missing_required_fields
+      }, status: :unprocessable_entity
     else
       render json: { error: @opportunity.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
@@ -57,7 +63,9 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
       :pipeline_stage_id,
       :status,
       :origin_conversation_id,
-      :assignee_id
+      :assignee_id,
+      :value,
+      custom_attributes: {}
     )
   end
 
@@ -67,7 +75,9 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
       :contact_id,
       :pipeline_stage_id,
       :status,
-      :assignee_id
+      :assignee_id,
+      :value,
+      custom_attributes: {}
     )
   end
 end

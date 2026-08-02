@@ -32,7 +32,11 @@ const uiFlags = computed(() => getters['attributes/getUIFlags'].value);
 const [showEditPopup, toggleEditPopup] = useToggle(false);
 const [showDeletePopup, toggleDeletePopup] = useToggle(false);
 const selectedAttribute = ref({});
-const attributeModels = ['conversation_attribute', 'contact_attribute'];
+const attributeModels = [
+  'conversation_attribute',
+  'contact_attribute',
+  'opportunity_attribute',
+];
 
 const openAddPopup = () => {
   toggleAddPopup(true);
@@ -58,6 +62,10 @@ const tabs = computed(() => {
     {
       key: 1,
       name: t('ATTRIBUTES_MGMT.TABS.CONTACT'),
+    },
+    {
+      key: 2,
+      name: t('ATTRIBUTES_MGMT.TABS.OPPORTUNITY'),
     },
   ];
 });
@@ -158,6 +166,14 @@ const filteredAttributes = computed(() => {
     'attribute_description',
   ]);
 });
+
+const getModelIdForTab = index => {
+  const modelStr = attributeModels[index];
+  if (modelStr === 'opportunity_attribute') return 3;
+  if (modelStr === 'company_attribute') return 2;
+  if (modelStr === 'contact_attribute') return 1;
+  return 0; // conversation_attribute
+};
 </script>
 
 <template>
@@ -228,7 +244,7 @@ const filteredAttributes = computed(() => {
       v-if="showAddPopup"
       v-model:show="showAddPopup"
       :on-close="hideAddPopup"
-      :selected-attribute-model-tab="selectedTabIndex"
+      :selected-attribute-model-tab="getModelIdForTab(selectedTabIndex)"
     />
     <woot-modal v-model:show="showEditPopup" :on-close="hideEditPopup">
       <EditAttribute

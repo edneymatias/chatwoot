@@ -39,8 +39,10 @@ import signup from './signup.json';
 import sla from './sla.json';
 import teamsSettings from './teamsSettings.json';
 import whatsappTemplates from './whatsappTemplates.json';
+import opportunities from './opportunities.json';
 
 export default {
+  ...opportunities,
   ...advancedFilters,
   ...agentBots,
   ...agentMgmt,

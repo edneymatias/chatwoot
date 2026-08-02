@@ -42,7 +42,10 @@ export const mutations = {
       [stageId]: pagination,
     };
   },
-  MOVE_CARD_OPTIMISTIC(state, { id, fromStageId, toStageId, toIndex }) {
+  MOVE_CARD_OPTIMISTIC(
+    state,
+    { id, fromStageId, toStageId, toIndex, custom_attributes, value }
+  ) {
     const fromIds = [...(state.idsByStage[fromStageId] || [])];
     const cardIndex = fromIds.indexOf(id);
     if (cardIndex !== -1) fromIds.splice(cardIndex, 1);
@@ -62,12 +65,24 @@ export const mutations = {
     };
 
     if (state.byId[id]) {
-      state.byId[id] = { ...state.byId[id], pipeline_stage_id: toStageId };
+      const updates = { pipeline_stage_id: toStageId };
+      if (custom_attributes !== undefined)
+        updates.custom_attributes = custom_attributes;
+      if (value !== undefined) updates.value = value;
+      state.byId[id] = { ...state.byId[id], ...updates };
     }
   },
   REVERT_MOVE_CARD(
     state,
-    { id, previousStageId, previousStageIds, previousToStageIds, toStageId }
+    {
+      id,
+      previousStageId,
+      previousStageIds,
+      previousToStageIds,
+      toStageId,
+      previousCustomAttributes,
+      previousValue,
+    }
   ) {
     state.idsByStage = {
       ...state.idsByStage,
@@ -76,9 +91,13 @@ export const mutations = {
     };
 
     if (state.byId[id]) {
+      const updates = { pipeline_stage_id: previousStageId };
+      if (previousCustomAttributes !== undefined)
+        updates.custom_attributes = previousCustomAttributes;
+      if (previousValue !== undefined) updates.value = previousValue;
       state.byId[id] = {
         ...state.byId[id],
-        pipeline_stage_id: previousStageId,
+        ...updates,
       };
     }
   },
@@ -100,6 +119,11 @@ export const mutations = {
   SET_STATUS(state, { id, status }) {
     if (state.byId[id]) {
       state.byId[id] = { ...state.byId[id], status };
+    }
+  },
+  UPDATE_OPPORTUNITY(state, { id, updates }) {
+    if (state.byId[id]) {
+      state.byId[id] = { ...state.byId[id], ...updates };
     }
   },
 };

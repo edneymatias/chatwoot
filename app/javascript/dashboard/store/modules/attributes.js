@@ -35,6 +35,11 @@ export const getters = {
       .filter(record => record.attribute_model === 'company_attribute')
       .map(camelcaseKeys);
   },
+  getOpportunityAttributes: _state => {
+    return _state.records
+      .filter(record => record.attribute_model === 'opportunity_attribute')
+      .map(camelcaseKeys);
+  },
   getAttributesByModel: _state => attributeModel => {
     return _state.records.filter(
       record => record.attribute_model === attributeModel

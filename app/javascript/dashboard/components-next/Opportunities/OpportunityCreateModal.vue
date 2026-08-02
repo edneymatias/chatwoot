@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
+import OpportunityRequiredFieldsForm from './OpportunityRequiredFieldsForm.vue';
 
 const props = defineProps({
   originConversationId: {
@@ -27,6 +28,30 @@ const isSearching = ref(false);
 const stages = computed(
   () => store.getters['pipelineStages/stagesSortedByPosition']
 );
+
+const destinationStage = computed(() => {
+  if (!selectedStageId.value) return null;
+  return store.getters['pipelineStages/stageById'](selectedStageId.value);
+});
+
+const requiredDefs = computed(() => {
+  if (
+    !destinationStage.value ||
+    !destinationStage.value.required_custom_attribute_definitions
+  )
+    return [];
+  return destinationStage.value.required_custom_attribute_definitions;
+});
+
+const requiresDealValue = computed(
+  () => destinationStage.value?.requires_deal_value || false
+);
+
+const customAttributes = ref({});
+const dealValue = ref(null);
+const missingCustomAttributeKeys = ref([]);
+const missingDealValue = ref(false);
+
 const canSubmit = computed(
   () => title.value.trim() && selectedStageId.value && selectedContact.value
 );
@@ -72,8 +97,38 @@ const onClose = () => {
   emit('close');
 };
 
+const validateForm = () => {
+  let isValid = true;
+  missingCustomAttributeKeys.value = [];
+  missingDealValue.value = false;
+
+  requiredDefs.value.forEach(def => {
+    if (
+      customAttributes.value[def.attribute_key] === undefined ||
+      customAttributes.value[def.attribute_key] === null ||
+      customAttributes.value[def.attribute_key] === ''
+    ) {
+      missingCustomAttributeKeys.value.push(def.attribute_key);
+      isValid = false;
+    }
+  });
+
+  if (
+    requiresDealValue.value &&
+    (dealValue.value === undefined ||
+      dealValue.value === null ||
+      dealValue.value === '')
+  ) {
+    missingDealValue.value = true;
+    isValid = false;
+  }
+
+  return isValid;
+};
+
 const submit = async () => {
   if (!canSubmit.value) return;
+  if (!validateForm()) return;
 
   try {
     const opp = await store.dispatch('opportunities/create', {
@@ -81,6 +136,8 @@ const submit = async () => {
       contactId: selectedContact.value.id,
       pipelineStageId: selectedStageId.value,
       originConversationId: props.originConversationId,
+      custom_attributes: customAttributes.value,
+      value: dealValue.value,
     });
     emit('created', opp);
     onClose();
@@ -186,16 +243,26 @@ const submit = async () => {
         </select>
       </div>
 
+      <OpportunityRequiredFieldsForm
+        v-if="requiredDefs.length || requiresDealValue"
+        v-model:custom-attributes="customAttributes"
+        v-model:deal-value="dealValue"
+        :required-custom-attribute-definitions="requiredDefs"
+        :requires-deal-value="requiresDealValue"
+        :missing-custom-attribute-keys="missingCustomAttributeKeys"
+        :missing-deal-value="missingDealValue"
+      />
+
       <div class="flex justify-end gap-2 mt-4">
         <button
-          class="px-4 py-2 text-sm font-medium text-n-slate-11 hover:text-n-slate-12 transition-colors"
+          class="px-4 py-2 text-sm font-medium bg-n-button-color text-n-slate-12 rounded-md hover:bg-n-alpha-2 transition-colors disabled:opacity-50 min-w-[100px]"
           @click="onClose"
         >
           {{ $t('OPPORTUNITIES.CREATE_MODAL.CANCEL') }}
         </button>
         <button
           :disabled="!canSubmit || isSubmitting"
-          class="px-4 py-2 text-sm font-medium bg-n-brand-9 text-white rounded-md hover:bg-n-brand-10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[100px]"
+          class="px-4 py-2 text-sm font-medium bg-n-brand text-white rounded-md hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[100px]"
           @click="submit"
         >
           <span

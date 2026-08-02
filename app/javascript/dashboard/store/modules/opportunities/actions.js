@@ -32,7 +32,7 @@ export const actions = {
 
       commit('SET_PAGINATION', {
         stageId,
-        pagination: { page, hasMore: payload.length >= 15 },
+        pagination: { page, hasMore: payload.length >= 10 },
       });
     } catch (error) {
       throwErrorMessage(error);
@@ -42,15 +42,28 @@ export const actions = {
   },
   moveCard: async (
     { commit, state },
-    { id, fromStageId, toStageId, toIndex }
+    { id, fromStageId, toStageId, toIndex, custom_attributes, value }
   ) => {
     const previousStageIds = [...(state.idsByStage[fromStageId] || [])];
     const previousToStageIds = [...(state.idsByStage[toStageId] || [])];
+    const previousCustomAttributes = state.byId[id]?.custom_attributes;
+    const previousValue = state.byId[id]?.value;
 
-    commit('MOVE_CARD_OPTIMISTIC', { id, fromStageId, toStageId, toIndex });
+    commit('MOVE_CARD_OPTIMISTIC', {
+      id,
+      fromStageId,
+      toStageId,
+      toIndex,
+      custom_attributes,
+      value,
+    });
 
     try {
-      await opportunitiesAPI.update(id, { pipeline_stage_id: toStageId });
+      const payload = { pipeline_stage_id: toStageId };
+      if (custom_attributes !== undefined)
+        payload.custom_attributes = custom_attributes;
+      if (value !== undefined) payload.value = value;
+      await opportunitiesAPI.update(id, payload);
     } catch (error) {
       commit('REVERT_MOVE_CARD', {
         id,
@@ -58,14 +71,23 @@ export const actions = {
         previousStageIds,
         previousToStageIds,
         toStageId,
+        previousCustomAttributes,
+        previousValue,
       });
-      throwErrorMessage(error);
+      throw error;
     }
   },
   // eslint-disable-next-line consistent-return
   create: async (
     { commit },
-    { title, contactId, pipelineStageId, originConversationId }
+    {
+      title,
+      contactId,
+      pipelineStageId,
+      originConversationId,
+      custom_attributes,
+      value,
+    }
   ) => {
     commit('SET_UI_FLAG', { isCreating: true });
     try {
@@ -75,6 +97,8 @@ export const actions = {
           contact_id: contactId,
           pipeline_stage_id: pipelineStageId,
           origin_conversation_id: originConversationId,
+          custom_attributes,
+          value,
         },
       });
       const payload = response.data.payload || response.data;
@@ -100,6 +124,32 @@ export const actions = {
     } catch (error) {
       commit('SET_STATUS', { id, status: previousStatus });
       throwErrorMessage(error);
+    }
+  },
+  updateOpportunity: async ({ commit, state }, { id, ...data }) => {
+    try {
+      const response = await opportunitiesAPI.update(id, data);
+      const payload = response.data.payload || response.data;
+      if (state.byId[id]) {
+        commit('UPDATE_OPPORTUNITY', {
+          id,
+          updates: {
+            custom_attributes: payload.custom_attributes,
+            value: payload.value,
+          },
+        });
+      }
+      return payload;
+    } catch (error) {
+      if (error.response?.status === 422) {
+        throw error;
+      }
+      throwErrorMessage(error);
+    }
+  },
+  syncOpportunity: ({ commit, state }, data) => {
+    if (state.byId[data.id]) {
+      commit('UPDATE_OPPORTUNITY', { id: data.id, updates: data });
     }
   },
 };

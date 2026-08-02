@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import { dynamicTime, shortTimestamp } from 'shared/helpers/timeHelper';
@@ -11,8 +12,9 @@ const props = defineProps({
   },
 });
 
-defineEmits(['statusChanged']);
+defineEmits(['statusChanged', 'completeFields']);
 const router = useRouter();
+const store = useStore();
 
 const statusBadgeClass = computed(() => {
   if (props.opportunity.status === 'won') return 'bg-n-green-3 text-n-green-11';
@@ -36,7 +38,41 @@ const cardClass = computed(() => {
   if (props.opportunity.origin_conversation_id) {
     return 'cursor-pointer hover:bg-n-surface-2 group';
   }
-  return 'opacity-50 grayscale border-dashed bg-transparent group';
+  return 'cursor-default grayscale border-dashed bg-n-surface-2 group';
+});
+
+const currentStage = computed(() =>
+  store.getters['pipelineStages/stageById'](props.opportunity.pipeline_stage_id)
+);
+
+const hasUnmetRequirements = computed(() => {
+  if (!currentStage.value) return false;
+
+  const requiredDefs =
+    currentStage.value.required_custom_attribute_definitions || [];
+  const requiresDealValue = currentStage.value.requires_deal_value || false;
+  const attrs = props.opportunity.custom_attributes || {};
+
+  const isAnyDefMissing = requiredDefs.some(def => {
+    return (
+      attrs[def.attribute_key] === undefined ||
+      attrs[def.attribute_key] === null ||
+      attrs[def.attribute_key] === ''
+    );
+  });
+
+  if (isAnyDefMissing) return true;
+
+  if (
+    requiresDealValue &&
+    (props.opportunity.value === undefined ||
+      props.opportunity.value === null ||
+      props.opportunity.value === '')
+  ) {
+    return true;
+  }
+
+  return false;
 });
 </script>
 
@@ -83,7 +119,7 @@ const cardClass = computed(() => {
         <span class="truncate">{{ opportunity.contact.name }}</span>
       </div>
       <div v-if="opportunity.contact && opportunity.assignee" class="mx-1.5">
-        •
+        {{ '\u2022' }}
       </div>
       <div
         v-if="opportunity.assignee"
@@ -127,6 +163,14 @@ const cardClass = computed(() => {
         "
       >
         <fluent-icon icon="arrow-reply" size="14" />
+      </button>
+      <button
+        v-if="hasUnmetRequirements"
+        class="p-1 rounded transition-colors bg-n-brand-3 text-n-brand-11 hover:bg-n-brand-4"
+        :title="$t('OPPORTUNITIES.BOARD.ACTIONS.COMPLETE_FIELDS')"
+        @click.stop="$emit('completeFields', opportunity.id)"
+      >
+        <fluent-icon icon="edit" size="14" />
       </button>
     </div>
   </div>

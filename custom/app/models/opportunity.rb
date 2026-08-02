@@ -11,6 +11,9 @@ class Opportunity < ApplicationRecord
 
   validates :title, :contact_id, :pipeline_stage_id, :account_id, presence: true
   validate :pipeline_stage_belongs_to_account
+  validate :validate_forward_stage_move_requirements, on: :update, if: :pipeline_stage_id_changed?
+
+  attr_accessor :missing_required_fields
 
   after_commit :broadcast_opportunity_updated, on: %i[create update]
 
@@ -31,6 +34,32 @@ class Opportunity < ApplicationRecord
     return unless pipeline_stage&.account_id != account_id
 
     errors.add(:pipeline_stage, 'must belong to the same account')
+  end
+
+  def validate_forward_stage_move_requirements
+    return unless pipeline_stage_id_was
+
+    old_stage = account.pipeline_stages.find_by(id: pipeline_stage_id_was)
+    return unless old_stage && pipeline_stage
+
+    return if pipeline_stage.position <= old_stage.position
+
+    missing_keys = []
+    attrs = custom_attributes || {}
+
+    pipeline_stage.required_custom_attribute_definitions.each do |definition|
+      missing_keys << definition.attribute_key unless attrs.key?(definition.attribute_key)
+    end
+
+    value_missing = pipeline_stage.requires_deal_value? && value.nil?
+
+    return unless missing_keys.any? || value_missing
+
+    self.missing_required_fields = {
+      custom_attribute_keys: missing_keys,
+      requires_value: value_missing
+    }
+    errors.add(:base, 'Missing required fields for this stage')
   end
 
   def broadcast_opportunity_updated

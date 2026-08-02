@@ -1,0 +1,129 @@
+#!/usr/bin/env ruby
+require 'optparse'
+
+options = {
+  count: 200,
+  clean: false,
+  only_clean: false,
+  account_id: nil
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: rails runner bin/seed-opportunities [options]"
+
+  opts.on("-c", "--count N", Integer, "Number of opportunities to seed (default: 200)") do |v|
+    options[:count] = v
+  end
+
+  opts.on("-a", "--account-id ID", Integer, "Account ID (default: first account)") do |v|
+    options[:account_id] = v
+  end
+
+  opts.on("--clean", "Delete previously seeded data before seeding") do
+    options[:clean] = true
+  end
+
+  opts.on("--only-clean", "Only delete seeded data and exit") do
+    options[:only_clean] = true
+  end
+  
+  opts.on("-h", "--help", "Prints this help") do
+    puts opts
+    exit
+  end
+end.parse!
+
+account = options[:account_id] ? Account.find(options[:account_id]) : Account.first
+if account.nil?
+  puts "No account found. Please create an account first."
+  exit
+end
+
+def clean_seeded_data(account)
+  puts "Cleaning previously seeded data for account #{account.id}..."
+  
+  opportunities = account.opportunities.where("custom_attributes @> ?", { is_seed: true }.to_json)
+  puts "Deleting #{opportunities.count} seeded opportunities..."
+  opportunities.destroy_all
+
+  conversations = account.conversations.where("custom_attributes @> ?", { is_seed: true }.to_json)
+  puts "Deleting #{conversations.count} seeded conversations..."
+  conversations.destroy_all
+
+  contacts = account.contacts.where("custom_attributes @> ?", { is_seed: true }.to_json)
+  puts "Deleting #{contacts.count} seeded contacts..."
+  contacts.destroy_all
+
+  puts "Clean complete!"
+end
+
+if options[:clean] || options[:only_clean]
+  clean_seeded_data(account)
+  exit if options[:only_clean]
+end
+
+pipeline_stages = account.pipeline_stages.to_a
+if pipeline_stages.empty?
+  puts "No pipeline stages found! Creating default ones..."
+  ['Lead', 'In Progress', 'Done'].each_with_index do |name, idx|
+    account.pipeline_stages.create!(name: name, position: idx + 1)
+  end
+  pipeline_stages = account.pipeline_stages.to_a
+end
+
+inbox = account.inboxes.first || account.inboxes.create!(name: "Seed Inbox", channel: Channel::Api.create!(account: account))
+
+puts "Seeding #{options[:count]} opportunities for account #{account.id}..."
+
+pipeline_stages = pipeline_stages.sort_by(&:position)
+num_stages = pipeline_stages.size
+weighted_stages = []
+pipeline_stages.each_with_index do |stage, index|
+  weight = num_stages - index
+  weight.times { weighted_stages << stage }
+end
+
+ActiveRecord::Base.transaction do
+  options[:count].times do |i|
+    # Create a unique contact for this opportunity
+    uid = SecureRandom.hex(4)
+    contact = account.contacts.create!(
+      name: "Seeded Contact #{uid}", 
+      email: "seeded_#{uid}@example.com",
+      custom_attributes: { is_seed: true }
+    )
+    
+    # 90% have a conversation, 10% do not
+    has_conversation = rand < 0.9
+    conversation = nil
+    
+    if has_conversation
+      contact_inbox = ContactInbox.find_or_create_by!(contact_id: contact.id, inbox_id: inbox.id) do |ci|
+        ci.source_id = SecureRandom.uuid
+      end
+      conversation = account.conversations.create!(
+        contact: contact, 
+        inbox: inbox, 
+        account_id: account.id, 
+        contact_inbox: contact_inbox, 
+        status: 'open',
+        custom_attributes: { is_seed: true }
+      )
+    end
+    
+    Opportunity.create!(
+      account: account,
+      contact: contact,
+      pipeline_stage: weighted_stages.sample,
+      origin_conversation: conversation,
+      title: "Opportunity #{uid}",
+      status: 'open',
+      value: rand(100.0..10000.0).round(2),
+      custom_attributes: { is_seed: true }
+    )
+
+    print "." if (i + 1) % 10 == 0
+  end
+end
+
+puts "\nSuccessfully seeded #{options[:count]} opportunities!"

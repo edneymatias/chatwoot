@@ -19,7 +19,6 @@ export const actions = {
       commit('SET_UI_FLAG', { isFetching: false });
     }
   },
-  // eslint-disable-next-line consistent-return
   create: async ({ commit }, data) => {
     try {
       const response = await pipelineStagesAPI.create(data);
@@ -28,9 +27,9 @@ export const actions = {
       return payload;
     } catch (error) {
       throwErrorMessage(error);
+      return undefined;
     }
   },
-  // eslint-disable-next-line consistent-return
   update: async ({ commit }, { id, ...data }) => {
     try {
       const response = await pipelineStagesAPI.update(id, data);
@@ -39,6 +38,7 @@ export const actions = {
       return payload;
     } catch (error) {
       throwErrorMessage(error);
+      return undefined;
     }
   },
   delete: async ({ commit }, id) => {
@@ -50,6 +50,45 @@ export const actions = {
         throw error;
       }
       throwErrorMessage(error);
+    }
+  },
+  addRequiredField: async (
+    { commit },
+    { stageId, customAttributeDefinitionId }
+  ) => {
+    commit('SET_UI_FLAG', { isFetching: true });
+    try {
+      const response = await pipelineStagesAPI.addRequiredField(
+        stageId,
+        customAttributeDefinitionId
+      );
+      // Wait, we need to update the stage in the store with the new required field?
+      // Or maybe the easiest is to fetch the stages again, or we can just fetch the stage again, or update it manually.
+      // The API currently returns the pipeline_stage_required_field object, not the full stage.
+      // For now, let's just return the response and let the component handle re-fetching if needed,
+      // or we can just dispatch fetch. Let's dispatch fetch for simplicity.
+      return response.data;
+    } catch (error) {
+      throwErrorMessage(error);
+      return undefined;
+    } finally {
+      commit('SET_UI_FLAG', { isFetching: false });
+    }
+  },
+  removeRequiredField: async (
+    { commit },
+    { stageId, customAttributeDefinitionId }
+  ) => {
+    commit('SET_UI_FLAG', { isFetching: true });
+    try {
+      await pipelineStagesAPI.removeRequiredField(
+        stageId,
+        customAttributeDefinitionId
+      );
+    } catch (error) {
+      throwErrorMessage(error);
+    } finally {
+      commit('SET_UI_FLAG', { isFetching: false });
     }
   },
 };

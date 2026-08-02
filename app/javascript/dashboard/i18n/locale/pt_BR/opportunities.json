@@ -1,0 +1,88 @@
+{
+  "OPPORTUNITIES": {
+    "BOARD": {
+      "LOADING": "Carregando...",
+      "STATUS": {
+        "OPEN": "Aberto",
+        "WON": "Ganho",
+        "LOST": "Perdido"
+      },
+      "ACTIONS": {
+        "MARK_WON": "Marcar como Ganho",
+        "MARK_LOST": "Marcar como Perdido",
+        "REOPEN": "Reabrir",
+        "COMPLETE_FIELDS": "Preencher Campos",
+        "EDIT": "Editar"
+      }
+    },
+    "CREATE_MODAL": {
+      "TITLE": "Criar Oportunidade",
+      "TITLE_LABEL": "Título",
+      "TITLE_PLACEHOLDER": "Insira o título da oportunidade",
+      "CONTACT_LABEL": "Contato",
+      "SEARCH_PLACEHOLDER": "Buscar contatos por nome ou e-mail...",
+      "CLEAR": "Limpar",
+      "NO_RESULTS": "Nenhum contato encontrado.",
+      "STAGE_LABEL": "Estágio do Pipeline",
+      "STAGE_PLACEHOLDER": "Selecione um estágio...",
+      "CANCEL": "Cancelar",
+      "SUBMIT": "Criar"
+    },
+    "SETTINGS": {},
+    "DETAIL": {
+      "STATUS_LABEL": "Status",
+      "CONTACT_LABEL": "Contato",
+      "ASSIGNEE_LABEL": "Responsável",
+      "ORIGIN_CONVERSATION_LABEL": "Conversa de Origem",
+      "VIEW_CONVERSATION": "Ver Conversa",
+      "NOT_FOUND": "Oportunidade não encontrada."
+    },
+    "REQUIREMENTS_MODAL": {
+      "TITLE": "Requisitos ausentes",
+      "REQUIRED_SECTION": "Obrigatório para este estágio",
+      "OPTIONAL_SECTION": "Opcional (de estágios anteriores)",
+      "CANCEL": "Cancelar",
+      "SUBMIT": "Enviar"
+    },
+    "BACKFILL_MODAL": {
+      "CANCEL": "Cancelar",
+      "SUBMIT": "Salvar"
+    },
+    "DEAL_VALUE": "Valor do Negócio"
+  },
+  "PIPELINE_STAGES_MGMT": {
+    "HEADER": "Estágios do Pipeline",
+    "DESCRIPTION": "Gerencie os estágios do seu pipeline.",
+    "LIST": {
+      "EMPTY_STATE": "Nenhum estágio de pipeline encontrado."
+    },
+    "ADD": {
+      "TITLE": "Adicionar Estágio do Pipeline"
+    },
+    "EDIT": {
+      "TITLE": "Editar Estágio do Pipeline"
+    },
+    "FORM": {
+      "NAME_LABEL": "Nome",
+      "NAME_PLACEHOLDER": "Insira o nome do estágio",
+      "DESC_LABEL": "Descrição",
+      "DESC_PLACEHOLDER": "Insira a descrição do estágio",
+      "CANCEL": "Cancelar",
+      "SUBMIT_CREATE": "Criar",
+      "SUBMIT_EDIT": "Salvar alterações"
+    },
+    "DELETE": {
+      "CONFIRM": "Tem certeza que deseja excluir este estágio do pipeline?",
+      "SUCCESS": "Estágio do pipeline excluído com sucesso.",
+      "ERROR": "Falha ao excluir o estágio do pipeline.",
+      "ERROR_OCCUPIED": "Não é possível excluir o estágio pois ele contém oportunidades."
+    },
+    "REQUIREMENTS": {
+      "TITLE": "Requisitos do Estágio",
+      "DEAL_VALUE_LABEL": "Valor do Negócio",
+      "DEAL_VALUE_HELP": "Exigir Valor do Negócio para este estágio",
+      "ATTRIBUTES_LABEL": "Atributos Personalizados Obrigatórios",
+      "NO_ATTRIBUTES": "Nenhum atributo personalizado de oportunidade disponível."
+    }
+  }
+}

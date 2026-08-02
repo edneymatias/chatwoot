@@ -25,6 +25,7 @@ class Seeders::AccountSeeder
     seed_canned_responses
     seed_inboxes
     seed_contacts
+    seed_opportunities
   end
 
   def set_up_account
@@ -154,5 +155,43 @@ class Seeders::AccountSeeder
 
   def seed_inboxes
     Seeders::InboxSeeder.new(account: @account, company_data: @account_data[:company]).perform!
+  end
+
+  def seed_opportunities
+    return unless defined?(Opportunity) && defined?(PipelineStage)
+
+    contact = @account.contacts.first
+    return unless contact
+
+    # Create default pipeline stages
+    stage1 = @account.pipeline_stages.find_or_create_by!(name: 'Lead', position: 1)
+    stage2 = @account.pipeline_stages.find_or_create_by!(name: 'Qualified', position: 2, requires_deal_value: true)
+    stage3 = @account.pipeline_stages.find_or_create_by!(name: 'Won', position: 3)
+
+    # Add custom attributes and required fields
+    company_size_def = @account.custom_attribute_definitions.find_or_create_by!(
+      attribute_key: 'company_size',
+      attribute_display_name: 'Company Size',
+      attribute_model: 'opportunity_attribute',
+      attribute_display_type: 'text'
+    )
+    PipelineStageRequiredField.find_or_create_by!(pipeline_stage: stage3, custom_attribute_definition: company_size_def)
+
+    # Seed some opportunities
+    [
+      { title: 'Enterprise Deal', stage: stage1, value: nil, custom_attributes: {} },
+      { title: 'SMB Partnership', stage: stage2, value: 5000, custom_attributes: {} },
+      { title: 'SaaS Expansion', stage: stage3, value: 15_000, custom_attributes: { 'company_size' => 'Enterprise' } }
+    ].each do |opp_data|
+      opp = @account.opportunities.find_or_initialize_by(title: opp_data[:title])
+      opp.assign_attributes(
+        contact: contact,
+        pipeline_stage: opp_data[:stage],
+        value: opp_data[:value],
+        custom_attributes: opp_data[:custom_attributes],
+        status: 'open'
+      )
+      opp.save!
+    end
   end
 end

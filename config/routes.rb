@@ -130,7 +130,9 @@ Rails.application.routes.draw do
           resources :macros, only: [:index, :create, :show, :update, :destroy] do
             post :execute, on: :member
           end
-          resources :pipeline_stages, only: [:index, :create, :update, :destroy]
+          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do
+            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'
+          end
           resources :opportunities, only: [:index, :show, :create, :update, :destroy]
           resources :sla_policies, only: [:index, :create, :show, :update, :destroy]
           resources :custom_roles, only: [:index, :create, :show, :update, :destroy]
