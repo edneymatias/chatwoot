@@ -1,3 +1,4 @@
+# rubocop:disable Layout/LineLength
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
@@ -10,12 +11,12 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'app/javascript/dashboard/helper/actionCable.js',
                  anchor: "      'conversation.updated': this.onConversationUpdated,",
-                 insert: "      opportunity_updated: this.onOpportunityUpdated,"
+                 insert: '      opportunity_updated: this.onOpportunityUpdated,'
                },
                {
                  file: 'app/javascript/dashboard/helper/actionCable.js',
                  anchor: '  onConversationUpdated = data => {',
-                 insert: "  onOpportunityUpdated = data => {\n    this.app.$store.dispatch('opportunities/updateOpportunity', data);\n  };\n\n"
+                 insert: "  onOpportunityUpdated = data => {\n    this.app.$store.dispatch('opportunities/syncOpportunity', data);\n  };\n\n"
                },
                {
                  file: 'app/javascript/dashboard/routes/dashboard/dashboard.routes.js',
@@ -30,7 +31,7 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'app/javascript/dashboard/routes/dashboard/dashboard.routes.js',
                  anchor: "            permissions: ['administrator', 'agent', 'custom_role'],\n          },",
-                 insert: "          children: [\n            {\n              path: 'conversations/:conversationId',\n              name: 'opportunities_conversation',\n              roles: ['administrator', 'agent', 'custom_role'],\n              component: () =>\n                import('dashboard/components-next/Opportunities/OpportunityConversationDrawer.vue'),\n            },\n          ],"
+                 insert: "          children: [\n            {\n              path: 'conversations/:conversationId',\n              name: 'opportunities_conversation',\n              roles: ['administrator', 'agent', 'custom_role'],\n              component: () =>\n                import(\n                  'dashboard/components-next/Opportunities/OpportunityConversationDrawer.vue'\n                ),\n            },\n          ],"
                },
                {
                  file: 'app/javascript/dashboard/components-next/sidebar/Sidebar.vue',
@@ -81,10 +82,163 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  anchor: '  ...macros,',
                  insert: '  ...opportunities,'
                },
+               {
+                 file: 'config/application.rb',
+                 anchor: "    config.eager_load_paths += Dir[\"\#{Rails.root}/enterprise/app/**\"]\n    # rubocop:enable Rails/FilePath",
+                 insert: "\n    config.eager_load_paths << Rails.root.join('custom/lib')\n    # rubocop:disable Rails/FilePath\n    config.eager_load_paths += Dir[\"\#{Rails.root}/custom/app/**\"]\n    # rubocop:enable Rails/FilePath"
+               },
+               {
+                 file: 'config/routes.rb',
+                 anchor: "          resources :macros, only: [:index, :create, :show, :update, :destroy] do\n            post :execute, on: :member\n          end",
+                 insert: "          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do\n            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'\n          end\n          resources :opportunities, only: [:index, :show, :create, :update, :destroy]"
+               },
+               {
+                 file: 'config/features.yml',
+                 anchor: "  display_name: WhatsApp Embedded Signup Flow\n  enabled: false\n  column: feature_flags_ext_1",
+                 insert: "- name: opportunities\n  display_name: Opportunities (Kanban)\n  enabled: true\n  column: feature_flags_ext_1"
+               },
+               {
+                 file: 'app/services/automation_rules/action_service.rb',
+                 anchor: "    end\n  end\nend",
+                 insert: "\nAutomationRules::ActionService.prepend_mod_with('AutomationRules::ActionService')"
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/en/settings.json',
+                 anchor: '  "SIDEBAR": {',
+                 insert: '    "OPPORTUNITIES": "Opportunities",'
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/en/settings.json',
+                 anchor: '    "AGENT_BOTS": "Bots",',
+                 insert: '    "PIPELINE_STAGES": "Pipeline Stages",'
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/en/automation.json',
+                 anchor: '      "OPEN_CONVERSATION": "Open conversation",',
+                 insert: '      "CREATE_OPPORTUNITY": "Create Opportunity",'
+               },
+               {
+                 file: 'app/javascript/dashboard/composables/useAutomationValues.js',
+                 anchor: "  const slaPolicies = useMapGetter('sla/getSLA');",
+                 insert: "  const pipelineStages = computed(\n    () => getters['pipelineStages/stagesSortedByPosition'].value\n  );"
+               },
+               {
+                 file: 'app/javascript/dashboard/composables/useAutomationValues.js',
+                 anchor: '      priorityOptions: priorityOptions.value,',
+                 insert: '      pipelineStages: pipelineStages.value,'
+               },
+               {
+                 file: 'app/javascript/dashboard/helper/automationHelper.js',
+                 anchor: '  priorityOptions,',
+                 insert: '  pipelineStages,'
+               },
+               {
+                 file: 'app/javascript/dashboard/helper/automationHelper.js',
+                 anchor: '    add_sla: slaPolicies,',
+                 insert: '    create_opportunity: pipelineStages,'
+               }
              ]
            end
 
-mode = ARGV[0] == '--check' ? :check : :apply
+mode = if ARGV[0] == '--check'
+         :check
+       elsif ARGV[0] == '--audit'
+         :audit
+       else
+         :apply
+       end
+
+if mode == :audit
+  base_ref = ARGV[1]
+  if base_ref.blank?
+    current_branch = `git rev-parse --abbrev-ref HEAD`.strip
+    base_ref = `git merge-base #{current_branch} develop`.strip
+  end
+
+  if base_ref.blank? || !system("git rev-parse --verify #{base_ref} >/dev/null 2>&1")
+    warn "ERROR: Unresolvable BASE_REF or no merge-base found: #{base_ref.inspect}"
+    exit 1
+  end
+
+  # rubocop:disable Metrics/BlockLength
+  excluded = lambda do |path|
+    return true if path == 'db/schema.rb'
+    return true if path.start_with?('spec/', 'specs/', 'docs/')
+    return true if path.end_with?('.md', '_spec.rb', '.spec.js')
+    return true if path.match?(%r{^(app/javascript/dashboard/i18n/locale|config/locales)/(?!en\b)})
+
+    out_of_scope = [
+      'docker-compose.yaml', '.gitignore', 'AGENTS.md', '.specify/feature.json',
+      'bin/sync-custom-module-hooks', 'lib/seeders/account_seeder.rb',
+      'app/javascript/dashboard/components/IntersectionObserver.vue',
+      'app/javascript/dashboard/i18n/locale/en/attributesMgmt.json',
+      'app/javascript/dashboard/routes/dashboard/settings/attributes/Index.vue',
+      'app/javascript/dashboard/routes/dashboard/settings/attributes/constants.js',
+      'app/javascript/dashboard/routes/dashboard/settings/automation/constants.js',
+      'app/javascript/dashboard/store/modules/attributes.js',
+      'app/models/custom_attribute_definition.rb'
+    ]
+    return true if out_of_scope.include?(path)
+
+    if (path.start_with?('app/models/', 'enterprise/app/models/')) && path.end_with?('.rb')
+      diff = `git diff -U0 #{base_ref} -- #{path}`
+      return false if diff.empty?
+
+      content = File.exist?(path) ? File.read(path) : ''
+      lines = content.lines
+      start_idx = lines.index { |l| l.start_with?('# == Schema Information') }
+      return false unless start_idx
+
+      end_idx = start_idx
+      end_idx += 1 while end_idx < lines.length && lines[end_idx].match?(/^\s*(#|$)/)
+
+      diff.lines.each do |line|
+        if (match = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/))
+          new_start = match[1].to_i
+          return false unless new_start.between?(start_idx + 1, end_idx + 1)
+        elsif line.start_with?('+', '-') && !line.start_with?('+++', '---')
+          return false unless line.match?(/^[+-]\s*(#|$)/)
+        end
+      end
+      return true
+    end
+
+    false
+  end
+  # rubocop:enable Metrics/BlockLength
+
+  modified_files = Set.new
+  `git diff --name-status #{base_ref}...HEAD`.each_line do |line|
+    status, path = line.strip.split("\t", 2)
+    modified_files << path if status.start_with?('M') && !excluded.call(path)
+  end
+
+  `git diff --name-status`.each_line do |line|
+    status, path = line.strip.split("\t", 2)
+    modified_files << path if status.start_with?('M') && !excluded.call(path)
+  end
+
+  manifest_files = Set.new(MANIFEST.pluck(:file))
+
+  covered = []
+  gap = []
+
+  modified_files.each do |path|
+    if manifest_files.include?(path)
+      covered << path
+    else
+      gap << path
+    end
+  end
+
+  covered.sort.each { |path| puts "covered   #{path}" }
+  gap.sort.each { |path| puts "gap       #{path}   (needs MANIFEST entry)" }
+
+  puts "#{gap.size} gaps found."
+
+  exit 0
+end
+
 failures = false
 
 MANIFEST.each do |entry|
@@ -124,3 +278,5 @@ end
 puts "All #{MANIFEST.size} wiring points present." if mode == :check && !failures
 
 exit(failures ? 1 : 0)
+
+# rubocop:enable Layout/LineLength
