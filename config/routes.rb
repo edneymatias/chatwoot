@@ -133,6 +133,7 @@ Rails.application.routes.draw do
           resources :pipeline_stages, only: [:index, :create, :update, :destroy] do
             resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'
           end
+          resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]
           resources :opportunities, only: [:index, :show, :create, :update, :destroy]
           resources :sla_policies, only: [:index, :create, :show, :update, :destroy]
           resources :custom_roles, only: [:index, :create, :show, :update, :destroy]

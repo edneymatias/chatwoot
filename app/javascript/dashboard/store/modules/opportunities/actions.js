@@ -115,15 +115,32 @@ export const actions = {
     }
   },
   // eslint-disable-next-line consistent-return
-  setStatus: async ({ commit, state }, { id, status }) => {
+  setStatus: async ({ commit, state }, { id, status, custom_attributes }) => {
     const previousStatus = state.byId[id]?.status || 'open';
+    const previousCustomAttributes = state.byId[id]?.custom_attributes;
+
     commit('SET_STATUS', { id, status });
+    if (custom_attributes !== undefined) {
+      commit('UPDATE_OPPORTUNITY', {
+        id,
+        updates: { custom_attributes },
+      });
+    }
 
     try {
-      await opportunitiesAPI.update(id, { status });
+      const payload = { status };
+      if (custom_attributes !== undefined)
+        payload.custom_attributes = custom_attributes;
+      await opportunitiesAPI.update(id, payload);
     } catch (error) {
       commit('SET_STATUS', { id, status: previousStatus });
-      throwErrorMessage(error);
+      if (custom_attributes !== undefined) {
+        commit('UPDATE_OPPORTUNITY', {
+          id,
+          updates: { custom_attributes: previousCustomAttributes },
+        });
+      }
+      throw error;
     }
   },
   updateOpportunity: async ({ commit, state }, { id, ...data }) => {

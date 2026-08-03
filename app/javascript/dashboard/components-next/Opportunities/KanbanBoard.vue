@@ -6,6 +6,7 @@ import KanbanColumn from './KanbanColumn.vue';
 import OpportunityCreateModal from './OpportunityCreateModal.vue';
 import OpportunityBackfillModal from './OpportunityBackfillModal.vue';
 import StageTransitionRequirementsModal from './StageTransitionRequirementsModal.vue';
+import ClosingRequirementsModal from './ClosingRequirementsModal.vue';
 
 const emit = defineEmits(['cardClick']);
 
@@ -62,8 +63,31 @@ onMounted(() => {
 
 const pendingMove = ref({});
 
-const onStatusChanged = ({ id, status }) => {
-  store.dispatch('opportunities/setStatus', { id, status });
+const isClosingRequirementsModalOpen = ref(false);
+const closingRequirementsModalData = ref({});
+
+const closeClosingRequirementsModal = () => {
+  isClosingRequirementsModalOpen.value = false;
+  closingRequirementsModalData.value = {};
+};
+
+const onStatusChanged = async ({ id, status }) => {
+  try {
+    await store.dispatch('opportunities/setStatus', { id, status });
+  } catch (error) {
+    if (
+      error.response?.status === 422 &&
+      error.response?.data?.missing_required_fields
+    ) {
+      const missing = error.response.data.missing_required_fields;
+      closingRequirementsModalData.value = {
+        opportunity: store.state.opportunities.byId[id],
+        outcome: status,
+        initialMissingFields: missing,
+      };
+      isClosingRequirementsModalOpen.value = true;
+    }
+  }
 };
 
 const isRequirementsModalOpen = ref(false);
@@ -224,6 +248,16 @@ const onCardClick = opportunityId => {
       :to-index="requirementsModalData.toIndex"
       :initial-missing-fields="requirementsModalData.initialMissingFields"
       @close="closeRequirementsModal"
+    />
+
+    <ClosingRequirementsModal
+      v-if="isClosingRequirementsModalOpen"
+      :opportunity="closingRequirementsModalData.opportunity"
+      :outcome="closingRequirementsModalData.outcome"
+      :initial-missing-fields="
+        closingRequirementsModalData.initialMissingFields
+      "
+      @close="closeClosingRequirementsModal"
     />
 
     <router-view v-slot="{ Component }">

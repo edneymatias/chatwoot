@@ -42,7 +42,13 @@
       "REQUIRED_SECTION": "Required for this stage",
       "OPTIONAL_SECTION": "Optional (from previous stages)",
       "CANCEL": "Cancel",
-      "SUBMIT": "Submit"
+      "SUBMIT": "Submit",
+      "CLOSING_REQUIREMENTS_TITLE": "Closing Requirements",
+      "CLOSING_REQUIREMENTS_DESC": "Configure required attributes when closing an opportunity",
+      "REQUIRED_FOR_WON": "Required for won",
+      "REQUIRED_FOR_LOST": "Required for lost",
+      "SAVE": "Save Changes",
+      "SAVE_SUCCESS": "Saved successfully"
     },
     "BACKFILL_MODAL": {
       "CANCEL": "Cancel",
@@ -51,8 +57,11 @@
     "DEAL_VALUE": "Deal Value"
   },
   "PIPELINE_STAGES_MGMT": {
-    "HEADER": "Pipeline Stages",
-    "DESCRIPTION": "Manage the stages of your pipeline.",
+    "HEADER": "Pipeline Setup",
+    "DESCRIPTION": "Manage the stages of your pipeline and closing requirements.",
+    "TABS": {
+      "STAGES": "Pipeline Stages"
+    },
     "LIST": {
       "EMPTY_STATE": "No pipeline stages found."
     },

@@ -9,8 +9,10 @@ import { useAlert } from 'dashboard/composables';
 import SettingsLayout from '../SettingsLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
+import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
 import AddPipelineStage from './AddPipelineStage.vue';
 import EditPipelineStage from './EditPipelineStage.vue';
+import ClosingRequiredFields from './ClosingRequiredFields.vue';
 
 const { t } = useI18n();
 const store = useStore();
@@ -18,6 +20,30 @@ const store = useStore();
 const [showAddPopup, toggleAddPopup] = useToggle(false);
 const [showEditPopup, toggleEditPopup] = useToggle(false);
 const selectedStage = ref({});
+const selectedTabIndex = ref(0);
+
+const tabs = computed(() => {
+  return [
+    {
+      key: 0,
+      name: t('PIPELINE_STAGES_MGMT.TABS.STAGES') || 'Pipeline Stages',
+    },
+    {
+      key: 1,
+      name:
+        t('OPPORTUNITIES.REQUIREMENTS_MODAL.CLOSING_REQUIREMENTS_TITLE') ||
+        'Closing Requirements',
+    },
+  ];
+});
+
+const tabsForTabBar = computed(() =>
+  tabs.value.map(tab => ({ label: tab.name, key: tab.key }))
+);
+
+const onClickTabChange = tab => {
+  selectedTabIndex.value = tab.key;
+};
 
 const stages = computed({
   get: () => store.getters['pipelineStages/stagesSortedByPosition'],
@@ -79,70 +105,87 @@ const onChange = async event => {
         :title="$t('PIPELINE_STAGES_MGMT.HEADER')"
         :description="$t('PIPELINE_STAGES_MGMT.DESCRIPTION')"
       >
+        <template #tabs>
+          <TabBar
+            :tabs="tabsForTabBar"
+            :initial-active-tab="selectedTabIndex"
+            @tab-changed="onClickTabChange"
+          />
+        </template>
         <template #actions>
-          <Button icon="plus" @click="toggleAddPopup(true)">
-            {{ $t('PIPELINE_STAGES_MGMT.ADD.TITLE') }}
-          </Button>
+          <div v-if="selectedTabIndex === 0" class="flex items-center gap-2">
+            <Button icon="plus" @click="toggleAddPopup(true)">
+              {{ $t('PIPELINE_STAGES_MGMT.ADD.TITLE') }}
+            </Button>
+          </div>
         </template>
       </BaseSettingsHeader>
     </template>
 
     <template #body>
-      <div
-        class="flex-1 overflow-auto bg-n-surface-1 border border-n-weak rounded-xl shadow-sm my-4"
-      >
-        <div v-if="stages.length === 0" class="p-8 text-center text-n-slate-11">
-          {{ $t('PIPELINE_STAGES_MGMT.LIST.EMPTY_STATE') }}
-        </div>
-        <Draggable
-          v-else
-          v-model="stages"
-          item-key="id"
-          class="divide-y divide-n-weak"
-          ghost-class="opacity-50"
-          @change="onChange"
+      <template v-if="selectedTabIndex === 0">
+        <div
+          class="flex-1 overflow-auto bg-n-surface-1 border border-n-weak rounded-xl shadow-sm my-4"
         >
-          <template #item="{ element }">
-            <div
-              class="p-4 flex items-center justify-between hover:bg-n-surface-2 transition-colors group"
-            >
-              <div class="flex items-center gap-3">
-                <span
-                  class="flex-shrink-0 transition-colors i-lucide-grip-vertical size-5 text-n-slate-9 group-hover:text-n-slate-11 cursor-grab"
-                />
-                <div class="flex flex-col">
-                  <span class="font-medium text-n-slate-12 text-sm">{{
-                    element.name
-                  }}</span>
+          <div
+            v-if="stages.length === 0"
+            class="p-8 text-center text-n-slate-11"
+          >
+            {{ $t('PIPELINE_STAGES_MGMT.LIST.EMPTY_STATE') }}
+          </div>
+          <Draggable
+            v-else
+            v-model="stages"
+            item-key="id"
+            class="divide-y divide-n-weak"
+            ghost-class="opacity-50"
+            @change="onChange"
+          >
+            <template #item="{ element }">
+              <div
+                class="p-4 flex items-center justify-between hover:bg-n-surface-2 transition-colors group"
+              >
+                <div class="flex items-center gap-3">
                   <span
-                    v-if="element.description"
-                    class="text-xs text-n-slate-11"
-                  >
-                    {{ element.description }}
-                  </span>
+                    class="flex-shrink-0 transition-colors i-lucide-grip-vertical size-5 text-n-slate-9 group-hover:text-n-slate-11 cursor-grab"
+                  />
+                  <div class="flex flex-col">
+                    <span class="font-medium text-n-slate-12 text-sm">{{
+                      element.name
+                    }}</span>
+                    <span
+                      v-if="element.description"
+                      class="text-xs text-n-slate-11"
+                    >
+                      {{ element.description }}
+                    </span>
+                  </div>
+                </div>
+                <div
+                  class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Button
+                    variant="ghost"
+                    icon="i-lucide-pencil"
+                    size="sm"
+                    @click="onEdit(element)"
+                  />
+                  <Button
+                    variant="ghost"
+                    color-scheme="alert"
+                    icon="i-lucide-trash"
+                    size="sm"
+                    @click="onDelete(element)"
+                  />
                 </div>
               </div>
-              <div
-                class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Button
-                  variant="ghost"
-                  icon="i-lucide-pencil"
-                  size="sm"
-                  @click="onEdit(element)"
-                />
-                <Button
-                  variant="ghost"
-                  color-scheme="alert"
-                  icon="i-lucide-trash"
-                  size="sm"
-                  @click="onDelete(element)"
-                />
-              </div>
-            </div>
-          </template>
-        </Draggable>
-      </div>
+            </template>
+          </Draggable>
+        </div>
+      </template>
+      <template v-else-if="selectedTabIndex === 1">
+        <ClosingRequiredFields />
+      </template>
 
       <AddPipelineStage
         v-if="showAddPopup"

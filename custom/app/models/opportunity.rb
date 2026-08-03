@@ -12,6 +12,7 @@ class Opportunity < ApplicationRecord
   validates :title, :contact_id, :pipeline_stage_id, :account_id, presence: true
   validate :pipeline_stage_belongs_to_account
   validate :validate_forward_stage_move_requirements, on: :update, if: :pipeline_stage_id_changed?
+  validate :validate_closing_requirements, on: :update, if: :status_changed?
 
   attr_accessor :missing_required_fields
 
@@ -60,6 +61,23 @@ class Opportunity < ApplicationRecord
       requires_value: value_missing
     }
     errors.add(:base, 'Missing required fields for this stage')
+  end
+
+  def validate_closing_requirements
+    return unless status.to_s.in?(%w[won lost])
+
+    missing_keys = []
+    attrs = custom_attributes || {}
+
+    PipelineClosingRequiredField.where(account_id: account_id, outcome: status).each do |req|
+      definition = req.custom_attribute_definition
+      missing_keys << definition.attribute_key unless attrs.key?(definition.attribute_key)
+    end
+
+    return unless missing_keys.any?
+
+    self.missing_required_fields = { custom_attribute_keys: missing_keys }
+    errors.add(:base, 'Missing required fields to close this opportunity')
   end
 
   def broadcast_opportunity_updated

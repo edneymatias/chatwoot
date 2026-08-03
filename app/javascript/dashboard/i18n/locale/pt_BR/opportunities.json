@@ -42,7 +42,13 @@
       "REQUIRED_SECTION": "Obrigatório para este estágio",
       "OPTIONAL_SECTION": "Opcional (de estágios anteriores)",
       "CANCEL": "Cancelar",
-      "SUBMIT": "Enviar"
+      "SUBMIT": "Enviar",
+      "CLOSING_REQUIREMENTS_TITLE": "Requisitos de Fechamento",
+      "CLOSING_REQUIREMENTS_DESC": "Configure atributos obrigatórios ao fechar uma oportunidade",
+      "REQUIRED_FOR_WON": "Obrigatório para Ganho",
+      "REQUIRED_FOR_LOST": "Obrigatório para Perdido",
+      "SAVE": "Salvar Alterações",
+      "SAVE_SUCCESS": "Salvo com sucesso"
     },
     "BACKFILL_MODAL": {
       "CANCEL": "Cancelar",
@@ -51,8 +57,11 @@
     "DEAL_VALUE": "Valor do Negócio"
   },
   "PIPELINE_STAGES_MGMT": {
-    "HEADER": "Estágios do Pipeline",
-    "DESCRIPTION": "Gerencie os estágios do seu pipeline.",
+    "HEADER": "Configuração do Funil",
+    "DESCRIPTION": "Gerencie os estágios e os requisitos de fechamento do seu pipeline.",
+    "TABS": {
+      "STAGES": "Fases do Funil"
+    },
     "LIST": {
       "EMPTY_STATE": "Nenhum estágio de pipeline encontrado."
     },
