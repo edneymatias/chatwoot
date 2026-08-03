@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { useStore } from 'vuex';
 import { useI18n } from 'vue-i18n';
 import { useToggle } from '@vueuse/core';
@@ -19,15 +19,12 @@ const [showAddPopup, toggleAddPopup] = useToggle(false);
 const [showEditPopup, toggleEditPopup] = useToggle(false);
 const selectedStage = ref({});
 
-const stages = ref([]);
-
-watch(
-  () => store.getters['pipelineStages/stagesSortedByPosition'],
-  newStages => {
-    stages.value = [...newStages];
+const stages = computed({
+  get: () => store.getters['pipelineStages/stagesSortedByPosition'],
+  set: value => {
+    store.commit('pipelineStages/SET_STAGES', value);
   },
-  { immediate: true }
-);
+});
 
 onMounted(() => {
   store.dispatch('pipelineStages/fetch');
@@ -57,15 +54,20 @@ const onDelete = async stage => {
   }
 };
 
-const onChange = event => {
+const onChange = async event => {
   if (event.moved) {
     const stage = event.moved.element;
     const newIndex = event.moved.newIndex;
     const newPosition = newIndex + 1;
-    store.dispatch('pipelineStages/update', {
-      id: stage.id,
-      position: newPosition,
-    });
+    try {
+      await store.dispatch('pipelineStages/update', {
+        id: stage.id,
+        position: newPosition,
+      });
+    } catch (error) {
+      store.dispatch('pipelineStages/fetch');
+      useAlert(t('PIPELINE_STAGES_MGMT.REORDER.ERROR'));
+    }
   }
 };
 </script>
@@ -97,7 +99,7 @@ const onChange = event => {
           v-model="stages"
           item-key="id"
           class="divide-y divide-n-weak"
-          ghost-class="opacity-50 bg-n-surface-3"
+          ghost-class="opacity-50"
           @change="onChange"
         >
           <template #item="{ element }">

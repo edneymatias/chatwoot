@@ -24,12 +24,20 @@ class Api::V1::Accounts::PipelineStagesController < Api::V1::Accounts::BaseContr
 
   def update
     @pipeline_stage = Current.account.pipeline_stages.find(params[:id])
-    if @pipeline_stage.update(pipeline_stage_params)
-      render json: @pipeline_stage,
-             include: { required_custom_attribute_definitions: { only: [:id, :attribute_key, :attribute_display_name, :attribute_display_type,
-                                                                        :attribute_values] } }
-    else
-      render json: { error: @pipeline_stage.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    is_reorder = pipeline_stage_params[:position].present? && pipeline_stage_params[:position].to_i != @pipeline_stage.position
+
+    begin
+      result = perform_update(@pipeline_stage, pipeline_stage_params, is_reorder)
+
+      if result
+        render json: result,
+               include: { required_custom_attribute_definitions: { only: [:id, :attribute_key, :attribute_display_name, :attribute_display_type,
+                                                                          :attribute_values] } }
+      else
+        render json: { error: @pipeline_stage.errors.full_messages.join(', ') }, status: :unprocessable_entity
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { error: e.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
   end
 
@@ -46,6 +54,16 @@ class Api::V1::Accounts::PipelineStagesController < Api::V1::Accounts::BaseContr
 
   def check_authorization
     super(PipelineStage)
+  end
+
+  def perform_update(stage, stage_params, is_reorder)
+    if is_reorder
+      other_params = stage_params.except(:position)
+      stage.update!(other_params) if other_params.present?
+      stage.reorder_to!(stage_params[:position])
+    else
+      stage.update(stage_params) ? stage : nil
+    end
   end
 
   def pipeline_stage_params

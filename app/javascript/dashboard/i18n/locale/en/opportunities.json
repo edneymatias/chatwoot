@@ -85,6 +85,9 @@
       "ERROR": "Failed to delete pipeline stage.",
       "ERROR_OCCUPIED": "Cannot delete stage because it contains opportunities."
     },
+    "REORDER": {
+      "ERROR": "Couldn't reorder pipeline stages. Please try again."
+    },
     "REQUIREMENTS": {
       "TITLE": "Stage Requirements",
       "DEAL_VALUE_LABEL": "Deal Value",

@@ -38,4 +38,12 @@ export const mutations = {
     state.byId = {};
     state.allIds = [];
   },
+  SET_STAGES(state, stages) {
+    const byId = {};
+    stages.forEach(stage => {
+      byId[stage.id] = stage;
+    });
+    state.byId = byId;
+    state.allIds = stages.map(stage => stage.id);
+  },
 };

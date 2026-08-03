@@ -24,6 +24,25 @@ class PipelineStage < ApplicationRecord
     end
   end
 
+  def reorder_to!(target_position)
+    PipelineStage.transaction do
+      stages = account.pipeline_stages.order(:position).lock!.to_a
+      stages.delete(self)
+
+      insert_index = [(target_position || 1).to_i - 1, stages.size].min
+      insert_index = 0 if insert_index.negative?
+
+      stages.insert(insert_index, self)
+
+      stages.each_with_index do |stage, index|
+        new_position = index + 1
+        stage.update!(position: new_position) if stage.position != new_position
+      end
+
+      stages
+    end
+  end
+
   private
 
   def set_position
@@ -31,6 +50,8 @@ class PipelineStage < ApplicationRecord
   end
 
   def ensure_single_lane_exclusivity_for_deal_value
+    # rubocop:disable Rails/SkipsModelValidations
     account.pipeline_stages.where.not(id: id).update_all(requires_deal_value: false)
+    # rubocop:enable Rails/SkipsModelValidations
   end
 end

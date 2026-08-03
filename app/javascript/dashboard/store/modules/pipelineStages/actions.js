@@ -31,15 +31,14 @@ export const actions = {
     }
   },
   update: async ({ commit }, { id, ...data }) => {
-    try {
-      const response = await pipelineStagesAPI.update(id, data);
-      const payload = response.data.payload || response.data;
+    const response = await pipelineStagesAPI.update(id, data);
+    const payload = response.data.payload || response.data;
+    if (Array.isArray(payload)) {
+      commit('SET_STAGES', payload);
+    } else {
       commit('UPDATE_STAGE', payload);
-      return payload;
-    } catch (error) {
-      throwErrorMessage(error);
-      return undefined;
     }
+    return payload;
   },
   delete: async ({ commit }, id) => {
     try {
