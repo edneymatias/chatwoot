@@ -31,3 +31,12 @@ as a hard prerequisite? How does existing single-pipeline data migrate
 cross-pipeline automation trigger/action set — reuse Phase 12's
 event/action design, or does crossing pipelines need its own action type
 (e.g. "create linked opportunity in pipeline X")?
+
+## Cross-reference: scope review needed for Phase 14
+
+Phase 14 (Deal Card Customization, `ciclo 3/06-deal-card-customization/spec14.md`)
+introduces an account-scoped `PipelineCardFieldConfig` (which up-to-3 badge
+fields show on kanban cards), explicitly named/shaped for an account_id →
+pipeline_id migration once a real `Pipeline` model exists. When this phase
+introduces that model, revisit Phase 14's scope: should card-field config
+become per-pipeline instead of account-wide?
