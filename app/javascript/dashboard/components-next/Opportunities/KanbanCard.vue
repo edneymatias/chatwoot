@@ -17,8 +17,8 @@ const router = useRouter();
 const store = useStore();
 
 const statusBadgeClass = computed(() => {
-  if (props.opportunity.status === 'won') return 'bg-n-green-3 text-n-green-11';
-  if (props.opportunity.status === 'lost') return 'bg-n-red-3 text-n-red-11';
+  if (props.opportunity.status === 'won') return 'bg-n-teal-3 text-n-teal-11';
+  if (props.opportunity.status === 'lost') return 'bg-n-ruby-3 text-n-ruby-11';
   return 'bg-n-slate-3 text-n-slate-11';
 });
 
@@ -35,10 +35,18 @@ const handleCardClick = () => {
 };
 
 const cardClass = computed(() => {
+  let classes = '';
   if (props.opportunity.origin_conversation_id) {
-    return 'cursor-pointer hover:bg-n-surface-2 group';
+    classes = 'cursor-pointer hover:bg-n-surface-2 group';
+  } else {
+    classes = 'cursor-default grayscale border-dashed bg-n-surface-2 group';
   }
-  return 'cursor-default grayscale border-dashed bg-n-surface-2 group';
+
+  if (props.opportunity.status && props.opportunity.status !== 'open') {
+    classes += ' is-closed';
+  }
+
+  return classes;
 });
 
 const currentStage = computed(() =>
@@ -135,26 +143,6 @@ const hasUnmetRequirements = computed(() => {
       class="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
     >
       <button
-        v-if="opportunity.status !== 'won'"
-        class="p-1 rounded bg-n-green-3 text-n-green-11 hover:bg-n-green-4 transition-colors"
-        :title="$t('OPPORTUNITIES.BOARD.ACTIONS.MARK_WON')"
-        @click.stop="
-          $emit('statusChanged', { id: opportunity.id, status: 'won' })
-        "
-      >
-        <fluent-icon icon="checkmark-circle" size="14" />
-      </button>
-      <button
-        v-if="opportunity.status !== 'lost'"
-        class="p-1 rounded bg-n-red-3 text-n-red-11 hover:bg-n-red-4 transition-colors"
-        :title="$t('OPPORTUNITIES.BOARD.ACTIONS.MARK_LOST')"
-        @click.stop="
-          $emit('statusChanged', { id: opportunity.id, status: 'lost' })
-        "
-      >
-        <fluent-icon icon="dismiss-circle" size="14" />
-      </button>
-      <button
         v-if="opportunity.status !== 'open'"
         class="p-1 rounded bg-n-slate-3 text-n-slate-11 hover:bg-n-slate-4 transition-colors"
         :title="$t('OPPORTUNITIES.BOARD.ACTIONS.REOPEN')"
@@ -165,9 +153,13 @@ const hasUnmetRequirements = computed(() => {
         <fluent-icon icon="arrow-reply" size="14" />
       </button>
       <button
-        v-if="hasUnmetRequirements"
+        v-if="opportunity.status === 'open'"
         class="p-1 rounded transition-colors bg-n-brand-3 text-n-brand-11 hover:bg-n-brand-4"
-        :title="$t('OPPORTUNITIES.BOARD.ACTIONS.COMPLETE_FIELDS')"
+        :title="
+          hasUnmetRequirements
+            ? $t('OPPORTUNITIES.BOARD.ACTIONS.COMPLETE_FIELDS')
+            : $t('OPPORTUNITIES.BOARD.ACTIONS.EDIT')
+        "
         @click.stop="$emit('completeFields', opportunity.id)"
       >
         <fluent-icon icon="edit" size="14" />

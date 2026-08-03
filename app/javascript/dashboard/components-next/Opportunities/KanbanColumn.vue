@@ -20,6 +20,8 @@ const emit = defineEmits([
   'addCard',
   'completeFields',
   'editCard',
+  'dragStart',
+  'dragEnd',
 ]);
 
 const store = useStore();
@@ -106,11 +108,15 @@ const onChange = event => {
       group="kanban-cards"
       class="flex-1 overflow-y-auto p-2 min-h-0 flex flex-col gap-2"
       ghost-class="opacity-50"
+      filter=".is-closed"
       @change="onChange"
+      @start="$emit('dragStart', $event)"
+      @end="$emit('dragEnd', $event)"
     >
       <template #item="{ element }">
         <KanbanCard
           :opportunity="element"
+          :class="{ 'is-closed': element.status !== 'open' }"
           @click="$emit('cardClick', $event)"
           @status-changed="$emit('statusChanged', $event)"
           @complete-fields="$emit('completeFields', $event)"

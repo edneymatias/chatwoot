@@ -8,8 +8,6 @@
         "LOST": "Lost"
       },
       "ACTIONS": {
-        "MARK_WON": "Mark as Won",
-        "MARK_LOST": "Mark as Lost",
         "REOPEN": "Reopen",
         "COMPLETE_FIELDS": "Complete Fields",
         "EDIT": "Edit Opportunity"

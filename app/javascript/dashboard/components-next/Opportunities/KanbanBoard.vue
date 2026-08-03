@@ -3,12 +3,23 @@ import { computed, ref, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
 import KanbanColumn from './KanbanColumn.vue';
+import KanbanStatusBar from './KanbanStatusBar.vue';
 import OpportunityCreateModal from './OpportunityCreateModal.vue';
 import OpportunityBackfillModal from './OpportunityBackfillModal.vue';
 import StageTransitionRequirementsModal from './StageTransitionRequirementsModal.vue';
 import ClosingRequirementsModal from './ClosingRequirementsModal.vue';
 
 const emit = defineEmits(['cardClick']);
+
+const isCardDragging = ref(false);
+
+const onDragStart = () => {
+  isCardDragging.value = true;
+};
+
+const onDragEnd = () => {
+  isCardDragging.value = false;
+};
 
 const store = useStore();
 const route = useRoute();
@@ -214,11 +225,19 @@ const onCardClick = opportunityId => {
         @card-removed="onCardRemoved"
         @card-click="onCardClick"
         @status-changed="onStatusChanged"
+        @drag-start="onDragStart"
+        @drag-end="onDragEnd"
         @add-card="openCreateModal"
         @complete-fields="openBackfillModal"
         @edit-card="openBackfillModal"
       />
     </div>
+
+    <KanbanStatusBar
+      v-show="isCardDragging"
+      :is-dragging="isCardDragging"
+      @status-changed="onStatusChanged"
+    />
 
     <!-- Backdrop for Drawer -->
     <transition name="fade">
