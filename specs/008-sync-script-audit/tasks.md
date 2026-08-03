@@ -228,3 +228,7 @@ non-noise gaps.
 - `[Story]` label maps each task to its user story for traceability
 - This is a single-script CLI feature (no web/mobile project structure) — all paths are
   repo-relative per plan.md's Project Structure section
+
+## Phase 7: Convergence
+
+- [x] T028 Move `# rubocop:disable Layout/LineLength` below the shebang in `bin/sync-custom-module-hooks` so the script executes correctly per Constitution III (contradicts)

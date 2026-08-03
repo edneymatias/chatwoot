@@ -1,6 +1,6 @@
-# rubocop:disable Layout/LineLength
 #!/usr/bin/env ruby
 # frozen_string_literal: true
+# rubocop:disable Layout/LineLength
 
 require 'json'
 
@@ -150,12 +150,12 @@ mode = if ARGV[0] == '--check'
 
 if mode == :audit
   base_ref = ARGV[1]
-  if base_ref.blank?
+  if base_ref.to_s.strip.empty?
     current_branch = `git rev-parse --abbrev-ref HEAD`.strip
     base_ref = `git merge-base #{current_branch} develop`.strip
   end
 
-  if base_ref.blank? || !system("git rev-parse --verify #{base_ref} >/dev/null 2>&1")
+  if base_ref.to_s.strip.empty? || !system("git rev-parse --verify #{base_ref} >/dev/null 2>&1")
     warn "ERROR: Unresolvable BASE_REF or no merge-base found: #{base_ref.inspect}"
     exit 1
   end
@@ -218,7 +218,7 @@ if mode == :audit
     modified_files << path if status.start_with?('M') && !excluded.call(path)
   end
 
-  manifest_files = Set.new(MANIFEST.pluck(:file))
+  manifest_files = Set.new(MANIFEST.map { |e| e[:file] })
 
   covered = []
   gap = []
