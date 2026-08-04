@@ -10,7 +10,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'updated']);
 
 const store = useStore();
 
@@ -86,6 +86,7 @@ const submit = async () => {
       custom_attributes: customAttributes.value,
       value: dealValue.value,
     });
+    emit('updated', opportunity.value);
     emit('close');
   } catch (error) {
     if (

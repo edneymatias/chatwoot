@@ -132,7 +132,9 @@ const onChange = async event => {
         <CardFieldConfig />
       </template>
       <template v-else-if="selectedTabIndex === 1">
-        <div class="flex-1 flex flex-col max-h-[calc(100vh-240px)] overflow-y-auto pt-4 pb-8">
+        <div
+          class="flex-1 flex flex-col max-h-[calc(100vh-240px)] overflow-y-auto pt-4 pb-8"
+        >
           <div class="flex flex-col max-w-4xl">
             <div v-if="stages.length === 0" class="text-sm text-n-slate-11">
               {{ $t('PIPELINE_STAGES_MGMT.LIST.EMPTY_STATE') }}

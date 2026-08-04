@@ -115,7 +115,9 @@ const submit = async () => {
 </script>
 
 <template>
-  <div class="flex-1 flex flex-col max-h-[calc(100vh-240px)] overflow-y-auto pt-4 pb-8">
+  <div
+    class="flex-1 flex flex-col max-h-[calc(100vh-240px)] overflow-y-auto pt-4 pb-8"
+  >
     <div class="flex flex-col gap-8 max-w-4xl">
       <!-- Won Requirements -->
       <div class="flex flex-col gap-3">

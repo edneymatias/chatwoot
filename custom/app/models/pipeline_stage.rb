@@ -6,6 +6,8 @@ class PipelineStage < ApplicationRecord
   has_many :pipeline_stage_required_fields, dependent: :destroy
   has_many :required_custom_attribute_definitions, through: :pipeline_stage_required_fields, source: :custom_attribute_definition
 
+  enum total_display_mode: { value_sum: 0, count: 1 }, _prefix: true
+
   validates :account_id, :name, presence: true
 
   default_scope { order(:position) }

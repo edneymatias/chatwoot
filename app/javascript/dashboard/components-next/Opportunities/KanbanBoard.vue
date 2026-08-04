@@ -68,10 +68,15 @@ const stages = computed(
   () => store.getters['pipelineStages/stagesSortedByPosition']
 );
 
-onMounted(() => {
-  store.dispatch('pipelineStages/fetch');
+onMounted(async () => {
+  await store.dispatch('pipelineStages/fetch');
   store.dispatch('pipelineCardFieldConfigs/fetch');
   store.dispatch('pipelineCurrencySetting/fetch');
+  if (stages.value?.length) {
+    store.dispatch('pipelineStages/fetchAggregates', {
+      stageIds: stages.value.map(s => s.id),
+    });
+  }
 });
 
 const pendingMove = ref({});
@@ -86,7 +91,12 @@ const closeClosingRequirementsModal = () => {
 
 const onStatusChanged = async ({ id, status }) => {
   try {
+    const opp = store.state.opportunities.byId[id];
+    const stageId = opp?.pipeline_stage_id;
     await store.dispatch('opportunities/setStatus', { id, status });
+    if (stageId) {
+      store.dispatch('pipelineStages/fetchAggregates', { stageIds: [stageId] });
+    }
   } catch (error) {
     if (
       error.response?.status === 422 &&
@@ -112,12 +122,16 @@ const closeRequirementsModal = () => {
 };
 
 const executeMoveCard = async (id, move) => {
+  const { fromStageId, toStageId, toIndex } = move;
   try {
     await store.dispatch('opportunities/moveCard', {
       id,
-      fromStageId: move.fromStageId,
-      toStageId: move.toStageId,
-      toIndex: move.toIndex,
+      fromStageId,
+      toStageId,
+      toIndex,
+    });
+    store.dispatch('pipelineStages/fetchAggregates', {
+      stageIds: [fromStageId, toStageId],
     });
   } catch (error) {
     if (
@@ -253,12 +267,24 @@ const onCardClick = opportunityId => {
     <OpportunityCreateModal
       v-if="isCreateModalOpen"
       :default-stage-id="modalDefaultStageId"
+      @created="
+        opp =>
+          store.dispatch('pipelineStages/fetchAggregates', {
+            stageIds: [opp.pipeline_stage_id],
+          })
+      "
       @close="closeCreateModal"
     />
 
     <OpportunityBackfillModal
       v-if="isBackfillModalOpen"
       :opportunity-id="backfillOpportunityId"
+      @updated="
+        opp =>
+          store.dispatch('pipelineStages/fetchAggregates', {
+            stageIds: [opp.pipeline_stage_id],
+          })
+      "
       @close="closeBackfillModal"
     />
 

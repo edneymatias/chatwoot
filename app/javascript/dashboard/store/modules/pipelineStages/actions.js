@@ -1,4 +1,5 @@
 import pipelineStagesAPI from 'dashboard/api/pipelineStages';
+import pipelineStageAggregatesAPI from 'dashboard/api/pipelineStageAggregates';
 import { throwErrorMessage } from 'dashboard/store/utils/api';
 
 export const actions = {
@@ -89,5 +90,33 @@ export const actions = {
     } finally {
       commit('SET_UI_FLAG', { isFetching: false });
     }
+  },
+  fetchAggregates: async ({ commit }, { stageIds }) => {
+    if (!stageIds || stageIds.length === 0) return;
+
+    const response = await pipelineStageAggregatesAPI.get(stageIds);
+    const aggregates = response.data;
+
+    const responseByStageId = {};
+    aggregates.forEach(agg => {
+      responseByStageId[agg.pipeline_stage_id] = agg;
+    });
+
+    stageIds.forEach(stageId => {
+      const agg = responseByStageId[stageId];
+      if (agg) {
+        commit('SET_STAGE_AGGREGATES', {
+          stageId,
+          openCount: agg.open_count,
+          openValueSum: agg.open_value_sum,
+        });
+      } else {
+        commit('SET_STAGE_AGGREGATES', {
+          stageId,
+          openCount: 0,
+          openValueSum: 0,
+        });
+      }
+    });
   },
 };

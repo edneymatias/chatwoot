@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_03_210101) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_04_024740) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1200,6 +1200,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_03_210101) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "requires_deal_value", default: false
+    t.integer "total_display_mode", default: 0, null: false
+    t.string "accent_color"
     t.index ["account_id"], name: "index_matias_pipeline_stages_on_account_id"
   end
 

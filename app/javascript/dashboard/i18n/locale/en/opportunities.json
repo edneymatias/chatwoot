@@ -82,6 +82,11 @@
       "NAME_PLACEHOLDER": "Enter stage name",
       "DESC_LABEL": "Description",
       "DESC_PLACEHOLDER": "Enter stage description",
+      "DISPLAY_MODE_LABEL": "Lane Total Display",
+      "DISPLAY_MODE_VALUE": "Total value",
+      "DISPLAY_MODE_COUNT": "Count",
+      "ACCENT_COLOR_LABEL": "Accent Color",
+      "CLEAR_COLOR": "Clear Color",
       "CANCEL": "Cancel",
       "SUBMIT_CREATE": "Create",
       "SUBMIT_EDIT": "Save changes"

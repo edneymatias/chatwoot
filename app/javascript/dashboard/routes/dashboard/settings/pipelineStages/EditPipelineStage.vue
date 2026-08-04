@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
+import ColorPicker from 'dashboard/components-next/colorpicker/ColorPicker.vue';
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -19,6 +20,8 @@ const isSubmitting = ref(false);
 
 const requiresDealValue = ref(false);
 const selectedAttributeIds = ref([]);
+const accentColor = ref('');
+const totalDisplayMode = ref('value_sum');
 
 const canSubmit = computed(() => name.value.trim().length > 0);
 
@@ -30,6 +33,8 @@ onMounted(() => {
   name.value = props.stage.name || '';
   description.value = props.stage.description || '';
   requiresDealValue.value = props.stage.requires_deal_value || false;
+  accentColor.value = props.stage.accent_color || '';
+  totalDisplayMode.value = props.stage.total_display_mode || 'value_sum';
 
   store.dispatch('attributes/get');
   const requiredDefs = props.stage.required_custom_attribute_definitions || [];
@@ -57,6 +62,8 @@ const submit = async () => {
       name: name.value.trim(),
       description: description.value.trim(),
       requires_deal_value: requiresDealValue.value,
+      accent_color: accentColor.value || null,
+      total_display_mode: totalDisplayMode.value,
     });
 
     const promises = [];
@@ -145,7 +152,61 @@ const submit = async () => {
         </label>
       </div>
 
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-col gap-2 mt-2">
+        <label class="text-sm font-medium text-n-slate-12">
+          {{
+            t('PIPELINE_STAGES_MGMT.FORM.DISPLAY_MODE_LABEL') ||
+            'Lane Total Display'
+          }}
+        </label>
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              v-model="totalDisplayMode"
+              type="radio"
+              value="value_sum"
+              class="w-4 h-4 text-n-brand-9 border-n-weak focus:ring-n-brand-9"
+            />
+            <span class="text-sm text-n-slate-11">
+              {{
+                t('PIPELINE_STAGES_MGMT.FORM.DISPLAY_MODE_VALUE') ||
+                'Total value'
+              }}
+            </span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              v-model="totalDisplayMode"
+              type="radio"
+              value="count"
+              class="w-4 h-4 text-n-brand-9 border-n-weak focus:ring-n-brand-9"
+            />
+            <span class="text-sm text-n-slate-11">
+              {{ t('PIPELINE_STAGES_MGMT.FORM.DISPLAY_MODE_COUNT') || 'Count' }}
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2 mt-2">
+        <label class="text-sm font-medium text-n-slate-12">
+          {{
+            t('PIPELINE_STAGES_MGMT.FORM.ACCENT_COLOR_LABEL') || 'Accent Color'
+          }}
+        </label>
+        <div class="flex items-center gap-4">
+          <ColorPicker v-model="accentColor" />
+          <button
+            v-if="accentColor"
+            class="text-xs text-n-brand-9 hover:underline"
+            @click="accentColor = ''"
+          >
+            {{ t('PIPELINE_STAGES_MGMT.FORM.CLEAR_COLOR') || 'Clear Color' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2 mt-2">
         <label class="text-sm font-medium text-n-slate-12">
           {{
             t('PIPELINE_STAGES_MGMT.REQUIREMENTS.ATTRIBUTES_LABEL') ||

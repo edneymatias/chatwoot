@@ -3,12 +3,7 @@
 **Status**: designed — ready for implementation
 **Depends on**: Phase 1 (backend core — `PipelineStage`), Phase 6 (card
 info and ordering), Phase 14 (`ciclo 3/06-deal-card-customization/spec14.md`
-— currency config)
-
-**Revises an earlier draft of this phase.** The previous version of this
-spec showed count and value together (no toggle), applied lane color as a
-header dot/left-border, and refreshed totals only on board mount. This
-version replaces those decisions with the ones below.
+— currency config, already implemented)
 
 ## Context
 
@@ -19,6 +14,25 @@ fetched so far — see Phase 6's pagination). That badge is misleading once
 a lane has more cards than fit on the first page. This phase replaces it
 with a true lane-wide total, and adds a per-lane color, admin-configured
 on `PipelineStage`.
+
+## Clarifications
+
+### Session 2026-08-03
+
+- Q: If Phase 14's currency config isn't merged yet when Phase 15 ships,
+  should the compact value total block on it, or fall back to a plain
+  unformatted number? → A: Moot — Phase 14 is already merged (commit
+  `b0bd400d9`, `feat(kanban): implement deal card customization and
+  currency setting`). `PipelineCurrencySetting`, its controller, and the
+  `pipelineCurrencySetting` Vuex module (`getters['pipelineCurrencySetting/getCurrency']`)
+  already exist and are already consumed by `KanbanCard.vue` via
+  `formatCurrencyAmount`. Phase 15 depends on this unconditionally, no
+  fallback needed.
+- Q: While a lane's aggregate is being (re)fetched, what should the
+  header total show in the meantime? → A: No loading indicator — it's a
+  small piece of header info, not worth dedicated visual feedback. Shows
+  nothing until the first response arrives, then silently updates in
+  place on every subsequent fetch (no spinner/skeleton, ever).
 
 ## Decisions
 
@@ -34,8 +48,8 @@ on `PipelineStage`.
   true.
 - **Display mode is a per-lane config, defaulting to total value.** Each
   `PipelineStage` has a `total_display_mode` (`value_sum` default,
-  `count`), configured by the admin. Unlike the previous draft, count and
-  value are never shown together — one or the other, per lane.
+  `count`), configured by the admin. Count and value are never shown
+  together — one or the other, per lane.
 - **Aggregate refresh is surgical, not board-wide.** After a mutation
   (card move, create, status change, value edit), only the affected
   lane(s) re-fetch their aggregate via a dedicated endpoint scoped to
@@ -59,12 +73,13 @@ on `PipelineStage`.
   `hasUnmetRequirements` logic.
 - **Color is optional per stage**, defaulting to unset (no accent shown,
   current header border unchanged).
-- **Currency formatting depends on Phase 14's currency config**, which is
-  being added now (via speckit, in-flight alongside this spec) as part of
-  `ciclo 3/06-deal-card-customization/spec14.md`. This phase's compact
-  value formatting (e.g. "1,5K", "1M") reuses whatever currency-lookup
-  mechanism that config introduces, rather than hardcoding a symbol or
-  assuming no currency at all.
+- **Currency formatting reuses Phase 14's currency config**, which is
+  already implemented (`PipelineCurrencySetting`, the
+  `pipelineCurrencySetting` Vuex module, and `formatCurrencyAmount`,
+  already consumed by `KanbanCard.vue`). This phase's compact value
+  formatting (e.g. "1,5K", "1M") wraps that same currency-lookup
+  mechanism rather than hardcoding a symbol or assuming no currency at
+  all.
 
 ## Functional Requirements
 
@@ -132,13 +147,20 @@ success paths:
   `[opportunity.pipeline_stage_id]`.
 
 No refetch of the full stage list and no refetch of any lane's card
-pagination happens as part of this.
+pagination happens as part of this. A failed `fetchAggregates` call has
+no dedicated error UI — it's handled by the existing global API error
+interceptor, same as other pipeline-stage actions; the header simply
+keeps showing its last known value.
 
 **FR-008**: `KanbanColumn.vue`'s header badge (currently `cards.length`)
 is replaced: renders `stage.open_count ?? 0` when `total_display_mode` is
 `count`, or a compact-formatted `stage.open_value_sum` when `value_sum`
 (default) — via `Intl.NumberFormat` with `notation: 'compact'`, using the
-currency resolved through Phase 14's currency config.
+currency resolved through Phase 14's currency config. No loading
+indicator is shown while an aggregate fetch is in flight (initial load
+or after a mutation) — the badge renders nothing until the first
+response arrives, then updates in place silently on every subsequent
+fetch.
 
 **FR-009**: `KanbanColumn.vue`'s header container applies
 `stage.accent_color`, when present, as `border-bottom-color` via an

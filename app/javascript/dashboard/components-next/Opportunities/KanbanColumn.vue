@@ -4,6 +4,7 @@ import { useStore } from 'vuex';
 import Draggable from 'vuedraggable';
 import KanbanCard from './KanbanCard.vue';
 import IntersectionObserver from 'dashboard/components/IntersectionObserver.vue';
+import { getCurrencyConfig } from 'dashboard/constants/pipelineCurrency';
 
 const props = defineProps({
   stage: {
@@ -73,13 +74,43 @@ const onChange = event => {
     });
   }
 };
+
+const currencyCode = computed(
+  () => store.getters['pipelineCurrencySetting/getCurrency']
+);
+
+const displayTotal = computed(() => {
+  if (
+    props.stage.open_count === undefined ||
+    props.stage.open_value_sum === undefined
+  ) {
+    return null;
+  }
+  if (props.stage.total_display_mode === 'count') {
+    return props.stage.open_count || 0;
+  }
+
+  const config = getCurrencyConfig(currencyCode.value);
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: config.code,
+    currencyDisplay: config.display,
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(props.stage.open_value_sum || 0);
+});
 </script>
 
 <template>
   <div
     class="flex flex-col w-[300px] min-w-[300px] bg-n-surface-2 border border-n-weak rounded-lg overflow-hidden h-full"
   >
-    <div class="flex items-center justify-between p-3 border-b border-n-weak">
+    <div
+      class="flex items-center justify-between p-3 border-b-[3px] border-n-weak"
+      :style="
+        stage.accent_color ? { borderBottomColor: stage.accent_color } : {}
+      "
+    >
       <h2
         class="text-n-slate-12 font-medium text-sm truncate"
         :title="stage.name"
@@ -88,9 +119,10 @@ const onChange = event => {
       </h2>
       <div class="flex items-center gap-2">
         <span
+          v-if="displayTotal !== null"
           class="text-xs font-medium text-n-slate-11 bg-n-slate-3 px-2 py-0.5 rounded-full"
         >
-          {{ cards.length }}
+          {{ displayTotal }}
         </span>
         <button
           class="flex items-center justify-center p-1 rounded hover:bg-n-slate-3 text-n-slate-11 hover:text-n-slate-12 transition-colors"

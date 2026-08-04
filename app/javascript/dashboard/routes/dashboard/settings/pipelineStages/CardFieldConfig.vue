@@ -173,7 +173,9 @@ const submit = async () => {
 </script>
 
 <template>
-  <div class="flex-1 flex flex-col max-h-[calc(100vh-240px)] overflow-y-auto pt-4 pb-8">
+  <div
+    class="flex-1 flex flex-col max-h-[calc(100vh-240px)] overflow-y-auto pt-4 pb-8"
+  >
     <div class="flex flex-col gap-8 max-w-4xl">
       <!-- Fields Section -->
       <div class="flex flex-col gap-3">
@@ -185,7 +187,7 @@ const submit = async () => {
             }}
           </label>
           <span class="text-xs text-n-slate-11">
-            {{ selectedFields.length }}/3
+            {{ selectedFields.length }}{{ '/3 ' }}
             {{ t('PIPELINE_STAGES_MGMT.CARD_FIELDS.SELECTED') || 'selected' }}
           </span>
         </div>

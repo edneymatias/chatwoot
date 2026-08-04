@@ -143,7 +143,7 @@ export const actions = {
       throw error;
     }
   },
-  updateOpportunity: async ({ commit, state }, { id, ...data }) => {
+  updateOpportunity: async ({ commit, state, dispatch }, { id, ...data }) => {
     try {
       const response = await opportunitiesAPI.update(id, data);
       const payload = response.data.payload || response.data;
@@ -155,6 +155,13 @@ export const actions = {
             value: payload.value,
           },
         });
+        if (payload.pipeline_stage_id) {
+          dispatch(
+            'pipelineStages/fetchAggregates',
+            { stageIds: [payload.pipeline_stage_id] },
+            { root: true }
+          );
+        }
       }
       return payload;
     } catch (error) {
@@ -164,9 +171,16 @@ export const actions = {
       throwErrorMessage(error);
     }
   },
-  syncOpportunity: ({ commit, state }, data) => {
+  syncOpportunity: ({ commit, state, dispatch }, data) => {
     if (state.byId[data.id]) {
       commit('UPDATE_OPPORTUNITY', { id: data.id, updates: data });
+      if (data.pipeline_stage_id) {
+        dispatch(
+          'pipelineStages/fetchAggregates',
+          { stageIds: [data.pipeline_stage_id] },
+          { root: true }
+        );
+      }
     }
   },
 };
