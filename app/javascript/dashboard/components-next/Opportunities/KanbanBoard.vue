@@ -70,6 +70,8 @@ const stages = computed(
 
 onMounted(() => {
   store.dispatch('pipelineStages/fetch');
+  store.dispatch('pipelineCardFieldConfigs/fetch');
+  store.dispatch('pipelineCurrencySetting/fetch');
 });
 
 const pendingMove = ref({});

@@ -5,5 +5,7 @@ module Custom::Concerns::Account
     has_many :pipeline_stages, dependent: :destroy
     has_many :opportunities, dependent: :destroy
     has_many :pipeline_closing_required_fields, dependent: :destroy
+    has_many :pipeline_card_field_configs, dependent: :destroy
+    has_one :pipeline_currency_setting, dependent: :destroy
   end
 end

@@ -13,6 +13,7 @@ import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
 import AddPipelineStage from './AddPipelineStage.vue';
 import EditPipelineStage from './EditPipelineStage.vue';
 import ClosingRequiredFields from './ClosingRequiredFields.vue';
+import CardFieldConfig from './CardFieldConfig.vue';
 
 const { t } = useI18n();
 const store = useStore();
@@ -26,10 +27,14 @@ const tabs = computed(() => {
   return [
     {
       key: 0,
-      name: t('PIPELINE_STAGES_MGMT.TABS.STAGES') || 'Pipeline Stages',
+      name: t('PIPELINE_STAGES_MGMT.CARD_FIELDS.TITLE') || 'Card Fields',
     },
     {
       key: 1,
+      name: t('PIPELINE_STAGES_MGMT.TABS.STAGES') || 'Pipeline Stages',
+    },
+    {
+      key: 2,
       name:
         t('OPPORTUNITIES.REQUIREMENTS_MODAL.CLOSING_REQUIREMENTS_TITLE') ||
         'Closing Requirements',
@@ -113,8 +118,8 @@ const onChange = async event => {
           />
         </template>
         <template #actions>
-          <div v-if="selectedTabIndex === 0" class="flex items-center gap-2">
-            <Button icon="plus" @click="toggleAddPopup(true)">
+          <div v-if="selectedTabIndex === 1" class="flex items-center gap-2">
+            <Button size="sm" icon="plus" @click="toggleAddPopup(true)">
               {{ $t('PIPELINE_STAGES_MGMT.ADD.TITLE') }}
             </Button>
           </div>
@@ -124,66 +129,70 @@ const onChange = async event => {
 
     <template #body>
       <template v-if="selectedTabIndex === 0">
-        <div
-          class="flex-1 overflow-auto bg-n-surface-1 border border-n-weak rounded-xl shadow-sm my-4"
-        >
-          <div
-            v-if="stages.length === 0"
-            class="p-8 text-center text-n-slate-11"
-          >
-            {{ $t('PIPELINE_STAGES_MGMT.LIST.EMPTY_STATE') }}
-          </div>
-          <Draggable
-            v-else
-            v-model="stages"
-            item-key="id"
-            class="divide-y divide-n-weak"
-            ghost-class="opacity-50"
-            @change="onChange"
-          >
-            <template #item="{ element }">
-              <div
-                class="p-4 flex items-center justify-between hover:bg-n-surface-2 transition-colors group"
-              >
-                <div class="flex items-center gap-3">
-                  <span
-                    class="flex-shrink-0 transition-colors i-lucide-grip-vertical size-5 text-n-slate-9 group-hover:text-n-slate-11 cursor-grab"
-                  />
-                  <div class="flex flex-col">
-                    <span class="font-medium text-n-slate-12 text-sm">{{
-                      element.name
-                    }}</span>
-                    <span
-                      v-if="element.description"
-                      class="text-xs text-n-slate-11"
-                    >
-                      {{ element.description }}
-                    </span>
-                  </div>
-                </div>
-                <div
-                  class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Button
-                    variant="ghost"
-                    icon="i-lucide-pencil"
-                    size="sm"
-                    @click="onEdit(element)"
-                  />
-                  <Button
-                    variant="ghost"
-                    color-scheme="alert"
-                    icon="i-lucide-trash"
-                    size="sm"
-                    @click="onDelete(element)"
-                  />
-                </div>
-              </div>
-            </template>
-          </Draggable>
-        </div>
+        <CardFieldConfig />
       </template>
       <template v-else-if="selectedTabIndex === 1">
+        <div class="flex-1 flex flex-col max-h-[calc(100vh-240px)] overflow-y-auto pt-4 pb-8">
+          <div class="flex flex-col max-w-4xl">
+            <div v-if="stages.length === 0" class="text-sm text-n-slate-11">
+              {{ $t('PIPELINE_STAGES_MGMT.LIST.EMPTY_STATE') }}
+            </div>
+            <div
+              v-else
+              class="border border-n-weak rounded-xl bg-n-surface-1 overflow-visible"
+            >
+              <Draggable
+                v-model="stages"
+                item-key="id"
+                class="divide-y divide-n-weak"
+                ghost-class="opacity-50"
+                @change="onChange"
+              >
+                <template #item="{ element }">
+                  <div
+                    class="p-4 flex items-center justify-between hover:bg-n-surface-2 transition-colors group"
+                  >
+                    <div class="flex items-center gap-3">
+                      <span
+                        class="flex-shrink-0 transition-colors i-lucide-grip-vertical size-5 text-n-slate-9 group-hover:text-n-slate-11 cursor-grab"
+                      />
+                      <div class="flex flex-col">
+                        <span class="font-medium text-n-slate-12 text-sm">{{
+                          element.name
+                        }}</span>
+                        <span
+                          v-if="element.description"
+                          class="text-xs text-n-slate-11"
+                        >
+                          {{ element.description }}
+                        </span>
+                      </div>
+                    </div>
+                    <div
+                      class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Button
+                        variant="ghost"
+                        icon="i-lucide-pencil"
+                        size="sm"
+                        @click="onEdit(element)"
+                      />
+                      <Button
+                        variant="ghost"
+                        color-scheme="alert"
+                        icon="i-lucide-trash"
+                        size="sm"
+                        @click="onDelete(element)"
+                      />
+                    </div>
+                  </div>
+                </template>
+              </Draggable>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template v-else-if="selectedTabIndex === 2">
         <ClosingRequiredFields />
       </template>
 

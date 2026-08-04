@@ -115,113 +115,122 @@ const submit = async () => {
 </script>
 
 <template>
-  <div
-    class="flex-1 overflow-auto bg-n-surface-1 border border-n-weak rounded-xl shadow-sm my-4 p-6 flex flex-col gap-8"
-  >
-    <!-- Won Requirements -->
-    <div class="flex flex-col gap-2">
-      <label class="text-sm font-semibold text-n-slate-12">
-        {{
-          t('OPPORTUNITIES.REQUIREMENTS_MODAL.REQUIRED_FOR_WON') ||
-          'Required for won'
-        }}
-      </label>
-
-      <div
-        v-if="opportunityAttributes.length === 0"
-        class="text-sm text-n-slate-11"
-      >
-        {{
-          t('PIPELINE_STAGES_MGMT.REQUIREMENTS.NO_ATTRIBUTES') ||
-          'No opportunity custom attributes available.'
-        }}
-      </div>
-      <div
-        v-else
-        class="flex flex-col gap-2 border border-n-weak rounded-md p-4 bg-n-surface-1 max-h-60 overflow-y-auto"
-      >
-        <label
-          v-for="attr in opportunityAttributes"
-          :key="attr.id"
-          class="flex items-center gap-2 cursor-pointer"
-        >
-          <input
-            v-model="selectedWonAttributeIds"
-            type="checkbox"
-            :value="attr.id"
-            class="w-4 h-4 text-n-brand-9 border-n-weak rounded focus:ring-n-brand-9"
-          />
-          <div class="flex flex-col">
-            <span class="text-sm text-n-slate-12 font-medium">{{
-              attr.attribute_display_name
-            }}</span>
-            <span class="text-xs text-n-slate-11">{{
-              attr.attribute_description || attr.attribute_key
-            }}</span>
-          </div>
+  <div class="flex-1 flex flex-col max-h-[calc(100vh-240px)] overflow-y-auto pt-4 pb-8">
+    <div class="flex flex-col gap-8 max-w-4xl">
+      <!-- Won Requirements -->
+      <div class="flex flex-col gap-3">
+        <label class="text-sm font-semibold text-n-slate-12">
+          {{
+            t('OPPORTUNITIES.REQUIREMENTS_MODAL.REQUIRED_FOR_WON') ||
+            'Required for won'
+          }}
         </label>
-      </div>
-    </div>
 
-    <!-- Lost Requirements -->
-    <div class="flex flex-col gap-2">
-      <label class="text-sm font-semibold text-n-slate-12">
-        {{
-          t('OPPORTUNITIES.REQUIREMENTS_MODAL.REQUIRED_FOR_LOST') ||
-          'Required for lost'
-        }}
-      </label>
-
-      <div
-        v-if="opportunityAttributes.length === 0"
-        class="text-sm text-n-slate-11"
-      >
-        {{
-          t('PIPELINE_STAGES_MGMT.REQUIREMENTS.NO_ATTRIBUTES') ||
-          'No opportunity custom attributes available.'
-        }}
-      </div>
-      <div
-        v-else
-        class="flex flex-col gap-2 border border-n-weak rounded-md p-4 bg-n-surface-1 max-h-60 overflow-y-auto"
-      >
-        <label
-          v-for="attr in opportunityAttributes"
-          :key="attr.id"
-          class="flex items-center gap-2 cursor-pointer"
+        <div
+          v-if="opportunityAttributes.length === 0"
+          class="text-sm text-n-slate-11"
         >
-          <input
-            v-model="selectedLostAttributeIds"
-            type="checkbox"
-            :value="attr.id"
-            class="w-4 h-4 text-n-brand-9 border-n-weak rounded focus:ring-n-brand-9"
-          />
-          <div class="flex flex-col">
-            <span class="text-sm text-n-slate-12 font-medium">{{
-              attr.attribute_display_name
-            }}</span>
-            <span class="text-xs text-n-slate-11">{{
-              attr.attribute_description || attr.attribute_key
-            }}</span>
-          </div>
-        </label>
+          {{
+            t('PIPELINE_STAGES_MGMT.REQUIREMENTS.NO_ATTRIBUTES') ||
+            'No opportunity custom attributes available.'
+          }}
+        </div>
+        <div
+          v-else
+          class="border border-n-weak rounded-xl bg-n-surface-1 overflow-visible"
+        >
+          <label
+            v-for="(attr, index) in opportunityAttributes"
+            :key="attr.id"
+            class="flex items-center gap-3 cursor-pointer p-4"
+            :class="{
+              'border-b border-n-weak':
+                index !== opportunityAttributes.length - 1,
+            }"
+          >
+            <input
+              v-model="selectedWonAttributeIds"
+              type="checkbox"
+              :value="attr.id"
+              class="w-4 h-4 text-n-brand-9 border-n-weak rounded focus:ring-n-brand-9"
+            />
+            <div class="flex flex-col">
+              <span class="text-sm text-n-slate-12 font-medium">{{
+                attr.attribute_display_name
+              }}</span>
+              <span class="text-xs text-n-slate-11">{{
+                attr.attribute_description || attr.attribute_key
+              }}</span>
+            </div>
+          </label>
+        </div>
       </div>
-    </div>
 
-    <div class="flex justify-end gap-2 mt-4">
-      <button
-        :disabled="isSubmitting"
-        class="px-4 py-2 text-sm font-medium bg-n-brand text-white rounded-md hover:brightness-110 transition-all disabled:opacity-50 flex items-center justify-center min-w-[100px]"
-        @click="submit"
-      >
-        <span
-          v-if="isSubmitting"
-          class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
-        />
-        <span v-else>{{
-          t('OPPORTUNITIES.REQUIREMENTS_MODAL.SAVE') || 'Save Changes'
-        }}</span>
-      </button>
+      <!-- Lost Requirements -->
+      <div class="flex flex-col gap-3">
+        <label class="text-sm font-semibold text-n-slate-12">
+          {{
+            t('OPPORTUNITIES.REQUIREMENTS_MODAL.REQUIRED_FOR_LOST') ||
+            'Required for lost'
+          }}
+        </label>
+
+        <div
+          v-if="opportunityAttributes.length === 0"
+          class="text-sm text-n-slate-11"
+        >
+          {{
+            t('PIPELINE_STAGES_MGMT.REQUIREMENTS.NO_ATTRIBUTES') ||
+            'No opportunity custom attributes available.'
+          }}
+        </div>
+        <div
+          v-else
+          class="border border-n-weak rounded-xl bg-n-surface-1 overflow-visible"
+        >
+          <label
+            v-for="(attr, index) in opportunityAttributes"
+            :key="attr.id"
+            class="flex items-center gap-3 cursor-pointer p-4"
+            :class="{
+              'border-b border-n-weak':
+                index !== opportunityAttributes.length - 1,
+            }"
+          >
+            <input
+              v-model="selectedLostAttributeIds"
+              type="checkbox"
+              :value="attr.id"
+              class="w-4 h-4 text-n-brand-9 border-n-weak rounded focus:ring-n-brand-9"
+            />
+            <div class="flex flex-col">
+              <span class="text-sm text-n-slate-12 font-medium">{{
+                attr.attribute_display_name
+              }}</span>
+              <span class="text-xs text-n-slate-11">{{
+                attr.attribute_description || attr.attribute_key
+              }}</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex justify-start mt-2">
+        <button
+          :disabled="isSubmitting"
+          class="px-4 py-2 text-sm font-medium bg-n-brand text-white rounded-md hover:brightness-110 transition-all disabled:opacity-50 flex items-center justify-center min-w-[100px]"
+          @click="submit"
+        >
+          <span
+            v-if="isSubmitting"
+            class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+          />
+          <span v-else>{{
+            t('OPPORTUNITIES.REQUIREMENTS_MODAL.SAVE') || 'Save Changes'
+          }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>

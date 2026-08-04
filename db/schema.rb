@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_03_145336) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_03_210101) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1150,6 +1150,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_03_145336) do
     t.index ["pipeline_stage_id"], name: "index_matias_opportunities_on_pipeline_stage_id"
   end
 
+  create_table "matias_pipeline_card_field_configs", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "custom_attribute_definition_id"
+    t.integer "field_type", null: false
+    t.string "color", null: false
+    t.integer "position", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_matias_pipeline_card_field_configs_on_account_id"
+    t.index ["custom_attribute_definition_id"], name: "idx_on_custom_attribute_definition_id_eae50307b9"
+  end
+
   create_table "matias_pipeline_closing_required_fields", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "custom_attribute_definition_id", null: false
@@ -1159,6 +1171,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_03_145336) do
     t.index ["account_id", "custom_attribute_definition_id", "outcome"], name: "idx_matias_pipeline_closing_req_fields_on_acc_attr_outcome", unique: true
     t.index ["account_id"], name: "index_matias_pipeline_closing_required_fields_on_account_id"
     t.index ["custom_attribute_definition_id"], name: "idx_on_custom_attribute_definition_id_c3ee05a582"
+  end
+
+  create_table "matias_pipeline_currency_settings", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "currency", default: "usd", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_matias_pipeline_currency_settings_on_account_id", unique: true
   end
 
   create_table "matias_pipeline_stage_required_fields", force: :cascade do |t|
@@ -1561,8 +1581,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_03_145336) do
   add_foreign_key "matias_opportunities", "conversations", column: "origin_conversation_id"
   add_foreign_key "matias_opportunities", "matias_pipeline_stages", column: "pipeline_stage_id"
   add_foreign_key "matias_opportunities", "users", column: "assignee_id"
+  add_foreign_key "matias_pipeline_card_field_configs", "accounts"
+  add_foreign_key "matias_pipeline_card_field_configs", "custom_attribute_definitions"
   add_foreign_key "matias_pipeline_closing_required_fields", "accounts"
   add_foreign_key "matias_pipeline_closing_required_fields", "custom_attribute_definitions"
+  add_foreign_key "matias_pipeline_currency_settings", "accounts"
   add_foreign_key "matias_pipeline_stage_required_fields", "accounts"
   add_foreign_key "matias_pipeline_stage_required_fields", "custom_attribute_definitions"
   add_foreign_key "matias_pipeline_stage_required_fields", "matias_pipeline_stages", column: "pipeline_stage_id"

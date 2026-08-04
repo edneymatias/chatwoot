@@ -64,6 +64,8 @@ import captainTools from './captain/tools';
 import captainCustomTools from './captain/customTools';
 import pipelineStages from './modules/pipelineStages';
 import pipelineClosingRequiredFields from './modules/pipelineClosingRequiredFields';
+import pipelineCardFieldConfigs from './modules/pipelineCardFieldConfigs';
+import pipelineCurrencySetting from './modules/pipelineCurrencySetting';
 import opportunities from './modules/opportunities';
 
 const plugins = [];
@@ -134,6 +136,8 @@ export default createStore({
     captainCustomTools,
     pipelineStages,
     pipelineClosingRequiredFields,
+    pipelineCardFieldConfigs,
+    pipelineCurrencySetting,
     opportunities,
   },
   plugins,

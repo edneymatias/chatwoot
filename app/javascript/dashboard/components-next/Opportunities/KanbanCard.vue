@@ -4,6 +4,9 @@ import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import { dynamicTime, shortTimestamp } from 'shared/helpers/timeHelper';
+import { getContrastingTextColor } from '@chatwoot/utils';
+import { formatCurrencyAmount } from 'dashboard/constants/pipelineCurrency';
+import { format } from 'date-fns';
 
 const props = defineProps({
   opportunity: {
@@ -82,6 +85,62 @@ const hasUnmetRequirements = computed(() => {
 
   return false;
 });
+
+const pipelineCurrency = computed(
+  () => store.getters['pipelineCurrencySetting/getCurrency']
+);
+const cardFieldConfigs = computed(
+  () => store.getters['pipelineCardFieldConfigs/getRecords'] || []
+);
+
+const configuredFields = computed(() => {
+  const fields = [];
+  const attrs = props.opportunity.custom_attributes || {};
+
+  cardFieldConfigs.value.forEach(config => {
+    if (config.field_type === 'deal_value') {
+      const rawValue = props.opportunity.value;
+      if (rawValue !== null && rawValue !== undefined && rawValue !== '') {
+        fields.push({
+          id: config.id,
+          color: config.color,
+          textColor: getContrastingTextColor(config.color),
+          value: formatCurrencyAmount(rawValue, pipelineCurrency.value),
+        });
+      }
+    } else if (config.field_type === 'custom_attribute') {
+      const defId = config.custom_attribute_definition_id;
+      const def = store.getters['attributes/getAttributesByModel'](
+        'opportunity_attribute'
+      ).find(d => d.id === defId);
+      if (def) {
+        const rawValue = attrs[def.attribute_key];
+        if (rawValue !== null && rawValue !== undefined && rawValue !== '') {
+          let formattedValue = rawValue;
+          if (def.attribute_display_type === 'currency') {
+            formattedValue = formatCurrencyAmount(
+              rawValue,
+              pipelineCurrency.value
+            );
+          } else if (def.attribute_display_type === 'date') {
+            try {
+              formattedValue = format(new Date(rawValue), 'MMM d, yyyy');
+            } catch (e) {
+              formattedValue = String(rawValue);
+            }
+          }
+          fields.push({
+            id: config.id,
+            color: config.color,
+            textColor: getContrastingTextColor(config.color),
+            value: formattedValue,
+          });
+        }
+      }
+    }
+  });
+  return fields;
+});
 </script>
 
 <template>
@@ -136,6 +195,18 @@ const hasUnmetRequirements = computed(() => {
       >
         <span class="truncate">{{ opportunity.assignee.name }}</span>
       </div>
+    </div>
+
+    <div v-if="configuredFields.length > 0" class="flex flex-wrap gap-1.5 mt-2">
+      <span
+        v-for="field in configuredFields"
+        :key="field.id"
+        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium max-w-full truncate"
+        :style="{ backgroundColor: field.color, color: field.textColor }"
+        :title="field.value"
+      >
+        <span class="truncate">{{ field.value }}</span>
+      </span>
     </div>
 
     <!-- Quick Actions Overlay -->

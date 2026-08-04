@@ -56,7 +56,7 @@
   },
   "PIPELINE_STAGES_MGMT": {
     "HEADER": "Pipeline Setup",
-    "DESCRIPTION": "Manage the stages of your pipeline and closing requirements.",
+    "DESCRIPTION": "Configure your deal pipeline settings: customize which fields appear on your Kanban cards, define and reorder the stages of your pipeline, and set required fields for winning or losing deals.",
     "TABS": {
       "STAGES": "Pipeline Stages"
     },
@@ -101,6 +101,16 @@
       "DEAL_VALUE_HELP": "Require Deal Value for this stage",
       "ATTRIBUTES_LABEL": "Required Custom Attributes",
       "NO_ATTRIBUTES": "No opportunity custom attributes available."
+    },
+    "CARD_FIELDS": {
+      "TITLE": "Card Fields",
+      "FIELDS_LABEL": "Configured Fields",
+      "SELECTED": "selected",
+      "DEAL_VALUE": "Deal Value",
+      "DEAL_VALUE_DESC": "Monetary value of the deal",
+      "CURRENCY_LABEL": "Currency",
+      "SAVE": "Save Changes",
+      "SAVE_SUCCESS": "Saved successfully"
     }
   }
 }
