@@ -58,7 +58,7 @@
   },
   "PIPELINE_STAGES_MGMT": {
     "HEADER": "Configuração do Funil",
-    "DESCRIPTION": "Gerencie os estágios e os requisitos de fechamento do seu pipeline.",
+    "DESCRIPTION": "Configure as definições do seu pipeline de negócios: personalize quais campos aparecem nos seus cartões Kanban, defina e reordene os estágios do seu pipeline, e defina campos obrigatórios para negócios ganhos ou perdidos.",
     "TABS": {
       "STAGES": "Fases do Funil"
     },
@@ -66,16 +66,29 @@
       "EMPTY_STATE": "Nenhum estágio de pipeline encontrado."
     },
     "ADD": {
-      "TITLE": "Adicionar Estágio do Pipeline"
+      "TITLE": "Adicionar Estágio do Pipeline",
+      "API": {
+        "SUCCESS_MESSAGE": "Estágio do pipeline adicionado com sucesso.",
+        "ERROR_MESSAGE": "Falha ao adicionar estágio do pipeline. Tente novamente."
+      }
     },
     "EDIT": {
-      "TITLE": "Editar Estágio do Pipeline"
+      "TITLE": "Editar Estágio do Pipeline",
+      "API": {
+        "SUCCESS_MESSAGE": "Estágio do pipeline atualizado com sucesso.",
+        "ERROR_MESSAGE": "Falha ao atualizar estágio do pipeline. Tente novamente."
+      }
     },
     "FORM": {
       "NAME_LABEL": "Nome",
       "NAME_PLACEHOLDER": "Insira o nome do estágio",
       "DESC_LABEL": "Descrição",
       "DESC_PLACEHOLDER": "Insira a descrição do estágio",
+      "DISPLAY_MODE_LABEL": "Exibição do Total da Coluna",
+      "DISPLAY_MODE_VALUE": "Valor total",
+      "DISPLAY_MODE_COUNT": "Contagem",
+      "ACCENT_COLOR_LABEL": "Cor de Destaque",
+      "CLEAR_COLOR": "Limpar Cor",
       "CANCEL": "Cancelar",
       "SUBMIT_CREATE": "Criar",
       "SUBMIT_EDIT": "Salvar alterações"
@@ -86,12 +99,25 @@
       "ERROR": "Falha ao excluir o estágio do pipeline.",
       "ERROR_OCCUPIED": "Não é possível excluir o estágio pois ele contém oportunidades."
     },
+    "REORDER": {
+      "ERROR": "Não foi possível reordenar os estágios do pipeline. Tente novamente."
+    },
     "REQUIREMENTS": {
       "TITLE": "Requisitos do Estágio",
       "DEAL_VALUE_LABEL": "Valor do Negócio",
       "DEAL_VALUE_HELP": "Exigir Valor do Negócio para este estágio",
       "ATTRIBUTES_LABEL": "Atributos Personalizados Obrigatórios",
       "NO_ATTRIBUTES": "Nenhum atributo personalizado de oportunidade disponível."
+    },
+    "CARD_FIELDS": {
+      "TITLE": "Campos do Cartão",
+      "FIELDS_LABEL": "Campos Configurados",
+      "SELECTED": "selecionado(s)",
+      "DEAL_VALUE": "Valor do Negócio",
+      "DEAL_VALUE_DESC": "Valor monetário do negócio",
+      "CURRENCY_LABEL": "Moeda",
+      "SAVE": "Salvar Alterações",
+      "SAVE_SUCCESS": "Salvo com sucesso"
     }
   }
 }

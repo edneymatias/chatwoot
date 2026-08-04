@@ -2,11 +2,11 @@
 import { computed } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import { dynamicTime, shortTimestamp } from 'shared/helpers/timeHelper';
 import { getContrastingTextColor } from '@chatwoot/utils';
 import { formatCurrencyAmount } from 'dashboard/constants/pipelineCurrency';
-import { format } from 'date-fns';
 
 const props = defineProps({
   opportunity: {
@@ -18,6 +18,7 @@ const props = defineProps({
 defineEmits(['statusChanged', 'completeFields']);
 const router = useRouter();
 const store = useStore();
+const { locale } = useI18n();
 
 const statusBadgeClass = computed(() => {
   if (props.opportunity.status === 'won') return 'bg-n-teal-3 text-n-teal-11';
@@ -124,7 +125,16 @@ const configuredFields = computed(() => {
             );
           } else if (def.attribute_display_type === 'date') {
             try {
-              formattedValue = format(new Date(rawValue), 'MMM d, yyyy');
+              const dateObj = new Date(rawValue);
+              // vue-i18n locale might be pt_BR, replace with pt-BR for Intl
+              const localeCode = locale.value
+                ? locale.value.replace('_', '-')
+                : 'en-US';
+              formattedValue = dateObj.toLocaleDateString(localeCode, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              });
             } catch (e) {
               formattedValue = String(rawValue);
             }

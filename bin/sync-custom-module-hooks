@@ -113,6 +113,11 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  insert: '    "PIPELINE_STAGES": "Pipeline Stages",'
                },
                {
+                 file: 'app/javascript/dashboard/i18n/locale/pt_BR/settings.json',
+                 anchor: '  "SIDEBAR": {',
+                 insert: '    "OPPORTUNITIES": "Oportunidades",'
+               },
+               {
                  file: 'app/javascript/dashboard/i18n/locale/en/automation.json',
                  anchor: '      "OPEN_CONVERSATION": "Open conversation",',
                  insert: '      "CREATE_OPPORTUNITY": "Create Opportunity",'
@@ -165,7 +170,7 @@ if mode == :audit
     return true if path == 'db/schema.rb'
     return true if path.start_with?('spec/', 'specs/', 'docs/')
     return true if path.end_with?('.md', '_spec.rb', '.spec.js')
-    return true if path.match?(%r{^(app/javascript/dashboard/i18n/locale|config/locales)/(?!en\b)})
+    return true if path.match?(%r{^(app/javascript/dashboard/i18n/locale|config/locales)/(?!en\b|pt_BR\b)})
 
     out_of_scope = [
       'docker-compose.yaml', '.gitignore', 'AGENTS.md', '.specify/feature.json',
