@@ -83,6 +83,16 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  insert: '  ...opportunities,'
                },
                {
+                 file: 'app/javascript/dashboard/i18n/locale/pt_BR/index.js',
+                 anchor: "import macros from './macros.json';",
+                 insert: "import opportunities from './opportunities.json';"
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/pt_BR/index.js',
+                 anchor: '  ...macros,',
+                 insert: '  ...opportunities,'
+               },
+               {
                  file: 'config/application.rb',
                  anchor: "    config.eager_load_paths += Dir[\"\#{Rails.root}/enterprise/app/**\"]\n    # rubocop:enable Rails/FilePath",
                  insert: "\n    config.eager_load_paths << Rails.root.join('custom/lib')\n    # rubocop:disable Rails/FilePath\n    config.eager_load_paths += Dir[\"\#{Rails.root}/custom/app/**\"]\n    # rubocop:enable Rails/FilePath"
@@ -177,6 +187,7 @@ if mode == :audit
       'bin/sync-custom-module-hooks', 'lib/seeders/account_seeder.rb',
       'app/javascript/dashboard/components/IntersectionObserver.vue',
       'app/javascript/dashboard/i18n/locale/en/attributesMgmt.json',
+      'app/javascript/dashboard/i18n/locale/pt_BR/attributesMgmt.json',
       'app/javascript/dashboard/routes/dashboard/settings/attributes/Index.vue',
       'app/javascript/dashboard/routes/dashboard/settings/attributes/constants.js',
       'app/javascript/dashboard/routes/dashboard/settings/automation/constants.js',
