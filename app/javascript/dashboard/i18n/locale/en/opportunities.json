@@ -11,7 +11,9 @@
         "REOPEN": "Reopen",
         "COMPLETE_FIELDS": "Complete Fields",
         "EDIT": "Edit Opportunity"
-      }
+      },
+      "TIME_IN_STAGE": "Time in current stage",
+      "TIME_SINCE_CREATED": "Time since creation"
     },
     "CREATE_MODAL": {
       "TITLE": "Create Opportunity",
@@ -87,6 +89,8 @@
       "DISPLAY_MODE_COUNT": "Count",
       "ACCENT_COLOR_LABEL": "Accent Color",
       "CLEAR_COLOR": "Clear Color",
+      "STALE_AFTER_DAYS_LABEL": "Stale after (days)",
+      "STALE_AFTER_DAYS_HELP": "Time in this stage before showing alert styling",
       "CANCEL": "Cancel",
       "SUBMIT_CREATE": "Create",
       "SUBMIT_EDIT": "Save changes"

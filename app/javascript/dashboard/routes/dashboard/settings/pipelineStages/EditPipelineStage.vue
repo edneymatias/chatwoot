@@ -22,6 +22,7 @@ const requiresDealValue = ref(false);
 const selectedAttributeIds = ref([]);
 const accentColor = ref('');
 const totalDisplayMode = ref('value_sum');
+const staleAfterDays = ref('');
 
 const canSubmit = computed(() => name.value.trim().length > 0);
 
@@ -35,6 +36,7 @@ onMounted(() => {
   requiresDealValue.value = props.stage.requires_deal_value || false;
   accentColor.value = props.stage.accent_color || '';
   totalDisplayMode.value = props.stage.total_display_mode || 'value_sum';
+  staleAfterDays.value = props.stage.stale_after_days || '';
 
   store.dispatch('attributes/get');
   const requiredDefs = props.stage.required_custom_attribute_definitions || [];
@@ -64,6 +66,8 @@ const submit = async () => {
       requires_deal_value: requiresDealValue.value,
       accent_color: accentColor.value || null,
       total_display_mode: totalDisplayMode.value,
+      stale_after_days:
+        staleAfterDays.value === '' ? null : Number(staleAfterDays.value),
     });
 
     const promises = [];
@@ -203,6 +207,23 @@ const submit = async () => {
           >
             {{ t('PIPELINE_STAGES_MGMT.FORM.CLEAR_COLOR') || 'Clear Color' }}
           </button>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2 mt-2">
+        <label class="text-sm font-medium text-n-slate-12">
+          {{ $t('PIPELINE_STAGES_MGMT.FORM.STALE_AFTER_DAYS_LABEL') }}
+        </label>
+        <div class="flex flex-col gap-1">
+          <input
+            v-model="staleAfterDays"
+            type="number"
+            min="1"
+            class="w-full px-3 py-2 border border-n-weak rounded-md bg-n-surface-1 text-n-slate-12 text-sm focus:outline-none focus:ring-1 focus:ring-n-brand-9"
+          />
+          <span class="text-sm text-n-slate-11">
+            {{ $t('PIPELINE_STAGES_MGMT.FORM.STALE_AFTER_DAYS_HELP') }}
+          </span>
         </div>
       </div>
 

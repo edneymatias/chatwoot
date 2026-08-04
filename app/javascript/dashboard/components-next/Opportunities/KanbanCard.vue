@@ -4,7 +4,11 @@ import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
-import { dynamicTime, shortTimestamp } from 'shared/helpers/timeHelper';
+import {
+  dynamicTime,
+  shortTimestamp,
+  getDayDifferenceFromNow,
+} from 'shared/helpers/timeHelper';
 import { getContrastingTextColor } from '@chatwoot/utils';
 import { formatCurrencyAmount } from 'dashboard/constants/pipelineCurrency';
 
@@ -18,7 +22,7 @@ const props = defineProps({
 defineEmits(['statusChanged', 'completeFields']);
 const router = useRouter();
 const store = useStore();
-const { locale } = useI18n();
+const { t, locale } = useI18n();
 
 const statusBadgeClass = computed(() => {
   if (props.opportunity.status === 'won') return 'bg-n-teal-3 text-n-teal-11';
@@ -56,6 +60,21 @@ const cardClass = computed(() => {
 const currentStage = computed(() =>
   store.getters['pipelineStages/stageById'](props.opportunity.pipeline_stage_id)
 );
+
+const isStale = computed(() => {
+  if (
+    !currentStage.value?.stale_after_days ||
+    !props.opportunity.current_stage_entered_at
+  ) {
+    return false;
+  }
+  return (
+    getDayDifferenceFromNow(
+      new Date(),
+      props.opportunity.current_stage_entered_at
+    ) > currentStage.value.stale_after_days
+  );
+});
 
 const hasUnmetRequirements = computed(() => {
   if (!currentStage.value) return false;
@@ -106,7 +125,12 @@ const configuredFields = computed(() => {
           id: config.id,
           color: config.color,
           textColor: getContrastingTextColor(config.color),
-          value: formatCurrencyAmount(rawValue, pipelineCurrency.value),
+          value: formatCurrencyAmount(
+            rawValue,
+            pipelineCurrency.value,
+            true // compact mode
+          ),
+          label: t('OPPORTUNITIES.DEAL_VALUE'),
         });
       }
     } else if (config.field_type === 'custom_attribute') {
@@ -121,7 +145,8 @@ const configuredFields = computed(() => {
           if (def.attribute_display_type === 'currency') {
             formattedValue = formatCurrencyAmount(
               rawValue,
-              pipelineCurrency.value
+              pipelineCurrency.value,
+              true // compact mode
             );
           } else if (def.attribute_display_type === 'date') {
             try {
@@ -131,8 +156,7 @@ const configuredFields = computed(() => {
                 ? locale.value.replace('_', '-')
                 : 'en-US';
               formattedValue = dateObj.toLocaleDateString(localeCode, {
-                year: 'numeric',
-                month: 'short',
+                month: 'numeric',
                 day: 'numeric',
               });
             } catch (e) {
@@ -144,6 +168,7 @@ const configuredFields = computed(() => {
             color: config.color,
             textColor: getContrastingTextColor(config.color),
             value: formattedValue,
+            label: def.attribute_display_name,
           });
         }
       }
@@ -176,8 +201,27 @@ const configuredFields = computed(() => {
             $t(`OPPORTUNITIES.BOARD.STATUS.${opportunity.status.toUpperCase()}`)
           }}
         </span>
-        <span v-if="opportunity.created_at" class="text-xs text-n-slate-10">
-          {{ shortTimestamp(dynamicTime(opportunity.created_at)) }}
+        <span
+          v-if="opportunity.current_stage_entered_at || opportunity.created_at"
+          v-tooltip.top="
+            opportunity.current_stage_entered_at
+              ? $t('OPPORTUNITIES.BOARD.TIME_IN_STAGE')
+              : $t('OPPORTUNITIES.BOARD.TIME_SINCE_CREATED')
+          "
+          class="text-xs"
+          :class="
+            isStale
+              ? 'bg-n-amber-3 text-n-amber-11 px-1.5 py-0.5 rounded-sm'
+              : 'text-n-slate-10'
+          "
+        >
+          {{
+            shortTimestamp(
+              dynamicTime(
+                opportunity.current_stage_entered_at || opportunity.created_at
+              )
+            )
+          }}
         </span>
       </div>
     </div>
@@ -211,9 +255,9 @@ const configuredFields = computed(() => {
       <span
         v-for="field in configuredFields"
         :key="field.id"
-        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium max-w-full truncate"
+        class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium max-w-full truncate"
         :style="{ backgroundColor: field.color, color: field.textColor }"
-        :title="field.value"
+        :title="field.label"
       >
         <span class="truncate">{{ field.value }}</span>
       </span>

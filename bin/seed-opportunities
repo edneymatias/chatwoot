@@ -2,7 +2,7 @@
 require 'optparse'
 
 options = {
-  count: 200,
+  count: 50,
   clean: false,
   only_clean: false,
   account_id: nil
@@ -11,7 +11,7 @@ options = {
 OptionParser.new do |opts|
   opts.banner = "Usage: rails runner bin/seed-opportunities [options]"
 
-  opts.on("-c", "--count N", Integer, "Number of opportunities to seed (default: 200)") do |v|
+  opts.on("-c", "--count N", Integer, "Number of opportunities to seed (default: 50)") do |v|
     options[:count] = v
   end
 
@@ -111,7 +111,7 @@ ActiveRecord::Base.transaction do
       )
     end
     
-    Opportunity.create!(
+    opportunity = Opportunity.create!(
       account: account,
       contact: contact,
       pipeline_stage: weighted_stages.sample,
@@ -121,6 +121,11 @@ ActiveRecord::Base.transaction do
       value: rand(100.0..10000.0).round(2),
       custom_attributes: { is_seed: true }
     )
+
+    # Backdate to simulate different dwell times (0 to 10 days ago)
+    past_date = rand(0.0..10.0).days.ago
+    opportunity.update_columns(created_at: past_date, updated_at: past_date)
+    opportunity.stage_changes.update_all(changed_at: past_date, created_at: past_date, updated_at: past_date)
 
     print "." if (i + 1) % 10 == 0
   end

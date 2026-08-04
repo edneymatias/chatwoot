@@ -63,7 +63,16 @@ export const actions = {
       if (custom_attributes !== undefined)
         payload.custom_attributes = custom_attributes;
       if (value !== undefined) payload.value = value;
-      await opportunitiesAPI.update(id, payload);
+      const response = await opportunitiesAPI.update(id, payload);
+      const responsePayload = response.data.payload || response.data;
+      if (responsePayload.current_stage_entered_at) {
+        commit('UPDATE_OPPORTUNITY', {
+          id,
+          updates: {
+            current_stage_entered_at: responsePayload.current_stage_entered_at,
+          },
+        });
+      }
     } catch (error) {
       commit('REVERT_MOVE_CARD', {
         id,
@@ -153,6 +162,7 @@ export const actions = {
           updates: {
             custom_attributes: payload.custom_attributes,
             value: payload.value,
+            current_stage_entered_at: payload.current_stage_entered_at,
           },
         });
         if (payload.pipeline_stage_id) {

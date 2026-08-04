@@ -6,6 +6,7 @@ class Opportunity < ApplicationRecord
   belongs_to :pipeline_stage
   belongs_to :origin_conversation, class_name: 'Conversation', optional: true
   belongs_to :assignee, class_name: 'User', optional: true
+  has_many :stage_changes, class_name: 'OpportunityStageChange', dependent: :destroy
 
   enum status: { open: 0, won: 1, lost: 2 }
 
@@ -16,12 +17,15 @@ class Opportunity < ApplicationRecord
 
   attr_accessor :missing_required_fields
 
+  after_create :record_initial_stage_change
+  after_update :record_subsequent_stage_change, if: :saved_change_to_pipeline_stage_id?
   after_commit :broadcast_opportunity_updated, on: %i[create update]
 
   def as_json(options = {})
     super(options).merge(
       'origin_conversation_display_id' => origin_conversation&.display_id,
       'created_at' => created_at.to_i,
+      'current_stage_entered_at' => stage_changes.order(changed_at: :desc).first&.changed_at&.to_i,
       'contact' => contact ? { 'id' => contact.id, 'name' => contact.name, 'email' => contact.email, 'avatar_url' => contact.avatar_url } : nil,
       'assignee' => assignee ? { 'id' => assignee.id, 'name' => assignee.name, 'avatar_url' => assignee.avatar_url } : nil
     )
@@ -80,6 +84,26 @@ class Opportunity < ApplicationRecord
     errors.add(:base, 'Missing required fields to close this opportunity')
   end
 
+  def record_initial_stage_change
+    stage_changes.create!(
+      account_id: account_id,
+      opportunity_id: id,
+      from_stage_id: nil,
+      to_stage_id: pipeline_stage_id,
+      changed_at: created_at
+    )
+  end
+
+  def record_subsequent_stage_change
+    stage_changes.create!(
+      account_id: account_id,
+      opportunity_id: id,
+      from_stage_id: pipeline_stage_id_before_last_save,
+      to_stage_id: pipeline_stage_id,
+      changed_at: Time.current
+    )
+  end
+
   def broadcast_opportunity_updated
     payload = {
       id: id,
@@ -89,7 +113,8 @@ class Opportunity < ApplicationRecord
       assignee_id: assignee_id,
       updated_at: updated_at,
       account_id: account_id,
-      origin_conversation_display_id: origin_conversation&.display_id
+      origin_conversation_display_id: origin_conversation&.display_id,
+      current_stage_entered_at: stage_changes.order(changed_at: :desc).first&.changed_at&.to_i
     }
     ActionCableBroadcastJob.perform_later(["account_#{account_id}"], 'opportunity_updated', payload)
   end

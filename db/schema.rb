@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_04_024740) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_04_135223) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1150,6 +1150,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_024740) do
     t.index ["pipeline_stage_id"], name: "index_matias_opportunities_on_pipeline_stage_id"
   end
 
+  create_table "matias_opportunity_stage_changes", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "opportunity_id", null: false
+    t.bigint "from_stage_id"
+    t.bigint "to_stage_id", null: false
+    t.datetime "changed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_matias_opportunity_stage_changes_on_account_id"
+    t.index ["from_stage_id"], name: "index_matias_opportunity_stage_changes_on_from_stage_id"
+    t.index ["opportunity_id", "changed_at"], name: "idx_on_opportunity_id_changed_at_cf90e7736a"
+    t.index ["opportunity_id"], name: "index_matias_opportunity_stage_changes_on_opportunity_id"
+    t.index ["to_stage_id", "changed_at"], name: "idx_on_to_stage_id_changed_at_84063a5b9c"
+    t.index ["to_stage_id"], name: "index_matias_opportunity_stage_changes_on_to_stage_id"
+  end
+
   create_table "matias_pipeline_card_field_configs", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "custom_attribute_definition_id"
@@ -1202,6 +1218,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_024740) do
     t.boolean "requires_deal_value", default: false
     t.integer "total_display_mode", default: 0, null: false
     t.string "accent_color"
+    t.integer "stale_after_days"
     t.index ["account_id"], name: "index_matias_pipeline_stages_on_account_id"
   end
 
@@ -1583,6 +1600,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_024740) do
   add_foreign_key "matias_opportunities", "conversations", column: "origin_conversation_id"
   add_foreign_key "matias_opportunities", "matias_pipeline_stages", column: "pipeline_stage_id"
   add_foreign_key "matias_opportunities", "users", column: "assignee_id"
+  add_foreign_key "matias_opportunity_stage_changes", "accounts"
+  add_foreign_key "matias_opportunity_stage_changes", "matias_opportunities", column: "opportunity_id"
+  add_foreign_key "matias_opportunity_stage_changes", "matias_pipeline_stages", column: "from_stage_id"
+  add_foreign_key "matias_opportunity_stage_changes", "matias_pipeline_stages", column: "to_stage_id"
   add_foreign_key "matias_pipeline_card_field_configs", "accounts"
   add_foreign_key "matias_pipeline_card_field_configs", "custom_attribute_definitions"
   add_foreign_key "matias_pipeline_closing_required_fields", "accounts"

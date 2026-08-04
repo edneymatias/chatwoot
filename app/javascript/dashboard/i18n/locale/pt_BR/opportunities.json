@@ -13,7 +13,9 @@
         "REOPEN": "Reabrir",
         "COMPLETE_FIELDS": "Preencher Campos",
         "EDIT": "Editar"
-      }
+      },
+      "TIME_IN_STAGE": "Tempo neste estágio",
+      "TIME_SINCE_CREATED": "Tempo desde a criação"
     },
     "CREATE_MODAL": {
       "TITLE": "Criar Oportunidade",
@@ -89,6 +91,8 @@
       "DISPLAY_MODE_COUNT": "Contagem",
       "ACCENT_COLOR_LABEL": "Cor de Destaque",
       "CLEAR_COLOR": "Limpar Cor",
+      "STALE_AFTER_DAYS_LABEL": "Fica inativo após (dias)",
+      "STALE_AFTER_DAYS_HELP": "Tempo nesta etapa antes de exibir o alerta visual",
       "CANCEL": "Cancelar",
       "SUBMIT_CREATE": "Criar",
       "SUBMIT_EDIT": "Salvar alterações"

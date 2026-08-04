@@ -11,15 +11,23 @@ export const getCurrencyConfig = currency => {
 
 export const formatCurrencyAmount = (
   amount,
-  currency = DEFAULT_PIPELINE_CURRENCY
+  currency = DEFAULT_PIPELINE_CURRENCY,
+  compact = false
 ) => {
   const config = getCurrencyConfig(currency);
-  const formatter = new Intl.NumberFormat('en-US', {
+  const options = {
     style: 'currency',
     currency: config.code,
     currencyDisplay: config.display,
-    minimumFractionDigits: config.fractionDigits,
-    maximumFractionDigits: config.fractionDigits,
-  });
+    minimumFractionDigits: compact ? 0 : config.fractionDigits,
+    maximumFractionDigits: compact ? 1 : config.fractionDigits,
+  };
+
+  if (compact) {
+    options.notation = 'compact';
+    options.compactDisplay = 'short';
+  }
+
+  const formatter = new Intl.NumberFormat('en-US', options);
   return formatter.format(amount);
 };

@@ -13,7 +13,9 @@
         "REOPEN": "Reabrir",
         "COMPLETE_FIELDS": "Preencher Campos",
         "EDIT": "Editar"
-      }
+      },
+      "TIME_IN_STAGE": "Tempo neste estágio",
+      "TIME_SINCE_CREATED": "Tempo desde a criação"
     },
     "CREATE_MODAL": {
       "TITLE": "Criar Oportunidade",

@@ -67,6 +67,7 @@ class Api::V1::Accounts::PipelineStagesController < Api::V1::Accounts::BaseContr
   end
 
   def pipeline_stage_params
-    params.require(:pipeline_stage).permit(:name, :description, :position, :requires_deal_value, :total_display_mode, :accent_color)
+    params.require(:pipeline_stage).permit(:name, :description, :position, :requires_deal_value, :total_display_mode, :accent_color,
+                                           :stale_after_days)
   end
 end
