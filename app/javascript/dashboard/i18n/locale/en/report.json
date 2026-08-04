@@ -666,5 +666,37 @@
     "AVG_REPLY_TIME": "Avg. Customer Waiting Time",
     "RESOLUTION_COUNT": "Resolution Count",
     "CONVERSATIONS": "No. of conversations"
+  },
+  "OPPORTUNITY_FUNNEL_REPORTS": {
+    "HEADER": "Opportunity Funnel",
+    "LOADING": "Loading funnel report...",
+    "SHOW_VALUE_TOGGLE": "Opportunity value",
+    "CHARTS": {
+      "CONVERSION_FUNNEL": "Conversion Funnel",
+      "WIN_RATE": "Win Rate",
+      "WIN_RATE_WON": "Won",
+      "WIN_RATE_LOST": "Lost",
+      "PIPELINE_VALUE_BY_STAGE": "Pipeline by Stage",
+      "AVG_TIME_IN_STAGE": "Average Time in Stage (days)",
+      "NEW_OPPORTUNITIES_OVER_TIME": "New Opportunities Over Time",
+      "SALES_CYCLE_TIME": "Sales Cycle Time",
+      "PERFORMANCE_BY_ASSIGNEE": "Performance by Assignee"
+    },
+    "METRICS": {
+      "WIN_RATE_LABEL": "Win Rate",
+      "WIN_RATE_EMPTY": "—",
+      "SALES_CYCLE_LABEL": "Avg. Sales Cycle",
+      "SALES_CYCLE_UNIT": "days",
+      "SALES_CYCLE_EMPTY": "—"
+    },
+    "PERFORMANCE_TABLE": {
+      "AGENT": "Agent",
+      "OPEN": "Open",
+      "OPEN_VALUE": "Open value",
+      "CONVERTED": "Converted (period)",
+      "CONVERTED_VALUE": "Converted value",
+      "NO_AGENTS": "No agents to display",
+      "LOADING_MESSAGE": "Loading agent performance..."
+    }
   }
 }

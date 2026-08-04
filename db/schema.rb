@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_04_135223) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_04_145603) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1143,6 +1143,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_135223) do
     t.datetime "updated_at", null: false
     t.jsonb "custom_attributes", default: {}
     t.decimal "value"
+    t.datetime "closed_at"
+    t.index ["account_id", "closed_at"], name: "index_matias_opportunities_on_account_id_and_closed_at"
     t.index ["account_id"], name: "index_matias_opportunities_on_account_id"
     t.index ["assignee_id"], name: "index_matias_opportunities_on_assignee_id"
     t.index ["contact_id"], name: "index_matias_opportunities_on_contact_id"

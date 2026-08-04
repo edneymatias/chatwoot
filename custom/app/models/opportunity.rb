@@ -17,6 +17,7 @@ class Opportunity < ApplicationRecord
 
   attr_accessor :missing_required_fields
 
+  before_save :set_or_clear_closed_at, if: :status_changed?
   after_create :record_initial_stage_change
   after_update :record_subsequent_stage_change, if: :saved_change_to_pipeline_stage_id?
   after_commit :broadcast_opportunity_updated, on: %i[create update]
@@ -82,6 +83,15 @@ class Opportunity < ApplicationRecord
 
     self.missing_required_fields = { custom_attribute_keys: missing_keys }
     errors.add(:base, 'Missing required fields to close this opportunity')
+  end
+
+  def set_or_clear_closed_at
+    if status.to_s.in?(%w[won lost]) && status_was.to_s == 'open'
+      self.closed_at = Time.current
+    elsif status.to_s == 'open' && status_was.to_s.in?(%w[won lost])
+      self.closed_at = nil
+    end
+    # won↔lost direct switch: no-op — closed_at left as-is
   end
 
   def record_initial_stage_change

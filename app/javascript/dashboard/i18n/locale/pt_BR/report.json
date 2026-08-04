@@ -666,5 +666,37 @@
     "AVG_REPLY_TIME": "Tempo Médio de Espera do Cliente",
     "RESOLUTION_COUNT": "Contagem de Resolução",
     "CONVERSATIONS": "Nº de Conversas"
+  },
+  "OPPORTUNITY_FUNNEL_REPORTS": {
+    "HEADER": "Funil de Oportunidades",
+    "LOADING": "Carregando relatório do funil...",
+    "SHOW_VALUE_TOGGLE": "Valor da oportunidade",
+    "CHARTS": {
+      "CONVERSION_FUNNEL": "Funil de Conversão",
+      "WIN_RATE": "Taxa de Vitória",
+      "WIN_RATE_WON": "Ganhas",
+      "WIN_RATE_LOST": "Perdidas",
+      "PIPELINE_VALUE_BY_STAGE": "Pipeline por Etapa",
+      "AVG_TIME_IN_STAGE": "Tempo Médio por Etapa (dias)",
+      "NEW_OPPORTUNITIES_OVER_TIME": "Novas Oportunidades ao Longo do Tempo",
+      "SALES_CYCLE_TIME": "Ciclo de Vendas",
+      "PERFORMANCE_BY_ASSIGNEE": "Desempenho por Responsável"
+    },
+    "METRICS": {
+      "WIN_RATE_LABEL": "Taxa de Vitória",
+      "WIN_RATE_EMPTY": "—",
+      "SALES_CYCLE_LABEL": "Ciclo de Vendas Médio",
+      "SALES_CYCLE_UNIT": "dias",
+      "SALES_CYCLE_EMPTY": "—"
+    },
+    "PERFORMANCE_TABLE": {
+      "AGENT": "Agente",
+      "OPEN": "Em aberto",
+      "OPEN_VALUE": "Valor em aberto",
+      "CONVERTED": "Convertidas (período)",
+      "CONVERTED_VALUE": "Valor convertido",
+      "NO_AGENTS": "Nenhum agente para exibir",
+      "LOADING_MESSAGE": "Carregando desempenho dos agentes..."
+    }
   }
 }

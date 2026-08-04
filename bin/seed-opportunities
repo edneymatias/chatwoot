@@ -73,6 +73,9 @@ end
 
 inbox = account.inboxes.first || account.inboxes.create!(name: "Seed Inbox", channel: Channel::Api.create!(account: account))
 
+agents = account.users.to_a
+puts "No users found on account #{account.id}! Opportunities will be seeded without an assignee." if agents.empty?
+
 puts "Seeding #{options[:count]} opportunities for account #{account.id}..."
 
 pipeline_stages = pipeline_stages.sort_by(&:position)
@@ -119,6 +122,7 @@ ActiveRecord::Base.transaction do
       title: "Opportunity #{uid}",
       status: 'open',
       value: rand(100.0..10000.0).round(2),
+      assignee: agents.sample,
       custom_attributes: { is_seed: true }
     )
 

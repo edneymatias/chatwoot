@@ -105,8 +105,6 @@ and `avg_time_in_stage` can independently have data even when the other 5
 (period-filtered) charts are empty, since they aren't scoped to the
 selected range.
 
-## Frontend
-
 **FR-007**: New page under the existing Reports module (e.g.
 `Relatórios → Funil`), following the existing page structure/navigation
 pattern (CSAT, agents, etc.), including the existing date-range filter
@@ -134,6 +132,10 @@ it's a single number).
   `conversion_funnel`'s data shape or calculation. Not scheduled to a
   phase yet — revisit once this report has shipped and real usage
   justifies the investment.
+- **Sales forecast widget** (probability-weighted forecast of open pipeline
+  value by expected close date, as a preview/first-version 8th card): not
+  part of this phase. Tracked as its own future spec, same as the
+  graphical funnel chart above.
 - Multi-pipeline selector/filter (depends on the still-placeholder
   multi-pipeline phase).
 - Per-chart drilldown or CSV/export.
