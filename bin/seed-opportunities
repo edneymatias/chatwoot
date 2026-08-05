@@ -5,7 +5,11 @@ options = {
   count: 50,
   clean: false,
   only_clean: false,
-  account_id: nil
+  account_id: nil,
+  won_rate: 0.3,
+  lost_rate: 0.2,
+  min_dwell_days: 3,
+  max_dwell_days: 20
 }
 
 OptionParser.new do |opts|
@@ -19,6 +23,22 @@ OptionParser.new do |opts|
     options[:account_id] = v
   end
 
+  opts.on("--won-rate FLOAT", Float, "Fraction of opportunities closed won (default: 0.3)") do |v|
+    options[:won_rate] = v
+  end
+
+  opts.on("--lost-rate FLOAT", Float, "Fraction of opportunities closed lost (default: 0.2). Remainder stays open.") do |v|
+    options[:lost_rate] = v
+  end
+
+  opts.on("--min-dwell N", Integer, "Minimum days spent per pipeline stage (default: 3)") do |v|
+    options[:min_dwell_days] = v
+  end
+
+  opts.on("--max-dwell N", Integer, "Maximum days spent per pipeline stage (default: 20)") do |v|
+    options[:max_dwell_days] = v
+  end
+
   opts.on("--clean", "Delete previously seeded data before seeding") do
     options[:clean] = true
   end
@@ -26,7 +46,7 @@ OptionParser.new do |opts|
   opts.on("--only-clean", "Only delete seeded data and exit") do
     options[:only_clean] = true
   end
-  
+
   opts.on("-h", "--help", "Prints this help") do
     puts opts
     exit
@@ -41,7 +61,7 @@ end
 
 def clean_seeded_data(account)
   puts "Cleaning previously seeded data for account #{account.id}..."
-  
+
   opportunities = account.opportunities.where("custom_attributes @> ?", { is_seed: true }.to_json)
   puts "Deleting #{opportunities.count} seeded opportunities..."
   opportunities.destroy_all
@@ -70,6 +90,9 @@ if pipeline_stages.empty?
   end
   pipeline_stages = account.pipeline_stages.to_a
 end
+pipeline_stages = pipeline_stages.sort_by(&:position)
+num_stages = pipeline_stages.size
+last_stage = pipeline_stages.last
 
 inbox = account.inboxes.first || account.inboxes.create!(name: "Seed Inbox", channel: Channel::Api.create!(account: account))
 
@@ -78,46 +101,119 @@ puts "No users found on account #{account.id}! Opportunities will be seeded with
 
 puts "Seeding #{options[:count]} opportunities for account #{account.id}..."
 
-pipeline_stages = pipeline_stages.sort_by(&:position)
-num_stages = pipeline_stages.size
-weighted_stages = []
+# Earlier pipeline stages get more weight, so open opportunities form a natural funnel shape
+# and land at varying distances from the end of the pipeline (needed to spread the sales
+# forecast widget's opportunities across its 0-30/31-60/61-90/excluded buckets).
+weighted_open_stages = []
 pipeline_stages.each_with_index do |stage, index|
   weight = num_stages - index
-  weight.times { weighted_stages << stage }
+  weight.times { weighted_open_stages << stage }
 end
+
+# Builds the full ordered list of stages an opportunity passed through on its way to target_stage.
+def build_stage_path(pipeline_stages, target_stage)
+  pipeline_stages.select { |s| s.position <= target_stage.position }.sort_by(&:position)
+end
+
+# Replaces the single auto-created stage_change (from the model's after_create callback) with a
+# full, backdated multi-stage history, then updates the opportunity's final stage/status/timestamps
+# directly via update_columns (bypassing validations/callbacks, same approach as the original script).
+# This gives the sales forecast widget real per-stage dwell-time data to average, and gives the win-rate
+# calculation real won/lost stage history to compute lifetime win probabilities from.
+#
+# The stage-change history itself stays backdated from "now" using the full, uncompressed dwell
+# days (so avg_time_in_stage/sales_forecast keep realistic per-stage durations), but
+# Opportunity#created_at is set independently to a recent, naturally-skewed date (squared random,
+# biased toward the last few days) rather than derived from the path's total dwell time. That
+# decoupling is what conversion_funnel/new_opportunities_over_time need, since they're filtered on
+# Opportunity#created_at while avg_time_in_stage/sales_forecast read OpportunityStageChange#changed_at.
+MAX_CREATED_AGE_DAYS = 90
+
+def seed_stage_history!(opportunity, account, path, dwell_range, outcome)
+  opportunity.stage_changes.delete_all
+
+  dwell_days = path.map { rand(dwell_range) }
+  total_days = dwell_days.sum
+  time_cursor = (total_days + rand(1..15)).days.ago
+  from_stage_id = nil
+
+  path.each_with_index do |stage, idx|
+    OpportunityStageChange.create!(
+      account_id: account.id,
+      opportunity_id: opportunity.id,
+      from_stage_id: from_stage_id,
+      to_stage_id: stage.id,
+      changed_at: time_cursor,
+      created_at: time_cursor,
+      updated_at: time_cursor
+    )
+    from_stage_id = stage.id
+    time_cursor += dwell_days[idx].days
+  end
+
+  created_at = (rand**2 * MAX_CREATED_AGE_DAYS).round.days.ago
+  closed_at = outcome == :open ? nil : time_cursor
+  status = outcome == :won ? Opportunity.statuses[:won] : outcome == :lost ? Opportunity.statuses[:lost] : Opportunity.statuses[:open]
+
+  opportunity.update_columns(
+    pipeline_stage_id: path.last.id,
+    status: status,
+    created_at: created_at,
+    closed_at: closed_at,
+    updated_at: closed_at || time_cursor
+  )
+end
+
+dwell_range = options[:min_dwell_days]..options[:max_dwell_days]
 
 ActiveRecord::Base.transaction do
   options[:count].times do |i|
+    outcome = case rand
+              when 0...options[:won_rate] then :won
+              when options[:won_rate]...(options[:won_rate] + options[:lost_rate]) then :lost
+              else :open
+              end
+
+    # Won deals always reach the final stage (also guarantees every stage has lifetime win/loss
+    # data to compute a probability from). Lost deals can fall out at any stage. Open deals land
+    # across the funnel per the position-weighted distribution above.
+    target_stage = case outcome
+                    when :won then last_stage
+                    when :lost then pipeline_stages.sample
+                    else weighted_open_stages.sample
+                    end
+    path = build_stage_path(pipeline_stages, target_stage)
+
     # Create a unique contact for this opportunity
     uid = SecureRandom.hex(4)
     contact = account.contacts.create!(
-      name: "Seeded Contact #{uid}", 
+      name: "Seeded Contact #{uid}",
       email: "seeded_#{uid}@example.com",
       custom_attributes: { is_seed: true }
     )
-    
+
     # 90% have a conversation, 10% do not
     has_conversation = rand < 0.9
     conversation = nil
-    
+
     if has_conversation
       contact_inbox = ContactInbox.find_or_create_by!(contact_id: contact.id, inbox_id: inbox.id) do |ci|
         ci.source_id = SecureRandom.uuid
       end
       conversation = account.conversations.create!(
-        contact: contact, 
-        inbox: inbox, 
-        account_id: account.id, 
-        contact_inbox: contact_inbox, 
+        contact: contact,
+        inbox: inbox,
+        account_id: account.id,
+        contact_inbox: contact_inbox,
         status: 'open',
         custom_attributes: { is_seed: true }
       )
     end
-    
+
     opportunity = Opportunity.create!(
       account: account,
       contact: contact,
-      pipeline_stage: weighted_stages.sample,
+      pipeline_stage: path.first,
       origin_conversation: conversation,
       title: "Opportunity #{uid}",
       status: 'open',
@@ -126,10 +222,7 @@ ActiveRecord::Base.transaction do
       custom_attributes: { is_seed: true }
     )
 
-    # Backdate to simulate different dwell times (0 to 10 days ago)
-    past_date = rand(0.0..10.0).days.ago
-    opportunity.update_columns(created_at: past_date, updated_at: past_date)
-    opportunity.stage_changes.update_all(changed_at: past_date, created_at: past_date, updated_at: past_date)
+    seed_stage_history!(opportunity, account, path, dwell_range, outcome)
 
     print "." if (i + 1) % 10 == 0
   end
