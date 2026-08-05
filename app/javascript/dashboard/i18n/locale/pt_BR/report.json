@@ -680,7 +680,14 @@
       "AVG_TIME_IN_STAGE": "Tempo Médio por Etapa (dias)",
       "NEW_OPPORTUNITIES_OVER_TIME": "Novas Oportunidades ao Longo do Tempo",
       "SALES_CYCLE_TIME": "Ciclo de Vendas",
-      "PERFORMANCE_BY_ASSIGNEE": "Desempenho por Responsável"
+      "PERFORMANCE_BY_ASSIGNEE": "Desempenho por Responsável",
+      "SALES_FORECAST": {
+        "LABEL_DAY_0": "Fechando hoje",
+        "LABEL_1_30": "1-30 dias",
+        "LABEL_31_60": "31-60 dias",
+        "LABEL_61_90": "61-90 dias",
+        "TOOLTIP_COUNT": "{count} negócios"
+      }
     },
     "METRICS": {
       "WIN_RATE_LABEL": "Taxa de Vitória",
@@ -688,6 +695,15 @@
       "SALES_CYCLE_LABEL": "Ciclo de Vendas Médio",
       "SALES_CYCLE_UNIT": "dias",
       "SALES_CYCLE_EMPTY": "—"
+    },
+    "SALES_FORECAST": {
+      "TITLE": "Previsão de Vendas",
+      "PREVIEW_BADGE": "Prévia",
+      "TOTAL_LABEL": "Previsão de Fechamento (90 dias)",
+      "EMPTY_STATE": {
+        "TITLE": "Dados insuficientes por enquanto",
+        "MESSAGE": "Esta previsão precisa de pelo menos uma oportunidade ganha e uma perdida em cada etapa do pipeline antes de exibir estimativas confiáveis."
+      }
     },
     "PERFORMANCE_TABLE": {
       "AGENT": "Agente",
