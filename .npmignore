@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+*.log
+.env*
+coverage/
+.DS_Store
+public/packs
+public/assets
+
+# Lockfiles
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
