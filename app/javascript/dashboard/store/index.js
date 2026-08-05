@@ -45,6 +45,7 @@ import reports from './modules/reports';
 import sla from './modules/sla';
 import slaReports from './modules/SLAReports';
 import opportunityFunnelReports from './modules/OpportunityFunnelReports';
+import opportunityAttributeReports from './modules/OpportunityAttributeReports';
 import sidebarSortPreferences from './modules/sidebarSortPreferences';
 import summaryReports from './modules/summaryReports';
 import teamMembers from './modules/teamMembers';
@@ -118,6 +119,7 @@ export default createStore({
     sla,
     slaReports,
     opportunityFunnelReports,
+    opportunityAttributeReports,
     sidebarSortPreferences,
     summaryReports,
     teamMembers,

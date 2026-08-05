@@ -139,6 +139,7 @@ Rails.application.routes.draw do
           resource :pipeline_currency_setting, only: [:show, :update]
           resources :opportunities, only: [:index, :show, :create, :update, :destroy]
           resources :opportunity_funnel_reports, only: [:index]
+          resources :opportunity_attribute_reports, only: [:index]
           resources :sla_policies, only: [:index, :create, :show, :update, :destroy]
           resources :custom_roles, only: [:index, :create, :show, :update, :destroy]
           resources :agent_capacity_policies, only: [:index, :create, :show, :update, :destroy] do

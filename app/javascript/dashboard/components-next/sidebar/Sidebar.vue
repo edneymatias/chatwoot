@@ -709,6 +709,11 @@ const menuItems = computed(() => {
           label: t('SIDEBAR.REPORTS_FUNNEL'),
           to: accountScopedRoute('opportunity_funnel_reports'),
         },
+        {
+          name: 'Reports Opportunities',
+          label: t('SIDEBAR.REPORTS_OPPORTUNITY_ATTRIBUTE'),
+          to: accountScopedRoute('opportunity_attribute_reports'),
+        },
       ],
     },
     {

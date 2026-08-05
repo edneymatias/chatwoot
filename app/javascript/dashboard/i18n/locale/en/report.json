@@ -715,4 +715,26 @@
       "LOADING_MESSAGE": "Loading agent performance..."
     }
   }
+ ,
+  "OPPORTUNITY_ATTRIBUTE_REPORTS": {
+    "HEADER": "Opportunity Attribute Report",
+    "DESCRIPTION": "Select one list-type opportunity attribute and a date range to see your pipeline broken down by its values.",
+    "LOADING": "Loading opportunity attribute report...",
+    "TABLE": {
+      "VALUE": "Value",
+      "OPPORTUNITIES": "Opportunities",
+      "WON": "Won",
+      "LOST": "Lost",
+      "AVG_TIME_TO_CLOSE": "Avg. Time to Close",
+      "NO_VALUE": "No value"
+    },
+    "EMPTY": {
+      "TITLE": "No list-type opportunity attributes",
+      "DESCRIPTION": "Create a list-type opportunity custom attribute under Custom Attributes to use this report."
+    },
+    "NO_DATA": {
+      "TITLE": "No opportunity data for this attribute",
+      "DESCRIPTION": "Try a different date range or select another attribute to view opportunity metrics."
+    }
+  }
 }
