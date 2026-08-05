@@ -680,7 +680,14 @@
       "AVG_TIME_IN_STAGE": "Average Time in Stage (days)",
       "NEW_OPPORTUNITIES_OVER_TIME": "New Opportunities Over Time",
       "SALES_CYCLE_TIME": "Sales Cycle Time",
-      "PERFORMANCE_BY_ASSIGNEE": "Performance by Assignee"
+      "PERFORMANCE_BY_ASSIGNEE": "Performance by Assignee",
+      "SALES_FORECAST": {
+        "LABEL_DAY_0": "Closing today",
+        "LABEL_1_30": "1-30 days",
+        "LABEL_31_60": "31-60 days",
+        "LABEL_61_90": "61-90 days",
+        "TOOLTIP_COUNT": "{count} deals"
+      }
     },
     "METRICS": {
       "WIN_RATE_LABEL": "Win Rate",
@@ -688,6 +695,15 @@
       "SALES_CYCLE_LABEL": "Avg. Sales Cycle",
       "SALES_CYCLE_UNIT": "days",
       "SALES_CYCLE_EMPTY": "—"
+    },
+    "SALES_FORECAST": {
+      "TITLE": "Sales Forecast",
+      "PREVIEW_BADGE": "Preview",
+      "TOTAL_LABEL": "Expected to Close (90 days)",
+      "EMPTY_STATE": {
+        "TITLE": "Not enough data yet",
+        "MESSAGE": "This forecast needs at least one won and one lost opportunity in every pipeline stage before it can show reliable estimates."
+      }
     },
     "PERFORMANCE_TABLE": {
       "AGENT": "Agent",

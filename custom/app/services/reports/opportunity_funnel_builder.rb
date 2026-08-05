@@ -9,7 +9,8 @@ class Reports::OpportunityFunnelBuilder
       avg_time_in_stage: avg_time_in_stage,
       new_opportunities_over_time: new_opportunities_over_time,
       sales_cycle_time: sales_cycle_time,
-      performance_by_assignee: performance_by_assignee
+      performance_by_assignee: performance_by_assignee,
+      sales_forecast: sales_forecast
     }
   end
 
@@ -172,6 +173,14 @@ class Reports::OpportunityFunnelBuilder
     scope.group(:assignee_id)
          .pluck(:assignee_id, Arel.sql('COUNT(*) AS count'), Arel.sql('SUM(value) AS total_value'))
          .each_with_object({}) { |(id, count, val), h| h[id] = [count, val.to_f] }
+  end
+
+  # FR-001/004/005/005a: probability-weighted forecast of currently-open pipeline
+  # value expected to close within 90 days, bucketed 0-30/31-60/61-90 days out.
+  # Never period-filtered, never persisted — computed fresh on every call.
+  # Reuses build_stage_durations (already computed for avg_time_in_stage).
+  def sales_forecast
+    Reports::SalesForecastCalculator.new(account: account, durations_by_stage: build_stage_durations).call
   end
 
   def period_created_opportunities

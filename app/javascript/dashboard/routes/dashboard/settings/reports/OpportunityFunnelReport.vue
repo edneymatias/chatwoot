@@ -12,6 +12,7 @@ import DonutChart from 'shared/components/charts/DonutChart.vue';
 import LineChart from 'shared/components/charts/LineChart.vue';
 import AssigneePerformanceTable from './components/AssigneePerformanceTable.vue';
 import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
+import EmptyState from 'dashboard/components/widgets/EmptyState.vue';
 import { CHART_FONT_FAMILY } from './constants';
 
 const store = useStore();
@@ -282,6 +283,100 @@ const performanceByAssigneeRows = computed(
   () => reportData.value?.performance_by_assignee || []
 );
 
+// Sales Forecast (Preview, 8th card) — never period-filtered (FR-001), so it
+// doesn't react to since/until the way the charts above do.
+const salesForecast = computed(() => reportData.value?.sales_forecast);
+
+// One bucket per column: day 0 (closing today) is split out from the rest of
+// the 1-30 day window per the funnel report's forecast layout.
+const SALES_FORECAST_BUCKETS = [
+  { key: 'day_0', labelKey: 'LABEL_DAY_0' },
+  { key: '1_30', labelKey: 'LABEL_1_30' },
+  { key: '31_60', labelKey: 'LABEL_31_60' },
+  { key: '61_90', labelKey: 'LABEL_61_90' },
+];
+
+// Single hue, light-to-dark: nearer buckets (more certain to close) are darker.
+const SALES_FORECAST_BUCKET_COLORS = [
+  'rgba(31, 147, 255, 1)',
+  'rgba(31, 147, 255, 0.75)',
+  'rgba(31, 147, 255, 0.5)',
+  'rgba(31, 147, 255, 0.25)',
+];
+
+const salesForecastBucketCounts = computed(() => {
+  const d = salesForecast.value;
+  if (!d || d.status !== 'ok') return [0, 0, 0, 0];
+  return SALES_FORECAST_BUCKETS.map(({ key }) => d.buckets[key].count);
+});
+
+const salesForecastBucketValues = computed(() => {
+  const d = salesForecast.value;
+  if (!d || d.status !== 'ok') return [0, 0, 0, 0];
+  return SALES_FORECAST_BUCKETS.map(({ key }) => d.buckets[key].weighted_value);
+});
+
+// Four equal-width columns, one per bucket — column height (not width) is
+// proportional to that bucket's weighted value, with zero gap between bars.
+const salesForecastBucketsData = computed(() => {
+  const d = salesForecast.value;
+  if (!d || d.status !== 'ok') return { labels: [], datasets: [] };
+  return {
+    labels: SALES_FORECAST_BUCKETS.map(({ labelKey }) =>
+      t(`OPPORTUNITY_FUNNEL_REPORTS.CHARTS.SALES_FORECAST.${labelKey}`)
+    ),
+    datasets: [
+      {
+        label: t('OPPORTUNITY_FUNNEL_REPORTS.SALES_FORECAST.TOTAL_LABEL'),
+        data: salesForecastBucketValues.value,
+        backgroundColor: 'transparent',
+        borderColor: SALES_FORECAST_BUCKET_COLORS,
+        borderWidth: { top: 2, left: 0, right: 0, bottom: 0 },
+        borderSkipped: false,
+      },
+    ],
+  };
+});
+
+// Overrides the tooltip to surface each bucket's opportunity count alongside
+// its weighted value (FR-008), since BarChart's default tooltip is value-only.
+const salesForecastChartOptions = computed(() => ({
+  ...valueChartOptions,
+  plugins: {
+    tooltip: {
+      callbacks: {
+        label: ctx => {
+          const count = salesForecastBucketCounts.value[ctx.dataIndex] || 0;
+          const countLabel = t(
+            'OPPORTUNITY_FUNNEL_REPORTS.CHARTS.SALES_FORECAST.TOOLTIP_COUNT',
+            { count }
+          );
+          return `${formatTooltipValue(ctx.raw)} (${countLabel})`;
+        },
+      },
+    },
+  },
+  scales: {
+    x: {
+      ticks: { fontFamily: CHART_FONT_FAMILY },
+      grid: { display: true, drawOnChartArea: true },
+    },
+    y: {
+      ticks: { display: false },
+      grid: { drawOnChartArea: false },
+    },
+  },
+  datasets: {
+    bar: { barPercentage: 1, categoryPercentage: 1 },
+  },
+}));
+
+const totalWeightedValue = computed(() => {
+  const d = salesForecast.value;
+  if (!d || d.status !== 'ok') return '—';
+  return formatHeadline(d.total_weighted_value);
+});
+
 function fetchReport() {
   isFetching.value = true;
   store
@@ -442,6 +537,46 @@ onMounted(() => {
             :rows="performanceByAssigneeRows"
             :is-loading="isFetching"
           />
+        </div>
+      </div>
+
+      <!-- Sales Forecast (Preview) -->
+      <div
+        class="flex flex-col gap-4 p-4 shadow outline-1 outline outline-n-container rounded-xl bg-n-solid-2"
+      >
+        <div class="flex items-center gap-2">
+          <h3 class="m-0 text-sm font-medium text-n-slate-11">
+            {{ $t('OPPORTUNITY_FUNNEL_REPORTS.SALES_FORECAST.TITLE') }}
+          </h3>
+          <span
+            class="px-2 py-0.5 text-xs font-medium rounded-full bg-n-alpha-2 text-n-slate-11"
+          >
+            {{ $t('OPPORTUNITY_FUNNEL_REPORTS.SALES_FORECAST.PREVIEW_BADGE') }}
+          </span>
+        </div>
+
+        <EmptyState
+          v-if="salesForecast?.status === 'insufficient_data'"
+          :title="
+            $t('OPPORTUNITY_FUNNEL_REPORTS.SALES_FORECAST.EMPTY_STATE.TITLE')
+          "
+          :message="
+            $t('OPPORTUNITY_FUNNEL_REPORTS.SALES_FORECAST.EMPTY_STATE.MESSAGE')
+          "
+        />
+        <div v-else>
+          <h3 class="m-0 mb-1 text-sm font-medium text-n-slate-11">
+            {{ $t('OPPORTUNITY_FUNNEL_REPORTS.SALES_FORECAST.TOTAL_LABEL') }}
+          </h3>
+          <p class="m-0 mb-3 text-2xl font-medium text-n-slate-12">
+            {{ totalWeightedValue }}
+          </p>
+          <div class="h-72">
+            <BarChart
+              :collection="salesForecastBucketsData"
+              :chart-options="salesForecastChartOptions"
+            />
+          </div>
         </div>
       </div>
     </template>
