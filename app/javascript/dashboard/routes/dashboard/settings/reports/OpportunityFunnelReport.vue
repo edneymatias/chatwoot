@@ -8,6 +8,7 @@ import ReportHeader from './components/ReportHeader.vue';
 import ReportFilters from './components/ReportFilters.vue';
 import ReportMetricCard from './components/ReportMetricCard.vue';
 import BarChart from 'shared/components/charts/BarChart.vue';
+import FunnelChart from 'shared/components/charts/FunnelChart.vue';
 import DonutChart from 'shared/components/charts/DonutChart.vue';
 import LineChart from 'shared/components/charts/LineChart.vue';
 import AssigneePerformanceTable from './components/AssigneePerformanceTable.vue';
@@ -101,33 +102,18 @@ const valueChartOptions = {
   },
 };
 
-// Conversion funnel is always a % of count, regardless of the value toggle.
-const percentChartOptions = {
-  ...chartOptions,
-  plugins: {
-    tooltip: {
-      callbacks: {
-        label: ctx => `${ctx.raw}%`,
-      },
-    },
-  },
-};
-
-// Conversion funnel chart data — always % of period-created opportunities reaching
-// each stage; a percentage-of-count metric, so it ignores the value/quantity toggle.
-const conversionFunnelData = computed(() => {
+// FunnelPoint[] for FunnelChart — maps conversion_funnel labels/count_data/counts
+// to { label, percentage, count, color }; color from stageColorByName (T013/US3: per-stage
+// accent color) falling back to DEFAULT_BAR_COLOR for stages without accent_color set.
+const funnelPoints = computed(() => {
   const d = reportData.value?.conversion_funnel;
-  if (!d) return { labels: [], datasets: [] };
-  return {
-    labels: d.labels,
-    datasets: [
-      {
-        label: t('OPPORTUNITY_FUNNEL_REPORTS.CHARTS.CONVERSION_FUNNEL'),
-        data: d.count_data,
-        backgroundColor: stageBackgroundColors(d.labels),
-      },
-    ],
-  };
+  if (!d) return [];
+  return d.labels.map((label, i) => ({
+    label,
+    percentage: d.count_data[i],
+    count: d.counts[i],
+    color: stageColorByName.value[label] || DEFAULT_BAR_COLOR,
+  }));
 });
 
 // Conversion funnel headline — overall conversion rate from the first stage to won
@@ -438,6 +424,29 @@ onMounted(() => {
         />
       </div>
 
+      <!-- Conversion Funnel Card — full width, horizontal layout -->
+      <div
+        class="px-6 py-5 shadow outline-1 outline outline-n-container rounded-xl bg-n-solid-2"
+      >
+        <div class="flex items-baseline gap-3 mb-4">
+          <h3 class="m-0 text-sm font-medium text-n-slate-11">
+            {{ $t('OPPORTUNITY_FUNNEL_REPORTS.CHARTS.CONVERSION_FUNNEL') }}
+          </h3>
+          <span class="text-2xl font-medium text-n-slate-12">
+            {{ conversionFunnelHeadline }}
+          </span>
+        </div>
+        <div class="h-48">
+          <FunnelChart
+            :points="funnelPoints"
+            horizontal
+            :value-label="
+              $t('OPPORTUNITY_FUNNEL_REPORTS.CHARTS.CONVERSION_FUNNEL')
+            "
+          />
+        </div>
+      </div>
+
       <!-- Charts Container -->
       <div
         class="grid grid-cols-1 gap-6 lg:grid-cols-2 px-6 py-5 shadow outline-1 outline outline-n-container rounded-xl bg-n-solid-2"
@@ -447,20 +456,6 @@ onMounted(() => {
             {{ $t('OPPORTUNITY_FUNNEL_REPORTS.SHOW_VALUE_TOGGLE') }}
           </span>
           <ToggleSwitch v-model="showValue" />
-        </div>
-        <div class="p-4 mb-3 rounded-md">
-          <h3 class="m-0 mb-1 text-sm font-medium text-n-slate-11">
-            {{ $t('OPPORTUNITY_FUNNEL_REPORTS.CHARTS.CONVERSION_FUNNEL') }}
-          </h3>
-          <p class="m-0 mb-3 text-2xl font-medium text-n-slate-12">
-            {{ conversionFunnelHeadline }}
-          </p>
-          <div class="h-72">
-            <BarChart
-              :collection="conversionFunnelData"
-              :chart-options="percentChartOptions"
-            />
-          </div>
         </div>
         <div class="p-4 mb-3 rounded-md">
           <h3 class="m-0 mb-1 text-sm font-medium text-n-slate-11">

@@ -22,16 +22,15 @@ class Reports::OpportunityFunnelBuilder
   # won_rate_pct = % of period-created opportunities whose current status is "won".
   def conversion_funnel
     stages = account.pipeline_stages.order(:position)
-    return { labels: [], count_data: [], won_rate_pct: 0.0 } if stages.empty?
-
     base_opps = period_created_opportunities
     total_count = base_opps.count
-    return { labels: stages.map(&:name), count_data: stages.map { 0.0 }, won_rate_pct: 0.0 } if total_count.zero?
+    return empty_funnel(stages) if stages.empty? || total_count.zero?
 
     reached = max_stage_positions_reached(base_opps, stages)
     count_data = stages.map { |stage| funnel_pct(reached, stage.position, total_count) }
+    counts = stage_reached_counts(reached, stages)
     won_rate_pct = ((base_opps.won.count.to_f / total_count) * 100).round(1)
-    { labels: stages.map(&:name), count_data: count_data, won_rate_pct: won_rate_pct }
+    { labels: stages.map(&:name), count_data: count_data, counts: counts, won_rate_pct: won_rate_pct }
   end
 
   # Returns a hash {opp_id => max_position_reached} for all base_opps via stage changes.
@@ -45,6 +44,15 @@ class Reports::OpportunityFunnelBuilder
       pos = stage_position_by_id[stage_id] || 0
       h[opp_id] = [h[opp_id], pos].max
     end
+  end
+
+  # FR-008: Raw opportunity count per stage — number of opps that reached each stage or later.
+  def stage_reached_counts(reached, stages)
+    stages.map { |stage| reached.count { |_id, max_pos| max_pos >= stage.position } }
+  end
+
+  def empty_funnel(stages)
+    { labels: stages.map(&:name), count_data: stages.map { 0.0 }, counts: stages.map { 0 }, won_rate_pct: 0.0 }
   end
 
   def funnel_pct(reached, position, total)
