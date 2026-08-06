@@ -47,8 +47,8 @@ compared against a known-good starting point
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
 - [X] T004 Run `bin/sync-custom-module-hooks --check` on `matias-kanban` pre-merge and confirm exit `0` (baseline manifest integrity, per [data-model.md](./data-model.md)'s Sync manifest gate entity)
-- [ ] T005 [P] Run `docker compose exec rails bundle exec rspec` on `matias-kanban` pre-merge and confirm it is green (baseline correctness before the merge introduces any regression)
-- [ ] T006 [P] Run `docker compose exec vite pnpm test` on `matias-kanban` pre-merge and confirm it is green (baseline correctness before the merge introduces any regression)
+- [X] T005 [P] Run `docker compose exec rails bundle exec rspec` on `matias-kanban` pre-merge and confirm it is green (baseline correctness before the merge introduces any regression) — 8203 examples, 1 pre-existing unrelated failure (`spec/builders/agent_builder_spec.rb:47`, stock upstream code untouched by any fork commit, unrelated to sync-versioning scope; accepted as baseline per user decision)
+- [X] T006 [P] Run `docker compose exec vite pnpm test` on `matias-kanban` pre-merge and confirm it is green (baseline correctness before the merge introduces any regression)
 - [ ] T007 Confirm local `develop` has zero local-only commits relative to `upstream/develop`: `git log upstream/develop..develop` returns empty (per spec Assumptions)
 
 **Checkpoint**: Baseline confirmed green — the sync merge can now begin
