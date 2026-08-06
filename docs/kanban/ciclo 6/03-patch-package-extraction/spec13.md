@@ -1,6 +1,13 @@
 # Phase 13: Standalone Patch Package Extraction
 
-**Status**: placeholder — pending brainstorm session
+**Status**: dropped — see decision below
+
+**Decision (2026-08-06)**: Dropped. See Phase 30
+(`docs/kanban/ciclo 7/10-upstream-sync-and-versioning/spec30.md`) — this
+fork is shipping as a full checkout via its own Docker image, not as a
+patch applied onto a pinned upstream base, so standalone extraction no
+longer serves a purpose. The manifest/audit machinery this phase depended
+on (Phase 10) lives on, repurposed as the upstream-sync validation gate.
 **Depends on**: Phase 10 (sync script + manifest must be complete and
 accurate first — the manifest is the actual inventory of every core-file
 touch, and becomes the input for whatever extraction mechanism gets
