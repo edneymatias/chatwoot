@@ -823,7 +823,7 @@ export const AUTOMATION_ACTION_TYPES = [
   {
     key: 'create_opportunity',
     label: 'CREATE_OPPORTUNITY',
-    inputType: 'search_select',
+    inputType: 'create_opportunity',
   },
   {
     key: 'add_sla',

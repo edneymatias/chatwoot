@@ -1,5 +1,6 @@
 <script>
 import AutomationActionTeamMessageInput from './AutomationActionTeamMessageInput.vue';
+import AutomationActionCreateOpportunityInput from './AutomationActionCreateOpportunityInput.vue';
 import AutomationActionFileInput from './AutomationFileInput.vue';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
@@ -10,6 +11,7 @@ import NextInput from 'dashboard/components-next/input/Input.vue';
 export default {
   components: {
     AutomationActionTeamMessageInput,
+    AutomationActionCreateOpportunityInput,
     AutomationActionFileInput,
     WootMessageEditor,
     NextButton,
@@ -29,6 +31,10 @@ export default {
     dropdownValues: {
       type: Array,
       default: () => [],
+    },
+    opportunityDropdownValues: {
+      type: Object,
+      default: () => ({}),
     },
     errorMessage: {
       type: String,
@@ -93,7 +99,9 @@ export default {
       return this.actionTypes.map(a => ({ id: a.key, name: a.label }));
     },
     isVerticalLayout() {
-      return ['team_message', 'textarea'].includes(this.inputType);
+      return ['team_message', 'textarea', 'create_opportunity'].includes(
+        this.inputType
+      );
     },
     castMessageVmodel: {
       get() {
@@ -184,6 +192,13 @@ export default {
         v-if="inputType === 'team_message'"
         v-model="action_params"
         :teams="dropdownValues"
+        :dropdown-max-height="dropdownMaxHeight"
+      />
+      <AutomationActionCreateOpportunityInput
+        v-else-if="inputType === 'create_opportunity'"
+        v-model="action_params"
+        :pipeline-stages="opportunityDropdownValues.pipelineStages"
+        :agents="opportunityDropdownValues.agents"
         :dropdown-max-height="dropdownMaxHeight"
       />
       <WootMessageEditor

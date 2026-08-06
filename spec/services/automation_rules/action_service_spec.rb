@@ -293,6 +293,50 @@ RSpec.describe AutomationRules::ActionService do
           described_class.new(rule, account, conversation).perform
         end.not_to change(Opportunity, :count)
       end
+
+      it 'assigns a specific agent when assignee_id is a user id' do
+        rule.actions = [{ action_name: 'create_opportunity',
+                          action_params: { pipeline_stage_id: pipeline_stage.id, assignee_id: agent.id } }]
+        rule.save!
+
+        described_class.new(rule, account, conversation).perform
+
+        expect(Opportunity.last.assignee).to eq(agent)
+      end
+
+      it "resolves 'same_as_conversation' to the conversation's current assignee" do
+        conversation.update!(assignee: agent)
+        rule.actions = [{ action_name: 'create_opportunity',
+                          action_params: { pipeline_stage_id: pipeline_stage.id,
+                                           assignee_id: 'same_as_conversation' } }]
+        rule.save!
+
+        described_class.new(rule, account, conversation).perform
+
+        expect(Opportunity.last.assignee).to eq(agent)
+      end
+
+      it "resolves 'same_as_conversation' to nil when conversation has no assignee" do
+        conversation.update!(assignee: nil)
+        rule.actions = [{ action_name: 'create_opportunity',
+                          action_params: { pipeline_stage_id: pipeline_stage.id,
+                                           assignee_id: 'same_as_conversation' } }]
+        rule.save!
+
+        described_class.new(rule, account, conversation).perform
+
+        expect(Opportunity.last.assignee).to be_nil
+      end
+
+      it 'creates the opportunity unassigned when assignee_id is blank' do
+        rule.actions = [{ action_name: 'create_opportunity',
+                          action_params: { pipeline_stage_id: pipeline_stage.id, assignee_id: nil } }]
+        rule.save!
+
+        described_class.new(rule, account, conversation).perform
+
+        expect(Opportunity.last.assignee).to be_nil
+      end
     end
   end
 end

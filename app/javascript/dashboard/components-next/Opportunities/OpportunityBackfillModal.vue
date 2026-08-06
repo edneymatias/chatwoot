@@ -18,8 +18,11 @@ const isSubmitting = ref(false);
 const title = ref('');
 const customAttributes = ref({});
 const dealValue = ref(null);
+const assigneeId = ref(null);
 const missingCustomAttributeKeys = ref([]);
 const missingDealValue = ref(false);
+
+const agents = computed(() => store.getters['agents/getVerifiedAgents']);
 
 const opportunity = computed(
   () => store.state.opportunities.byId[props.opportunityId]
@@ -43,6 +46,7 @@ onMounted(() => {
     title.value = opportunity.value.title;
     customAttributes.value = { ...(opportunity.value.custom_attributes || {}) };
     dealValue.value = opportunity.value.value;
+    assigneeId.value = opportunity.value.assignee_id || null;
   }
 });
 
@@ -85,6 +89,7 @@ const submit = async () => {
       title: title.value,
       custom_attributes: customAttributes.value,
       value: dealValue.value,
+      assignee_id: assigneeId.value,
     });
     emit('updated', opportunity.value);
     emit('close');
@@ -125,6 +130,23 @@ const onClose = () => emit('close');
           type="text"
           class="w-full border border-n-slate-3 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-n-brand focus:ring-1 focus:ring-n-brand"
         />
+      </div>
+
+      <div class="flex flex-col gap-1 mb-4">
+        <label class="text-sm font-medium text-n-slate-12">
+          {{ $t('OPPORTUNITIES.BACKFILL_MODAL.ASSIGNEE_LABEL') }}
+        </label>
+        <select
+          v-model="assigneeId"
+          class="w-full border border-n-slate-3 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-n-brand focus:ring-1 focus:ring-n-brand"
+        >
+          <option :value="null">
+            {{ $t('OPPORTUNITIES.BACKFILL_MODAL.ASSIGNEE_UNASSIGNED') }}
+          </option>
+          <option v-for="agent in agents" :key="agent.id" :value="agent.id">
+            {{ agent.name }}
+          </option>
+        </select>
       </div>
 
       <OpportunityRequiredFieldsForm

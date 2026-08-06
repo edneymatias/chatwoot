@@ -96,6 +96,7 @@ export const actions = {
       originConversationId,
       custom_attributes,
       value,
+      assigneeId,
     }
   ) => {
     commit('SET_UI_FLAG', { isCreating: true });
@@ -108,6 +109,7 @@ export const actions = {
           origin_conversation_id: originConversationId,
           custom_attributes,
           value,
+          assignee_id: assigneeId || null,
         },
       });
       const payload = response.data.payload || response.data;

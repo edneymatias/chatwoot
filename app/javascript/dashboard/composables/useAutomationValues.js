@@ -124,6 +124,19 @@ export default function useAutomationValues() {
    * @returns {Array} An array of action dropdown values.
    */
   const getActionDropdownValues = type => {
+    if (type === 'create_opportunity') {
+      return {
+        pipelineStages: pipelineStages.value,
+        agents: [
+          {
+            id: 'same_as_conversation',
+            name: t('AUTOMATION.CREATE_OPPORTUNITY_SAME_AS_CONVERSATION'),
+          },
+          ...agents.value,
+        ],
+      };
+    }
+
     let agentsList = agents.value;
     if (type === 'assign_agent') {
       agentsList = [

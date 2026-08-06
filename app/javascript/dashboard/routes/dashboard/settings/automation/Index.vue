@@ -60,6 +60,7 @@ onMounted(() => {
   store.dispatch('labels/get');
   store.dispatch('campaigns/get');
   store.dispatch('automations/get');
+  store.dispatch('pipelineStages/fetch');
   if (isSLAEnabled.value) {
     store.dispatch('sla/get');
   }

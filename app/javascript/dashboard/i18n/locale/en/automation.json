@@ -99,7 +99,9 @@
       "TEAM_MESSAGE_INPUT_PLACEHOLDER": "Enter your message here",
       "TEAM_DROPDOWN_PLACEHOLDER": "Select teams",
       "EMAIL_INPUT_PLACEHOLDER": "Enter email",
-      "URL_INPUT_PLACEHOLDER": "Enter URL"
+      "URL_INPUT_PLACEHOLDER": "Enter URL",
+      "CREATE_OPPORTUNITY_STAGE_PLACEHOLDER": "Select a pipeline stage",
+      "CREATE_OPPORTUNITY_ASSIGNEE_PLACEHOLDER": "Select an assignee (optional)"
     },
     "TOGGLE": {
       "ACTIVATION_TITLE": "Activate Automation Rule",
@@ -131,6 +133,7 @@
     },
     "NONE_OPTION": "None",
     "LAST_RESPONDING_AGENT": "Last Responding Agent",
+    "CREATE_OPPORTUNITY_SAME_AS_CONVERSATION": "Same as the conversation",
     "EVENTS": {
       "CONVERSATION_CREATED": "Conversation Created",
       "CONVERSATION_UPDATED": "Conversation Updated",

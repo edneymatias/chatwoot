@@ -24,6 +24,9 @@ const searchQuery = ref('');
 const searchResults = ref([]);
 const selectedContact = ref(null);
 const isSearching = ref(false);
+const assigneeId = ref(null);
+
+const agents = computed(() => store.getters['agents/getVerifiedAgents']);
 
 const stages = computed(
   () => store.getters['pipelineStages/stagesSortedByPosition']
@@ -138,6 +141,7 @@ const submit = async () => {
       originConversationId: props.originConversationId,
       custom_attributes: customAttributes.value,
       value: dealValue.value,
+      assigneeId: assigneeId.value,
     });
     emit('created', opp);
     onClose();
@@ -239,6 +243,23 @@ const submit = async () => {
           </option>
           <option v-for="stage in stages" :key="stage.id" :value="stage.id">
             {{ stage.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium text-n-slate-12">
+          {{ $t('OPPORTUNITIES.CREATE_MODAL.ASSIGNEE_LABEL') }}
+        </label>
+        <select
+          v-model="assigneeId"
+          class="w-full px-3 py-2 border border-n-weak rounded-md bg-n-surface-1 text-n-slate-12 text-sm focus:outline-none focus:ring-1 focus:ring-n-brand-9"
+        >
+          <option :value="null">
+            {{ $t('OPPORTUNITIES.CREATE_MODAL.ASSIGNEE_UNASSIGNED') }}
+          </option>
+          <option v-for="agent in agents" :key="agent.id" :value="agent.id">
+            {{ agent.name }}
           </option>
         </select>
       </div>

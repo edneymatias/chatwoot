@@ -102,7 +102,6 @@ export const getActionOptions = ({
   type,
   addNoneToListFn,
   priorityOptions,
-  pipelineStages,
 }) => {
   const actionsMap = {
     assign_agent: addNoneToListFn ? addNoneToListFn(agents) : agents,
@@ -112,7 +111,6 @@ export const getActionOptions = ({
     remove_label: generateConditionOptions(labels, 'title'),
     change_priority: priorityOptions,
     add_sla: slaPolicies,
-    create_opportunity: pipelineStages,
   };
   return actionsMap[type];
 };

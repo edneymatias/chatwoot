@@ -26,7 +26,9 @@
       "STAGE_LABEL": "Pipeline Stage",
       "STAGE_PLACEHOLDER": "Select a stage...",
       "CANCEL": "Cancel",
-      "SUBMIT": "Create"
+      "SUBMIT": "Create",
+      "ASSIGNEE_LABEL": "Assignee",
+      "ASSIGNEE_UNASSIGNED": "Unassigned"
     },
     "SETTINGS": {},
     "DETAIL": {
@@ -52,7 +54,9 @@
     },
     "BACKFILL_MODAL": {
       "CANCEL": "Cancel",
-      "SUBMIT": "Save"
+      "SUBMIT": "Save",
+      "ASSIGNEE_LABEL": "Assignee",
+      "ASSIGNEE_UNASSIGNED": "Unassigned"
     },
     "DEAL_VALUE": "Deal Value"
   },
