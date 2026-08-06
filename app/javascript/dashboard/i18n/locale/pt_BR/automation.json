@@ -99,7 +99,9 @@
       "TEAM_MESSAGE_INPUT_PLACEHOLDER": "Escreva sua mensagem aqui",
       "TEAM_DROPDOWN_PLACEHOLDER": "Selecione times",
       "EMAIL_INPUT_PLACEHOLDER": "Insira o e-mail",
-      "URL_INPUT_PLACEHOLDER": "Insira a URL"
+      "URL_INPUT_PLACEHOLDER": "Insira a URL",
+      "CREATE_OPPORTUNITY_STAGE_PLACEHOLDER": "Selecione um estágio do pipeline",
+      "CREATE_OPPORTUNITY_ASSIGNEE_PLACEHOLDER": "Selecione um responsável (opcional)"
     },
     "TOGGLE": {
       "ACTIVATION_TITLE": "Ativar regra de automação",
@@ -131,6 +133,7 @@
     },
     "NONE_OPTION": "Nenhuma",
     "LAST_RESPONDING_AGENT": "Último Agente que Respondeu",
+    "CREATE_OPPORTUNITY_SAME_AS_CONVERSATION": "Mesmo da conversa",
     "EVENTS": {
       "CONVERSATION_CREATED": "Conversa Criada",
       "CONVERSATION_UPDATED": "Conversa Atualizada",
@@ -157,6 +160,7 @@
       "CHANGE_PRIORITY": "Alterar Prioridade",
       "ADD_SLA": "Adicionar SLA",
       "OPEN_CONVERSATION": "Abrir conversa",
+      "CREATE_OPPORTUNITY": "Criar Oportunidade",
       "PENDING_CONVERSATION": "Marcar conversa como pendente"
     },
     "MESSAGE_TYPES": {

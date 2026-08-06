@@ -27,6 +27,8 @@
       "NO_RESULTS": "Nenhum contato encontrado.",
       "STAGE_LABEL": "Estágio do Pipeline",
       "STAGE_PLACEHOLDER": "Selecione um estágio...",
+      "ASSIGNEE_LABEL": "Responsável",
+      "ASSIGNEE_UNASSIGNED": "Sem dono",
       "CANCEL": "Cancelar",
       "SUBMIT": "Criar"
     },
@@ -53,6 +55,8 @@
       "SAVE_SUCCESS": "Salvo com sucesso"
     },
     "BACKFILL_MODAL": {
+      "ASSIGNEE_LABEL": "Responsável",
+      "ASSIGNEE_UNASSIGNED": "Sem dono",
       "CANCEL": "Cancelar",
       "SUBMIT": "Salvar"
     },
