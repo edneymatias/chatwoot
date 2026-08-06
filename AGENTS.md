@@ -104,12 +104,19 @@ commands with `docker compose exec <service>`.
 - **`ichatr-main`** is the fork's single permanent branch (renamed from `matias-kanban`). All
   feature branches, hotfixes, and upstream syncs branch off it and merge back into it via PR.
 - **`develop`** is a fast-forward-only mirror of `upstream/develop` (`chatwoot/chatwoot`). It
-  never receives local commits; update it with `git fetch upstream && git merge --ff-only
-  upstream/develop`.
+  never receives local commits and is kept only as a reference for inspecting in-progress
+  upstream work; update it with `git fetch upstream && git merge --ff-only upstream/develop`. It
+  is **never** merged into `ichatr-main`.
 - There is **no `release/*` branch scheme** — releases are tagged directly off `ichatr-main`.
-- Upstream sync flow: fast-forward `develop`, then `git merge --no-ff develop` into
-  `ichatr-main`, then validate with `bin/sync-custom-module-hooks --check` / `--audit` and the
-  full test suites (`bundle exec rspec`, `pnpm test`) before considering the sync done.
+- **Upstream sync target is always the latest tagged upstream release, never `upstream/develop`
+  HEAD.** `develop` HEAD can carry upstream features that are incomplete, mid-rollout across
+  multiple PRs, or not yet part of any release — merging it directly risks shipping unfinished
+  upstream behavior and unstabilized build/toolchain changes.
+- Upstream sync flow: identify the latest tag on `chatwoot/chatwoot` (`git fetch upstream --tags
+  && git tag --sort=-creatordate --list 'v*' | head -1`), merge that tag into `ichatr-main` with
+  `git merge --no-ff <tag>` (skip if the branch is already at parity with it), then validate with
+  `bin/sync-custom-module-hooks --check` / `--audit` and the full test suites (`bundle exec
+  rspec`, `pnpm test`) before considering the sync done.
 
 ## Fork Versioning Scheme
 

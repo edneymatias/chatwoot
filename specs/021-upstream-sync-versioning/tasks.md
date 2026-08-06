@@ -49,38 +49,48 @@ compared against a known-good starting point
 - [X] T004 Run `bin/sync-custom-module-hooks --check` on `matias-kanban` pre-merge and confirm exit `0` (baseline manifest integrity, per [data-model.md](./data-model.md)'s Sync manifest gate entity)
 - [X] T005 [P] Run `docker compose exec rails bundle exec rspec` on `matias-kanban` pre-merge and confirm it is green (baseline correctness before the merge introduces any regression) — 8203 examples, 1 pre-existing unrelated failure (`spec/builders/agent_builder_spec.rb:47`, stock upstream code untouched by any fork commit, unrelated to sync-versioning scope; accepted as baseline per user decision)
 - [X] T006 [P] Run `docker compose exec vite pnpm test` on `matias-kanban` pre-merge and confirm it is green (baseline correctness before the merge introduces any regression)
-- [ ] T007 Confirm local `develop` has zero local-only commits relative to `upstream/develop`: `git log upstream/develop..develop` returns empty (per spec Assumptions)
+- [ ] T007 Confirm local `develop` has zero local-only commits relative to `upstream/develop`: `git log upstream/develop..develop` returns empty (per spec Assumptions) — `develop` is a reference mirror only, never the sync source
 
 **Checkpoint**: Baseline confirmed green — the sync merge can now begin
 
 ---
 
-## Phase 3: User Story 1 - Maintainer brings the fork current with upstream without losing customizations (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 - Maintainer brings the fork current with the latest stable upstream release (Priority: P1) 🎯 MVP
 
-**Goal**: Merge 61 upstream commits into the fork's working branch with zero manifest
-customizations lost and zero untriaged `--audit` gaps, validated by the full test suite.
+**Goal**: Bring the fork's working branch to parity with the **latest tagged** upstream release
+(never `upstream/develop` HEAD) with zero manifest customizations lost and zero untriaged
+`--audit` gaps, validated by the full test suite.
 
-**Independent Test**: Perform the sync end-to-end on the real checkout and confirm: merge
-completes, `--check` reports every manifest entry present, `--audit` reports zero untriaged gaps,
-and both test suites pass (spec.md User Story 1 Independent Test).
+**Correction (2026-08-06)**: an earlier attempt at this story merged `upstream/develop` HEAD
+(commit `e0dffe3f4`) directly into `matias-kanban`. That merge, and the speckit-tracking commits
+built on top of it, were reverted (`git reset --hard` back to `c4f25799b`) after review found the
+merged range included unreleased/mid-rollout upstream work (e.g. a commit explicitly titled part
+1 of a 5-part feature rollout) and had broken the `vite` dev container (a merged-in commit added
+the `brakeman` gem to `Gemfile` without the container's gemset being rebuilt). Tasks T008-T016
+below are rewritten to target the latest release tag instead of `develop` HEAD.
+
+**Independent Test**: Confirm the fork's branch is merged with (or already at parity with) the
+latest upstream release tag, `--check` reports every manifest entry present, `--audit` reports
+zero untriaged gaps, and both test suites pass (spec.md User Story 1 Independent Test).
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Fast-forward local `develop` to `upstream/develop`: `git checkout develop && git merge --ff-only upstream/develop`
-- [ ] T009 [US1] Merge `develop` into `matias-kanban` with a single merge commit: `git checkout matias-kanban && git merge --no-ff develop`
-- [ ] T010 [US1] Resolve conflicts in manifest-tracked files (`app/javascript/dashboard/routes/dashboard/dashboard.routes.js`, `app/javascript/dashboard/components-next/sidebar/Sidebar.vue`, `app/javascript/dashboard/helper/actionCable.js`, `app/javascript/dashboard/store/index.js`, `app/javascript/dashboard/routes/dashboard/settings/settings.routes.js`, `app/javascript/dashboard/helper/automationHelper.js`) case-by-case, re-reading upstream's new logic and re-applying the fork's customization on top of it (no fixed default side — per Clarifications session and Constitution Principle I)
-- [ ] T011 [US1] Resolve conflicts in any other files touched by the merge outside the manifest-tracked set, applying the same case-by-case stance
-- [ ] T012 [US1] Confirm the app builds after conflict resolution (Rails boots, `pnpm build` or dev server compiles cleanly)
-- [ ] T013 [US1] Run `bin/sync-custom-module-hooks --check` post-merge and fix any `MANIFEST` entry reported missing before proceeding
-- [ ] T014 [US1] Run `bin/sync-custom-module-hooks --audit` against the merge-base and list every file in the `gap` bucket
-- [ ] T015 [US1] Triage each `--audit` gap per [contracts/sync-gate-cli.md](./contracts/sync-gate-cli.md): add a `MANIFEST` entry in `bin/sync-custom-module-hooks`, add the path to the script's `excluded`/`out_of_scope` list, or — if it needs real code rework — log it as a follow-up item and fail the sync loudly for that file, naming the file and the upstream change responsible (FR-006a)
-- [ ] T016 [US1] Re-run `bin/sync-custom-module-hooks --audit` and confirm zero entries remain in the raw `gap` state
-- [ ] T017 [US1] Run `docker compose exec rails bundle exec rspec` on the merged tree and reach green
-- [ ] T018 [US1] Run `docker compose exec vite pnpm test` on the merged tree and reach green
+- [X] T008 [US1] Identify the sync target — the latest tag on `chatwoot/chatwoot`, never `upstream/develop` HEAD: `git fetch upstream --tags && git tag --sort=-creatordate --list 'v*' | head -1` (found: `v4.16.2`)
+- [X] T009 [US1] Check whether `matias-kanban` is already at parity with the target tag: `git merge-base HEAD v4.16.2` vs. `git rev-list -1 v4.16.2` — confirmed the merge-base is only one trivial "Bump version to 4.16.2" commit short of the tag's release-merge commit, i.e. already at parity. **No merge performed** — this task is a no-op for the current sync; re-run against the new tag next time upstream cuts a release.
+- [ ] T010 [US1] (Next sync only, once a new upstream tag exists) Merge the target tag into `ichatr-main` with a single merge commit: `git merge --no-ff <tag>`
+- [ ] T011 [US1] (Next sync only) Resolve conflicts in manifest-tracked files (`app/javascript/dashboard/routes/dashboard/dashboard.routes.js`, `app/javascript/dashboard/components-next/sidebar/Sidebar.vue`, `app/javascript/dashboard/helper/actionCable.js`, `app/javascript/dashboard/store/index.js`, `app/javascript/dashboard/routes/dashboard/settings/settings.routes.js`, `app/javascript/dashboard/helper/automationHelper.js`) case-by-case, re-reading upstream's new logic and re-applying the fork's customization on top of it (no fixed default side — per Clarifications session and Constitution Principle I)
+- [ ] T012 [US1] (Next sync only) Resolve conflicts in any other files touched by the merge outside the manifest-tracked set, applying the same case-by-case stance
+- [ ] T013 [US1] (Next sync only) Confirm the app builds after conflict resolution (Rails boots, `pnpm build` or dev server compiles cleanly, `vite` container boots)
+- [X] T014 [US1] Run `bin/sync-custom-module-hooks --check` on the current (already-at-parity) tree and confirm exit `0` — all 40 wiring points present
+- [ ] T015 [US1] (Next sync only) Run `bin/sync-custom-module-hooks --audit` against the merge-base and triage every `gap` per [contracts/sync-gate-cli.md](./contracts/sync-gate-cli.md): add a `MANIFEST` entry, add the path to the script's `excluded`/`out_of_scope` list, or log a follow-up and fail the sync loudly (FR-006a)
+- [ ] T016 [US1] (Next sync only) Re-run `bin/sync-custom-module-hooks --audit` and confirm zero entries remain in the raw `gap` state
+- [ ] T017 [US1] Run `docker compose exec rails bundle exec rspec` on the current tree and confirm green — T005's baseline run was already performed on this exact commit (`c4f25799b`) before the bad merge attempt; only the manifest script (`bin/sync-custom-module-hooks`, not exercised by rspec) changed since, so re-running is a formality, not expected to surface anything new
+- [ ] T018 [US1] Run `docker compose exec vite pnpm test` on the current tree and confirm green — same rationale as T017, relative to T006's baseline run
 
-**Checkpoint**: Sync is complete — `matias-kanban` contains all 61 upstream commits, the manifest
-gate is clean, and both test suites are green. This is the point at which User Story 2 (rename)
-may begin.
+**Checkpoint**: `matias-kanban` is confirmed at parity with the latest upstream release tag
+(`v4.16.2`), the manifest gate is clean, and the `vite` container boots. This is the point at
+which User Story 2 (rename) may begin. Tasks marked "(Next sync only)" become active the next
+time a new upstream tag is cut.
 
 ---
 

@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Phase 30: Upstream Sync, Branch Rebranding & Versioning Scheme — catch the fork's working branch up with upstream Chatwoot (61 commits behind), rename `matias-kanban` to the fork's permanent branch `ichatr-main`, keep `develop` as a plain upstream mirror, validate the merge against the sync-script manifest/audit gate and full test suite, and settle the fork's version-tag scheme ahead of later release-engineering phases. Derived from `docs/kanban/ciclo 7/10-upstream-sync-and-versioning/spec30.md`."
+**Input**: User description: "Phase 30: Upstream Sync, Branch Rebranding & Versioning Scheme — sync the fork's working branch against the latest tagged upstream Chatwoot release, rename `matias-kanban` to the fork's permanent branch `ichatr-main`, keep `develop` as a plain upstream mirror used only as a reference (never merged directly), validate any sync merge against the sync-script manifest/audit gate and full test suite, and settle the fork's version-tag scheme ahead of later release-engineering phases. Derived from `docs/kanban/ciclo 7/10-upstream-sync-and-versioning/spec30.md`."
 
 ## Clarifications
 
@@ -25,36 +25,51 @@
   at the file/gap in question and what changed in upstream that caused it, and is logged as a
   follow-up item rather than silently deferred or expanded into ad hoc rework within this phase.
 
+### Session 2026-08-06 (correction, same day)
+
+- Q: Should the sync target `upstream/develop` HEAD or the latest tagged upstream release? → A:
+  The latest tagged release only. An earlier execution of this phase merged `upstream/develop`
+  HEAD directly into the fork and was reverted after review: `develop` is Chatwoot's active
+  integration branch and can contain features that are incomplete or mid-rollout across multiple
+  PRs, as well as features that haven't shipped in any tagged release. Syncing against it risks
+  shipping unfinished upstream behavior and inheriting unstabilized upstream build/toolchain
+  issues. The fork syncs against the latest upstream release tag (currently `v4.16.2`) instead;
+  `develop` remains a mirror kept around only as a reference, never merged into `ichatr-main`.
+
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Maintainer brings the fork current with upstream without losing customizations (Priority: P1)
+### User Story 1 - Maintainer brings the fork current with the latest stable upstream release without losing customizations (Priority: P1)
 
-A maintainer needs the fork's working branch to include the latest 61 commits from upstream
-Chatwoot's `develop` branch before any release-engineering work can begin. They fast-forward a
-mirror of upstream, merge it into the fork's branch, resolve any conflicts in the core files the
-fork customizes, and confirm — through the sync script's manifest gate and the full test suite —
-that no existing customization was silently dropped during conflict resolution.
+A maintainer needs the fork's working branch to be current with the **latest tagged** upstream
+Chatwoot release before any release-engineering work can begin — never with `upstream/develop`
+HEAD, which can carry unfinished or unreleased upstream work. They confirm the latest upstream
+release tag, merge it into the fork's branch (when the fork isn't already at parity with it),
+resolve any conflicts in the core files the fork customizes, and confirm — through the sync
+script's manifest gate and the full test suite — that no existing customization was silently
+dropped during conflict resolution.
 
 **Why this priority**: This is the blocking prerequisite for every later release-engineering
-phase (table-prefix rename, CI/CD, release cut). None of that work can safely start on a stale,
-61-commits-behind base.
+phase (table-prefix rename, CI/CD, release cut). None of that work can safely start on an
+unstable or stale base.
 
 **Independent Test**: Can be fully tested by performing the sync end-to-end on a real checkout and
-confirming: the merge completes, `bin/sync-custom-module-hooks --check` reports every existing
-manifest entry still present, `bin/sync-custom-module-hooks --audit` reports zero untriaged gaps,
-and the full test suite (`bundle exec rspec`, `pnpm test`) passes.
+confirming: the fork's branch is merged with (or already at parity with) the latest upstream
+release tag, `bin/sync-custom-module-hooks --check` reports every existing manifest entry still
+present, `bin/sync-custom-module-hooks --audit` reports zero untriaged gaps, and the full test
+suite (`bundle exec rspec`, `pnpm test`) passes.
 
 **Acceptance Scenarios**:
 
-1. **Given** the local `develop` branch has zero local-only commits, **When** the maintainer
-   fast-forwards it to `upstream/develop`, **Then** the fast-forward completes cleanly with no
-   conflict resolution required.
-2. **Given** `develop` is caught up with upstream, **When** the maintainer merges it into the
-   fork's working branch with a single merge commit, **Then** conflicts (expected primarily in
-   files like `dashboard.routes.js`, `Sidebar.vue`, `actionCable.js`, `store/index.js`,
+1. **Given** the upstream `chatwoot/chatwoot` repository, **When** the maintainer checks its most
+   recently created tag, **Then** that tag — not `upstream/develop` HEAD — is the sync target.
+2. **Given** the sync target tag, **When** the maintainer merges it into the fork's working
+   branch with a single merge commit, **Then** conflicts (expected primarily in files like
+   `dashboard.routes.js`, `Sidebar.vue`, `actionCable.js`, `store/index.js`,
    `settings.routes.js`, `automationHelper.js`) are resolved case-by-case — re-evaluating each
    fork customization against upstream's change rather than reflexively keeping either side — and
-   the build is green.
+   the build is green. If the fork's branch is already at parity with the tag (its merge-base with
+   the tag differs only by trivial release-bump commits), no merge is performed and this scenario
+   is a no-op.
 3. **Given** the merge has landed, **When** the maintainer runs
    `bin/sync-custom-module-hooks --check`, **Then** every existing manifest insertion is confirmed
    still present in its target file.
@@ -168,15 +183,18 @@ without needing further discussion.
   work (current release, subsequent releases, ongoing features) branches off it and merges back
   via PR, with no separate `release/*` branch scheme.
 - **FR-003**: The local `develop` branch MUST be kept as a plain, fast-forward-only mirror of
-  `upstream/develop`, never carrying its own commits, existing solely as the reference branch the
-  sync script's audit mode merge-bases against by default.
-- **FR-004**: The sync MUST fast-forward local `develop` to `upstream/develop` before any merge
-  into `ichatr-main` happens.
-- **FR-005**: The sync MUST merge `develop` into `ichatr-main` using a single merge commit (not a
-  rebase), so conflicts are resolved once rather than replayed across the fork's existing commit
-  history. There is no fixed default for which side (upstream or fork) wins a semantic conflict —
-  each is judged case-by-case, re-evaluating the fork's customization against upstream's change
-  rather than reflexively keeping either side's prior implementation.
+  `upstream/develop`, never carrying its own commits. It exists only as an optional reference for
+  inspecting in-progress upstream work; it is never the sync source and is never merged into
+  `ichatr-main`.
+- **FR-004**: The sync target MUST always be the latest tagged upstream release (never
+  `upstream/develop` HEAD), identified from the `chatwoot/chatwoot` upstream remote's most
+  recently created tag. A sync is triggered by a new upstream tag being cut.
+- **FR-005**: The sync MUST merge the upstream release tag into `ichatr-main` using a single merge
+  commit (not a rebase), so conflicts are resolved once rather than replayed across the fork's
+  existing commit history. There is no fixed default for which side (upstream or fork) wins a
+  semantic conflict — each is judged case-by-case, re-evaluating the fork's customization against
+  upstream's change rather than reflexively keeping either side's prior implementation. If the
+  fork's branch is already at parity with the target tag, no merge commit is created.
 - **FR-006**: The sync MUST NOT be considered complete until, in order: (1) the sync script's
   `--check` mode confirms every existing manifest entry is still present post-merge, (2) the sync
   script's `--audit` mode reports zero untriaged gaps in core-file changes since the merge-base —
@@ -202,7 +220,11 @@ without needing further discussion.
 - **Fork branch (`ichatr-main`)**: The fork's permanent long-term branch, renamed from
   `matias-kanban`; target of all future feature work and future upstream syncs.
 - **Mirror branch (`develop`)**: A local branch that only ever fast-forwards to
-  `upstream/develop`; the fixed reference point the sync script's audit compares against.
+  `upstream/develop`; kept solely as a read reference for inspecting in-progress upstream work,
+  never merged into `ichatr-main` and never itself the sync source.
+- **Sync target (upstream release tag)**: The most recently created tag on the `chatwoot/chatwoot`
+  upstream remote (currently `v4.16.2`); the only valid merge source for a sync, as opposed to
+  `upstream/develop` HEAD.
 - **Sync manifest gate**: The existing `bin/sync-custom-module-hooks` script's `--check` and
   `--audit` modes, used here as the pass/fail gate for whether a sync merge preserved and fully
   tracked the fork's customizations.
@@ -213,8 +235,11 @@ without needing further discussion.
 
 ### Measurable Outcomes
 
-- **SC-001**: The fork's working branch contains 100% of the 61 upstream commits it was behind,
-  with zero manifest entries lost in the process (verified by a clean `--check` pass).
+- **SC-001**: The fork's working branch is at parity with the latest tagged upstream release (not
+  `upstream/develop` HEAD), with zero manifest entries lost in the process (verified by a clean
+  `--check` pass). As of this correction, the fork's branch is already at parity with the latest
+  tag (`v4.16.2`), so this criterion is satisfied without a merge; it becomes actionable again the
+  next time a new upstream tag is cut.
 - **SC-002**: The `--audit` gate reports zero untriaged core-file gaps at sync completion — every
   gap found is either converted into a manifest entry, explicitly excluded, or logged as a
   follow-up item with the specific file and upstream change identified.
@@ -229,11 +254,14 @@ without needing further discussion.
 
 ## Assumptions
 
-- The local `develop` branch has zero local-only commits at sync time, as already confirmed, so
-  the fast-forward step needs no conflict-resolution path in this phase.
-- Conflict resolution during the `develop` → `ichatr-main` merge is expected primarily in the core
-  files already tracked by the sync manifest; files outside that set are lower-risk but still
-  covered by the `--audit` gap check.
+- The local `develop` branch has zero local-only commits, consistent with its role as a pure
+  reference mirror; it plays no part in the sync merge itself.
+- `v4.16.2` is the latest tagged upstream release as of this correction, and the fork's branch is
+  already at parity with it, so no sync merge is currently required — the sync procedure
+  (FR-004/FR-005) applies the next time a new upstream tag is cut.
+- Conflict resolution during a future release-tag → `ichatr-main` merge is expected primarily in
+  the core files already tracked by the sync manifest; files outside that set are lower-risk but
+  still covered by the `--audit` gap check.
 - No other contributors have in-flight local branches based on `matias-kanban` that need explicit
   migration guidance as part of this phase; the rename is scoped to `origin` and the maintainer's
   local repo.

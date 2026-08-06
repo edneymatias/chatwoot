@@ -5,22 +5,28 @@ settled in `spec30.md` and confirmed/sharpened during `/speckit-clarify`). This 
 the supporting decisions needed to turn the spec's functional requirements into an executable
 runbook.
 
-## Decision: Sync order (develop fast-forward → merge → gate → rename)
+## Decision: Sync order (identify latest release tag → merge → gate → rename)
 
-**Decision**: Execute in this exact order: (1) fast-forward local `develop` to
-`upstream/develop`, (2) merge `develop` into `matias-kanban` with a single merge commit, (3) run
-the full validation gate (`--check`, `--audit`, test suites), (4) only once green, rename
-`matias-kanban` → `ichatr-main` and push/delete refs.
+**Decision**: Execute in this exact order: (1) fetch upstream tags and identify the most recently
+created tag on `chatwoot/chatwoot` as the sync target, (2) merge that tag into `matias-kanban`
+with a single merge commit — or skip this step entirely if the branch is already at parity with
+the tag, (3) run the full validation gate (`--check`, `--audit`, test suites), (4) only once
+green, rename `matias-kanban` → `ichatr-main` and push/delete refs.
 
-**Rationale**: FR-004/FR-005 require the fast-forward before the merge. Sequencing the rename
-*after* the gate passes (rather than before or interleaved) avoids doing a hard-to-reverse ref
-deletion (Constitution IV) on a branch that later turns out to need more conflict-resolution work
-— if something goes wrong mid-merge, the maintainer is still working under the old, safely
-disposable branch name.
+**Rationale**: FR-004/FR-005 require the sync target to be the latest upstream release tag, never
+`upstream/develop` HEAD — an earlier execution of this feature merged `develop` HEAD directly and
+had to be reverted after review found it pulled in incomplete/unreleased upstream work.
+Sequencing the rename *after* the gate passes (rather than before or interleaved) avoids doing a
+hard-to-reverse ref deletion (Constitution IV) on a branch that later turns out to need more
+conflict-resolution work — if something goes wrong mid-merge, the maintainer is still working
+under the old, safely disposable branch name.
 
-**Alternatives considered**: Renaming first, then merging on `ichatr-main` — rejected because it
-front-loads an irreversible step (deleting `origin/matias-kanban`) before the merge is known to be
-safe, with no benefit (nothing depends on the new name existing before the merge lands).
+**Alternatives considered**: Syncing against `upstream/develop` HEAD — rejected after review;
+`develop` can contain features mid-rollout across multiple PRs or not yet shipped in any release,
+which is unacceptable for a base the fork builds a product release on. Renaming first, then
+merging on `ichatr-main` — rejected because it front-loads an irreversible step (deleting
+`origin/matias-kanban`) before the merge is known to be safe, with no benefit (nothing depends on
+the new name existing before the merge lands).
 
 ## Decision: Conflict-resolution stance (no fixed default side)
 

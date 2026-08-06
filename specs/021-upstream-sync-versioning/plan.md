@@ -6,14 +6,21 @@
 
 ## Summary
 
-Catch the fork's working branch (`matias-kanban`, soon `ichatr-main`) up with 61 commits of
-upstream Chatwoot `develop`, gated by the existing `bin/sync-custom-module-hooks` manifest
-(`--check`/`--audit`) and the full test suite; then rename the branch to its permanent identity
-(`ichatr-main`), keep `develop` a plain fast-forward mirror of `upstream/develop`, and document
-(no tag cut) the `<upstream-base-version>-ichatr.<N>` version scheme for later release phases.
-This is a git/branch-operations and process-documentation feature — no new application code,
-models, or endpoints. The technical approach is a sequenced set of git operations plus doc
-updates, validated by tooling that already exists.
+Keep the fork's working branch (`matias-kanban`, soon `ichatr-main`) current with the **latest
+tagged** upstream Chatwoot release (never `upstream/develop` HEAD), gated by the existing
+`bin/sync-custom-module-hooks` manifest (`--check`/`--audit`) and the full test suite; then rename
+the branch to its permanent identity (`ichatr-main`), keep `develop` a plain fast-forward mirror of
+`upstream/develop` used only as a reference (never merged), and document (no tag cut) the
+`<upstream-base-version>-ichatr.<N>` version scheme for later release phases. This is a
+git/branch-operations and process-documentation feature — no new application code, models, or
+endpoints. The technical approach is a sequenced set of git operations plus doc updates, validated
+by tooling that already exists.
+
+**Correction (2026-08-06)**: an earlier execution of this plan merged `upstream/develop` HEAD
+directly, pulling in unreleased/mid-rollout upstream work; it was reverted. The sync target is now
+always the latest upstream release tag (currently `v4.16.2`), which the fork's branch was already
+at parity with before the bad merge — so this pass of the feature performs no merge, only the
+branch rename and the corrected documentation.
 
 ## Technical Context
 
@@ -39,10 +46,13 @@ runtime deployment target
 
 **Constraints**: Must not cut a version tag or Docker image (explicitly out of scope, FR-007);
 must not touch table-prefix rename or CI/CD (separate, already-scoped phases); `develop` must
-remain a pure fast-forward mirror with zero local commits
+remain a pure fast-forward mirror with zero local commits and is never merged into `ichatr-main`;
+the sync source must always be the latest upstream release tag, never `upstream/develop` HEAD
+(FR-004)
 
-**Scale/Scope**: One merge of 61 upstream commits into one permanent branch; versioning scheme is
-a documentation decision with no immediate tag cut
+**Scale/Scope**: One merge of the latest upstream release tag into one permanent branch (a no-op
+merge as of this correction, since the fork is already at parity with `v4.16.2`); versioning
+scheme is a documentation decision with no immediate tag cut
 
 ## Constitution Check
 

@@ -15,8 +15,8 @@ precisely.
 - `merge_target_for`: all future feature branches, hotfixes, and upstream syncs (via PR)
 
 **Lifecycle**:
-1. `matias-kanban` (pre-sync) — receives the `develop` merge, resolves conflicts, passes the
-   validation gate.
+1. `matias-kanban` (pre-sync) — receives a merge from the latest upstream release tag (skipped if
+   already at parity with it), resolves conflicts, passes the validation gate.
 2. `matias-kanban` → renamed to `ichatr-main` (local `git branch -m`), pushed to `origin`.
 3. `ichatr-main` (steady state) — permanent; never renamed again by this feature; all subsequent
    work branches off it and merges back via PR.
@@ -26,18 +26,35 @@ once step 2 completes (FR-001).
 
 ## Mirror branch (`develop`)
 
-**Represents**: The local reference branch the sync script's `--audit` mode merge-bases against
-by default.
+**Represents**: A local reference-only branch used to inspect in-progress upstream work. It is
+**not** the sync source and is **never** merged into `ichatr-main` — the sync source is the latest
+upstream release tag instead (see Sync target below).
 
 **Attributes**:
 - `name`: `develop`
 - `tracks`: `upstream/develop`, fast-forward only
 
-**Lifecycle**: Fast-forwarded on every sync (this phase's sync, and every future one); never
-receives a local commit. State is fully determined by `upstream/develop` at any point in time.
+**Lifecycle**: Fast-forwarded whenever it's useful as a reference; never receives a local commit
+and is never merged anywhere. State is fully determined by `upstream/develop` at any point in
+time.
 
 **Invariant**: `git log develop..upstream/develop` and `git log upstream/develop..develop` are
 both empty immediately after any fast-forward (i.e., `develop` == `upstream/develop`).
+
+## Sync target (upstream release tag)
+
+**Represents**: The most recently created tag on the `chatwoot/chatwoot` upstream remote — the
+only valid merge source for a sync.
+
+**Attributes**:
+- `name`: e.g. `v4.16.2`
+- `identified_via`: `git fetch upstream --tags && git tag --sort=-creatordate --list 'v*' | head -1`
+
+**Lifecycle**: A sync is triggered by this tag changing (a new upstream release being cut), not by
+`develop` moving or on a schedule.
+
+**Invariant**: `upstream/develop` HEAD is never used as a merge source, regardless of how far
+ahead of the latest tag it is.
 
 ## Sync manifest gate
 

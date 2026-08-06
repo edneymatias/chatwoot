@@ -10,15 +10,32 @@ This fork is about to become a standalone product ("ichatr"): its own
 Docker image, its own registry, its own release cadence — not just a
 Chatwoot checkout with a Kanban add-on bolted on. Before any of the
 release-engineering work (CI/CD, image publishing, table-prefix rename) can
-happen, the fork's working branch needs to (a) catch up with upstream
-Chatwoot, which it's currently 61 commits behind on, and (b) get a
-permanent identity as the fork's long-term branch instead of a
-feature-branch name (`matias-kanban`) that no longer describes what it is.
+happen, the fork's working branch needs to (a) sit on a known-stable
+upstream base, and (b) get a permanent identity as the fork's long-term
+branch instead of a feature-branch name (`matias-kanban`) that no longer
+describes what it is.
 
-This phase is purely about getting the branch current and correctly
-identified — no image publishing, no table rename, no version tag cut yet.
-Those are separate phases (table-prefix rename, CI/CD, release cut),
-deliberately sequenced after this one so they build on an up-to-date base.
+This phase is purely about getting the branch onto a stable base and
+correctly identified — no image publishing, no table rename, no version tag
+cut yet. Those are separate phases (table-prefix rename, CI/CD, release
+cut), deliberately sequenced after this one so they build on a stable base.
+
+**Correction (2026-08-06)**: an earlier pass of this phase merged the fork
+up to the tip of `upstream/develop` directly. That was a mistake and has
+been reverted. `upstream/develop` is Chatwoot's active integration branch —
+it can and does contain features that are incomplete or mid-rollout across
+multiple PRs (e.g. a commit explicitly titled as part 1 of a 5-part
+rollout), as well as features that haven't shipped in any tagged release
+yet. Merging that HEAD into the fork risks shipping unfinished upstream
+behavior and inheriting upstream build/toolchain issues that haven't been
+stabilized for a release. **The fork must be synced against the latest
+*tagged* upstream release, never against `develop` HEAD.** At the time of
+this correction the latest upstream tag is `v4.16.2`, and the fork's branch
+was already at parity with it before the bad merge was attempted (its
+pre-merge tip's merge-base with `v4.16.2` was one trivial version-bump
+commit short of the tag) — so no sync merge is actually needed right now.
+This phase's only concrete remaining action is the branch rename below; the
+sync procedure is documented for the next time a new upstream tag is cut.
 
 **Decision made during brainstorming**: Phase 13 (standalone patch-package
 extraction into its own bootstrap-able repo) is dropped. It was designed
@@ -41,26 +58,29 @@ Future upstream syncs repeat this same phase's steps periodically, merging
 into `ichatr-main` directly.
 
 **FR-002**: The local `develop` branch is kept as a plain mirror of
-`upstream/develop` — fast-forwarded on every sync, never diverges with its
-own commits. It exists solely as the reference branch
-`bin/sync-custom-module-hooks --audit` merge-bases against by default; no
-work happens directly on it.
+`upstream/develop` — fast-forwarded whenever it's needed for reference
+(e.g. diffing an in-progress upstream feature before it ships), never
+diverges with its own commits, and is **never merged into `ichatr-main`
+directly**. It exists purely as a read reference; it is not the sync
+source.
 
 ## Sync procedure
 
-**FR-003**: Fast-forward local `develop` to `upstream/develop` (currently a
-clean 61-commit fast-forward — confirmed zero local-only commits on
-`develop` today, so no conflict resolution needed for this step
-specifically).
+**FR-003**: The sync target is always the **latest tagged upstream
+release** (`git tag --sort=-creatordate | head -1` against the
+`chatwoot/chatwoot` upstream remote), never `upstream/develop` HEAD. A sync
+is triggered by a new upstream tag being cut, not on a schedule and not by
+`develop` moving.
 
-**FR-004**: Merge `develop` into `ichatr-main` with a single merge commit
-(not rebase) — chosen because `ichatr-main` is a permanent branch, not a
-short-lived feature branch; a single merge resolves conflicts once instead
-of replaying conflict resolution across each of the fork's existing
-commits. Conflicts are expected primarily in the core files the manifest
-already tracks (`dashboard.routes.js`, `Sidebar.vue`, `actionCable.js`,
-`store/index.js`, `settings.routes.js`, `automationHelper.js`, etc.), since
-those are exactly the files both upstream and the fork touch.
+**FR-004**: Merge the upstream release tag into `ichatr-main` with a single
+merge commit (not rebase) — chosen because `ichatr-main` is a permanent
+branch, not a short-lived feature branch; a single merge resolves conflicts
+once instead of replaying conflict resolution across each of the fork's
+existing commits. Conflicts are expected primarily in the core files the
+manifest already tracks (`dashboard.routes.js`, `Sidebar.vue`,
+`actionCable.js`, `store/index.js`, `settings.routes.js`,
+`automationHelper.js`, etc.), since those are exactly the files both
+upstream and the fork touch.
 
 **FR-005**: After the merge lands (conflicts resolved, build green), the
 sync isn't considered done until this gate passes, in order:

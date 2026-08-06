@@ -14,19 +14,24 @@ exact gate contract.
 
 ## User Story 1: Sync validated by the manifest gate and test suite
 
-1. Fast-forward the mirror:
+1. Identify the sync target — the latest upstream release tag, **never** `upstream/develop` HEAD:
    ```
-   git checkout develop
-   git fetch upstream
-   git merge --ff-only upstream/develop
+   git fetch upstream --tags
+   git tag --sort=-creatordate --list 'v*' | head -1
    ```
-   Expected: fast-forward succeeds with no conflicts (spec Assumption: zero local-only commits on
-   `develop` today).
+   Expected: a tag name, e.g. `v4.16.2`.
 
-2. Merge into the fork's working branch:
+2. Check whether the fork's branch is already at parity with that tag:
+   ```
+   git merge-base HEAD <tag>
+   git rev-list -1 <tag>
+   ```
+   If the merge-base and the tag's commit differ only by trivial release-bump commits, the branch
+   is already at parity — skip the merge below entirely. Otherwise, merge into the fork's working
+   branch:
    ```
    git checkout matias-kanban
-   git merge --no-ff develop
+   git merge --no-ff <tag>
    ```
    Expected: conflicts (if any) appear primarily in manifest-tracked files (see plan.md's Project
    Structure list). Resolve each case-by-case per the Clarifications session — re-read upstream's
