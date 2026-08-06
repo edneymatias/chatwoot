@@ -95,6 +95,30 @@ commands with `docker compose exec <service>`.
 - The setup workflow in `.codex/environments/environment.toml` should dynamically generate per-worktree DB/port values (Rails, Vite, Redis DB index) to avoid collisions.
 - Start each worktree with its own Overmind socket/title so multiple instances can run at the same time.
 
+## Branch Model
+
+- **`ichatr-main`** is the fork's single permanent branch (renamed from `matias-kanban`). All
+  feature branches, hotfixes, and upstream syncs branch off it and merge back into it via PR.
+- **`develop`** is a fast-forward-only mirror of `upstream/develop` (`chatwoot/chatwoot`). It
+  never receives local commits; update it with `git fetch upstream && git merge --ff-only
+  upstream/develop`.
+- There is **no `release/*` branch scheme** — releases are tagged directly off `ichatr-main`.
+- Upstream sync flow: fast-forward `develop`, then `git merge --no-ff develop` into
+  `ichatr-main`, then validate with `bin/sync-custom-module-hooks --check` / `--audit` and the
+  full test suites (`bundle exec rspec`, `pnpm test`) before considering the sync done.
+
+## Fork Versioning Scheme
+
+- Release tags follow **`<upstream-base-version>-ichatr.<N>`** (hyphen-delimited, valid as a git
+  tag, Docker tag, and `package.json` `version` value without translation).
+- The upstream base version is the value of the `version` field in `package.json` at release-cut
+  time (it mirrors the upstream Chatwoot version this fork is built on, e.g. `4.16.2`).
+- `N` starts at `1` for the first release on a given upstream base, increments for every
+  additional release on the same base (e.g. hotfixes), and resets to `1` when the first release
+  is cut on a new upstream base — it is never carried across bases.
+- Examples: base `4.16.2` first release → `4.16.2-ichatr.1`; same-base hotfix →
+  `4.16.2-ichatr.2`; after syncing to base `4.17.0`, first release → `4.17.0-ichatr.1`.
+
 ## Commit Messages
 
 - Prefer Conventional Commits: `type(scope): subject` (scope optional)
