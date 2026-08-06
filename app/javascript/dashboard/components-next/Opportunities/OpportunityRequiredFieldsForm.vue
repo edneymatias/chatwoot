@@ -1,5 +1,6 @@
 <script setup>
 import { useI18n } from 'vue-i18n';
+import Icon from 'dashboard/components-next/icon/Icon.vue';
 
 const props = defineProps({
   requiredCustomAttributeDefinitions: {
@@ -99,30 +100,39 @@ const getInputType = displayType => {
       </div>
 
       <!-- List (Select) -->
-      <select
+      <div
         v-else-if="definition.attribute_display_type === 'list'"
-        :value="customAttributes[definition.attribute_key] || ''"
-        class="w-full pl-3 pr-8 py-2 border rounded-md bg-n-surface-1 text-n-slate-12 text-sm focus:outline-none focus:ring-1 focus:ring-n-brand-9"
-        :class="
-          missingCustomAttributeKeys.includes(definition.attribute_key)
-            ? 'border-n-ruby-7'
-            : 'border-n-weak'
-        "
-        @change="
-          handleAttributeUpdate(definition.attribute_key, $event.target.value)
-        "
+        class="relative"
       >
-        <option value="" disabled>
-          {{ t('CONTACTS_LAYOUT.SIDEBAR.ATTRIBUTES.TRIGGER.SELECT') }}
-        </option>
-        <option
-          v-for="val in definition.attribute_values"
-          :key="val"
-          :value="val"
+        <select
+          :value="customAttributes[definition.attribute_key] || ''"
+          class="w-full appearance-none bg-none pl-3 pr-10 py-2 border rounded-md bg-n-surface-1 text-n-slate-12 text-sm focus:outline-none focus:ring-1 focus:ring-n-brand-9"
+          :class="
+            missingCustomAttributeKeys.includes(definition.attribute_key)
+              ? 'border-n-ruby-7'
+              : 'border-n-weak'
+          "
+          @change="
+            handleAttributeUpdate(definition.attribute_key, $event.target.value)
+          "
         >
-          {{ val }}
-        </option>
-      </select>
+          <option value="" disabled>
+            {{ t('CONTACTS_LAYOUT.SIDEBAR.ATTRIBUTES.TRIGGER.SELECT') }}
+          </option>
+          <option
+            v-for="val in definition.attribute_values"
+            :key="val"
+            :value="val"
+          >
+            {{ val }}
+          </option>
+        </select>
+        <div
+          class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
+        >
+          <Icon icon="i-lucide-chevron-down" class="size-4 text-n-slate-11" />
+        </div>
+      </div>
 
       <!-- Standard Inputs (Text, Number, Link, Date) -->
       <input
@@ -150,10 +160,12 @@ const getInputType = displayType => {
     </div>
 
     <!-- Deal Value -->
-    <div v-if="requiresDealValue" class="flex flex-col gap-1">
+    <div class="flex flex-col gap-1">
       <label class="text-sm font-medium text-n-slate-12">
         {{ t('OPPORTUNITIES.DEAL_VALUE') || 'Deal Value' }}
-        <span v-if="!isOptional" class="text-n-ruby-10">{{ '*' }}</span>
+        <span v-if="requiresDealValue && !isOptional" class="text-n-ruby-10">{{
+          '*'
+        }}</span>
       </label>
       <input
         type="number"
@@ -199,25 +211,34 @@ const getInputType = displayType => {
       </div>
 
       <!-- List (Select) -->
-      <select
+      <div
         v-else-if="definition.attribute_display_type === 'list'"
-        :value="customAttributes[definition.attribute_key] || ''"
-        class="w-full pl-3 pr-8 py-2 border rounded-md bg-n-surface-1 text-n-slate-12 text-sm focus:outline-none focus:ring-1 focus:ring-n-brand-9 border-n-weak"
-        @change="
-          handleAttributeUpdate(definition.attribute_key, $event.target.value)
-        "
+        class="relative"
       >
-        <option value="" disabled>
-          {{ t('CONTACTS_LAYOUT.SIDEBAR.ATTRIBUTES.TRIGGER.SELECT') }}
-        </option>
-        <option
-          v-for="val in definition.attribute_values"
-          :key="val"
-          :value="val"
+        <select
+          :value="customAttributes[definition.attribute_key] || ''"
+          class="w-full appearance-none bg-none pl-3 pr-10 py-2 border rounded-md bg-n-surface-1 text-n-slate-12 text-sm focus:outline-none focus:ring-1 focus:ring-n-brand-9 border-n-weak"
+          @change="
+            handleAttributeUpdate(definition.attribute_key, $event.target.value)
+          "
         >
-          {{ val }}
-        </option>
-      </select>
+          <option value="" disabled>
+            {{ t('CONTACTS_LAYOUT.SIDEBAR.ATTRIBUTES.TRIGGER.SELECT') }}
+          </option>
+          <option
+            v-for="val in definition.attribute_values"
+            :key="val"
+            :value="val"
+          >
+            {{ val }}
+          </option>
+        </select>
+        <div
+          class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
+        >
+          <Icon icon="i-lucide-chevron-down" class="size-4 text-n-slate-11" />
+        </div>
+      </div>
 
       <!-- Standard Inputs (Text, Number, Link, Date) -->
       <input

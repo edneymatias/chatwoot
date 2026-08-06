@@ -5,6 +5,7 @@ import { mutations } from './mutations';
 const state = {
   byId: {},
   idsByStage: {},
+  idsByContact: {},
   allIds: [],
   pagination: {
     byStage: {},

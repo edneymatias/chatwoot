@@ -5,9 +5,12 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
   before_action :check_authorization
 
   def index
-    @opportunities = policy_scope(Opportunity).includes(:pipeline_stage, :origin_conversation, contact: { avatar_attachment: :blob },
-                                                                                               assignee: { avatar_attachment: :blob }).order(created_at: :desc)
+    @opportunities = policy_scope(Opportunity)
+                     .includes(:pipeline_stage, :origin_conversation,
+                               contact: { avatar_attachment: :blob }, assignee: { avatar_attachment: :blob })
+                     .order(created_at: :desc)
     @opportunities = @opportunities.where(pipeline_stage_id: params[:pipeline_stage_id]) if params[:pipeline_stage_id].present?
+    @opportunities = @opportunities.where(contact_id: params[:contact_id]) if params[:contact_id].present?
     @opportunities = @opportunities.page(params[:page]).per(10) if params[:page].present?
     render json: @opportunities
   end

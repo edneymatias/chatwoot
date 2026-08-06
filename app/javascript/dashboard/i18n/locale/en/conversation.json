@@ -427,7 +427,11 @@
       "MACROS": "Macros",
       "LINEAR_ISSUES": "Linked Linear Issues",
       "SHOPIFY_ORDERS": "Shopify Orders",
-      "SHARED_FILES": "Attachments"
+      "SHARED_FILES": "Attachments",
+      "PREVIOUS_OPPORTUNITIES": "Opportunities"
+    },
+    "PREVIOUS_OPPORTUNITIES": {
+      "EMPTY": "No opportunities found for this contact"
     },
     "SHARED_FILES": {
       "EMPTY": "No attachments yet",

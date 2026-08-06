@@ -40,6 +40,24 @@ export const actions = {
       commit('SET_IS_FETCHING', { stageId, isFetching: false });
     }
   },
+  fetchForContact: async ({ commit }, { contactId }) => {
+    try {
+      const response = await opportunitiesAPI.get({ contact_id: contactId });
+      const payload = response.data.payload || response.data;
+
+      commit('ADD_MANY_OPPORTUNITIES', payload);
+      commit(
+        'ADD_MANY_OPPORTUNITIES_ID',
+        payload.map(o => o.id)
+      );
+      commit('SET_IDS_BY_CONTACT', {
+        contactId,
+        opportunityIds: payload.map(o => o.id),
+      });
+    } catch (error) {
+      throwErrorMessage(error);
+    }
+  },
   moveCard: async (
     { commit, state },
     { id, fromStageId, toStageId, toIndex, custom_attributes, value }
@@ -142,7 +160,16 @@ export const actions = {
       const payload = { status };
       if (custom_attributes !== undefined)
         payload.custom_attributes = custom_attributes;
-      await opportunitiesAPI.update(id, payload);
+      const response = await opportunitiesAPI.update(id, payload);
+      const responsePayload = response.data.payload || response.data;
+      commit('UPDATE_OPPORTUNITY', {
+        id,
+        updates: {
+          status: responsePayload.status,
+          custom_attributes: responsePayload.custom_attributes,
+          value: responsePayload.value,
+        },
+      });
     } catch (error) {
       commit('SET_STATUS', { id, status: previousStatus });
       if (custom_attributes !== undefined) {
@@ -159,18 +186,38 @@ export const actions = {
       const response = await opportunitiesAPI.update(id, data);
       const payload = response.data.payload || response.data;
       if (state.byId[id]) {
+        const previousStageId = state.byId[id].pipeline_stage_id;
         commit('UPDATE_OPPORTUNITY', {
           id,
           updates: {
+            title: payload.title,
+            status: payload.status,
+            assignee_id: payload.assignee_id,
+            assignee: payload.assignee,
             custom_attributes: payload.custom_attributes,
             value: payload.value,
+            pipeline_stage_id: payload.pipeline_stage_id,
             current_stage_entered_at: payload.current_stage_entered_at,
           },
         });
+        if (
+          payload.pipeline_stage_id &&
+          payload.pipeline_stage_id !== previousStageId
+        ) {
+          commit('MOVE_ID_BETWEEN_STAGES', {
+            id,
+            fromStageId: previousStageId,
+            toStageId: payload.pipeline_stage_id,
+          });
+        }
         if (payload.pipeline_stage_id) {
           dispatch(
             'pipelineStages/fetchAggregates',
-            { stageIds: [payload.pipeline_stage_id] },
+            {
+              stageIds: [payload.pipeline_stage_id, previousStageId].filter(
+                Boolean
+              ),
+            },
             { root: true }
           );
         }

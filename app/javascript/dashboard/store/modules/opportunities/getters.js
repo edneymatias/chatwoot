@@ -3,6 +3,10 @@ export const getters = {
     const ids = state.idsByStage[stageId] || [];
     return ids.map(id => state.byId[id]).filter(card => card !== undefined);
   },
+  cardsForContact: state => contactId => {
+    const ids = state.idsByContact[contactId] || [];
+    return ids.map(id => state.byId[id]).filter(card => card !== undefined);
+  },
   cardById: state => id => {
     return state.byId[id];
   },

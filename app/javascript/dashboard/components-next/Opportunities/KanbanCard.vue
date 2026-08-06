@@ -1,16 +1,9 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, toRef } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
-import { useI18n } from 'vue-i18n';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
-import {
-  dynamicTime,
-  shortTimestamp,
-  getDayDifferenceFromNow,
-} from 'shared/helpers/timeHelper';
-import { getContrastingTextColor } from '@chatwoot/utils';
-import { formatCurrencyAmount } from 'dashboard/constants/pipelineCurrency';
+import { useOpportunityCardFields } from 'dashboard/composables/useOpportunityCardFields';
 
 const props = defineProps({
   opportunity: {
@@ -22,13 +15,14 @@ const props = defineProps({
 defineEmits(['statusChanged', 'completeFields']);
 const router = useRouter();
 const store = useStore();
-const { t, locale } = useI18n();
 
-const statusBadgeClass = computed(() => {
-  if (props.opportunity.status === 'won') return 'bg-n-teal-3 text-n-teal-11';
-  if (props.opportunity.status === 'lost') return 'bg-n-ruby-3 text-n-ruby-11';
-  return 'bg-n-slate-3 text-n-slate-11';
-});
+const {
+  statusBadgeClass,
+  isStale,
+  configuredFields,
+  timestampLabel,
+  timestampTooltip,
+} = useOpportunityCardFields(toRef(props, 'opportunity'));
 
 const handleCardClick = () => {
   if (!props.opportunity.origin_conversation_id) return;
@@ -61,21 +55,6 @@ const currentStage = computed(() =>
   store.getters['pipelineStages/stageById'](props.opportunity.pipeline_stage_id)
 );
 
-const isStale = computed(() => {
-  if (
-    !currentStage.value?.stale_after_days ||
-    !props.opportunity.current_stage_entered_at
-  ) {
-    return false;
-  }
-  return (
-    getDayDifferenceFromNow(
-      new Date(),
-      props.opportunity.current_stage_entered_at
-    ) > currentStage.value.stale_after_days
-  );
-});
-
 const hasUnmetRequirements = computed(() => {
   if (!currentStage.value) return false;
 
@@ -105,77 +84,6 @@ const hasUnmetRequirements = computed(() => {
 
   return false;
 });
-
-const pipelineCurrency = computed(
-  () => store.getters['pipelineCurrencySetting/getCurrency']
-);
-const cardFieldConfigs = computed(
-  () => store.getters['pipelineCardFieldConfigs/getRecords'] || []
-);
-
-const configuredFields = computed(() => {
-  const fields = [];
-  const attrs = props.opportunity.custom_attributes || {};
-
-  cardFieldConfigs.value.forEach(config => {
-    if (config.field_type === 'deal_value') {
-      const rawValue = props.opportunity.value;
-      if (rawValue !== null && rawValue !== undefined && rawValue !== '') {
-        fields.push({
-          id: config.id,
-          color: config.color,
-          textColor: getContrastingTextColor(config.color),
-          value: formatCurrencyAmount(
-            rawValue,
-            pipelineCurrency.value,
-            true // compact mode
-          ),
-          label: t('OPPORTUNITIES.DEAL_VALUE'),
-        });
-      }
-    } else if (config.field_type === 'custom_attribute') {
-      const defId = config.custom_attribute_definition_id;
-      const def = store.getters['attributes/getAttributesByModel'](
-        'opportunity_attribute'
-      ).find(d => d.id === defId);
-      if (def) {
-        const rawValue = attrs[def.attribute_key];
-        if (rawValue !== null && rawValue !== undefined && rawValue !== '') {
-          let formattedValue = rawValue;
-          if (def.attribute_display_type === 'currency') {
-            formattedValue = formatCurrencyAmount(
-              rawValue,
-              pipelineCurrency.value,
-              true // compact mode
-            );
-          } else if (def.attribute_display_type === 'date') {
-            try {
-              const dateObj = new Date(rawValue);
-              // vue-i18n locale might be pt_BR, replace with pt-BR for Intl
-              const localeCode = locale.value
-                ? locale.value.replace('_', '-')
-                : 'en-US';
-              formattedValue = dateObj.toLocaleDateString(localeCode, {
-                month: 'numeric',
-                day: 'numeric',
-              });
-            } catch (e) {
-              formattedValue = String(rawValue);
-            }
-          }
-          fields.push({
-            id: config.id,
-            color: config.color,
-            textColor: getContrastingTextColor(config.color),
-            value: formattedValue,
-            label: def.attribute_display_name,
-          });
-        }
-      }
-    }
-  });
-  return fields;
-});
 </script>
 
 <template>
@@ -202,12 +110,7 @@ const configuredFields = computed(() => {
           }}
         </span>
         <span
-          v-if="opportunity.current_stage_entered_at || opportunity.created_at"
-          v-tooltip.top="
-            opportunity.current_stage_entered_at
-              ? $t('OPPORTUNITIES.BOARD.TIME_IN_STAGE')
-              : $t('OPPORTUNITIES.BOARD.TIME_SINCE_CREATED')
-          "
+          v-tooltip.top="timestampTooltip"
           class="text-xs"
           :class="
             isStale
@@ -215,13 +118,7 @@ const configuredFields = computed(() => {
               : 'text-n-slate-10'
           "
         >
-          {{
-            shortTimestamp(
-              dynamicTime(
-                opportunity.current_stage_entered_at || opportunity.created_at
-              )
-            )
-          }}
+          {{ timestampLabel }}
         </span>
       </div>
     </div>

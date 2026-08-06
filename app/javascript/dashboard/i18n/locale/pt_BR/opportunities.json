@@ -15,7 +15,8 @@
         "EDIT": "Editar"
       },
       "TIME_IN_STAGE": "Tempo neste estágio",
-      "TIME_SINCE_CREATED": "Tempo desde a criação"
+      "CREATED_TOOLTIP": "Criado em {date}",
+      "CREATED_LABEL": "Criado"
     },
     "CREATE_MODAL": {
       "TITLE": "Criar Oportunidade",

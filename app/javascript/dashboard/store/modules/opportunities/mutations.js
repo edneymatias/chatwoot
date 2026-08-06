@@ -28,6 +28,12 @@ export const mutations = {
       [stageId]: opportunityIds,
     };
   },
+  SET_IDS_BY_CONTACT(state, { contactId, opportunityIds }) {
+    state.idsByContact = {
+      ...state.idsByContact,
+      [contactId]: opportunityIds,
+    };
+  },
   APPEND_IDS_BY_STAGE(state, { stageId, opportunityIds }) {
     const existing = state.idsByStage[stageId] || [];
     const newIds = opportunityIds.filter(id => !existing.includes(id));
@@ -125,5 +131,23 @@ export const mutations = {
     if (state.byId[id]) {
       state.byId[id] = { ...state.byId[id], ...updates };
     }
+  },
+  MOVE_ID_BETWEEN_STAGES(state, { id, fromStageId, toStageId }) {
+    if (fromStageId === toStageId) return;
+
+    const fromIds = fromStageId
+      ? [...(state.idsByStage[fromStageId] || [])]
+      : [];
+    const cardIndex = fromIds.indexOf(id);
+    if (cardIndex !== -1) fromIds.splice(cardIndex, 1);
+
+    const toIds = [...(state.idsByStage[toStageId] || [])];
+    if (!toIds.includes(id)) toIds.push(id);
+
+    state.idsByStage = {
+      ...state.idsByStage,
+      ...(fromStageId ? { [fromStageId]: fromIds } : {}),
+      [toStageId]: toIds,
+    };
   },
 };

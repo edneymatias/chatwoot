@@ -24,6 +24,7 @@ import ShopifyOrdersList from 'dashboard/components/widgets/conversation/Shopify
 import SidebarActionsHeader from 'dashboard/components-next/SidebarActionsHeader.vue';
 import LinearIssuesList from 'dashboard/components/widgets/conversation/linear/IssuesList.vue';
 import LinearSetupCTA from 'dashboard/components/widgets/conversation/linear/LinearSetupCTA.vue';
+import ContactOpportunities from './ContactOpportunities.vue';
 
 const props = defineProps({
   conversationId: {
@@ -59,6 +60,10 @@ const { isCloudFeatureEnabled } = useAccount();
 
 const isLinearFeatureEnabled = computed(() =>
   isCloudFeatureEnabled(FEATURE_FLAGS.LINEAR)
+);
+
+const isOpportunitiesFeatureEnabled = computed(() =>
+  isCloudFeatureEnabled(FEATURE_FLAGS.OPPORTUNITIES)
 );
 
 const linearIntegration = useFunctionGetter(
@@ -308,6 +313,29 @@ onMounted(() => {
               "
             >
               <SharedFiles />
+            </AccordionItem>
+          </div>
+          <div
+            v-else-if="
+              element.name === 'previous_opportunities' &&
+              isOpportunitiesFeatureEnabled
+            "
+          >
+            <AccordionItem
+              v-if="contact.id"
+              :title="
+                $t('CONVERSATION_SIDEBAR.ACCORDION.PREVIOUS_OPPORTUNITIES')
+              "
+              :is-open="
+                isContactSidebarItemOpen('is_previous_opportunities_open')
+              "
+              compact
+              @toggle="
+                value =>
+                  toggleSidebarUIState('is_previous_opportunities_open', value)
+              "
+            >
+              <ContactOpportunities :contact-id="contact.id" />
             </AccordionItem>
           </div>
         </template>

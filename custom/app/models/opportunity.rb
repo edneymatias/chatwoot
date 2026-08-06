@@ -18,6 +18,7 @@ class Opportunity < ApplicationRecord
   attr_accessor :missing_required_fields
 
   before_save :set_or_clear_closed_at, if: :status_changed?
+  before_save :reset_closing_required_attributes, if: :status_changed?
   after_create :record_initial_stage_change
   after_update :record_subsequent_stage_change, if: :saved_change_to_pipeline_stage_id?
   after_commit :broadcast_opportunity_updated, on: %i[create update]
@@ -83,6 +84,21 @@ class Opportunity < ApplicationRecord
 
     self.missing_required_fields = { custom_attribute_keys: missing_keys }
     errors.add(:base, 'Missing required fields to close this opportunity')
+  end
+
+  def reset_closing_required_attributes
+    return unless status.to_s == 'open' && status_was.to_s.in?(%w[won lost])
+
+    definitions = CustomAttributeDefinition
+                  .where(id: PipelineClosingRequiredField.where(account_id: account_id, outcome: status_was)
+                                                          .select(:custom_attribute_definition_id))
+    return if definitions.none?
+
+    attrs = (custom_attributes || {}).dup
+    definitions.each do |definition|
+      attrs[definition.attribute_key] = definition.attribute_display_type == 'checkbox' ? false : nil
+    end
+    self.custom_attributes = attrs
   end
 
   def set_or_clear_closed_at

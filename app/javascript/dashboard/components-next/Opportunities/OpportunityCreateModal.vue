@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import OpportunityRequiredFieldsForm from './OpportunityRequiredFieldsForm.vue';
 
@@ -27,6 +27,10 @@ const isSearching = ref(false);
 const assigneeId = ref(null);
 
 const agents = computed(() => store.getters['agents/getVerifiedAgents']);
+
+onMounted(() => {
+  store.dispatch('agents/get');
+});
 
 const stages = computed(
   () => store.getters['pipelineStages/stagesSortedByPosition']
