@@ -147,6 +147,58 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  anchor: '      priorityOptions: priorityOptions.value,',
                  insert: '      pipelineStages: pipelineStages.value,'
                },
+               # create_opportunity action needs its own input widget wired into the shared
+               # AutomationActionInput used by both automation rules and macros.
+               {
+                 file: 'app/javascript/dashboard/components/widgets/AutomationActionInput.vue',
+                 anchor: '    AutomationActionTeamMessageInput,',
+                 insert: "\n    AutomationActionCreateOpportunityInput,"
+               },
+               {
+                 file: 'app/javascript/dashboard/composables/useUISettings.js',
+                 anchor: "  { name: 'shopify_orders' },",
+                 insert: "\n  { name: 'previous_opportunities' },"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/conversation/ContactPanel.vue',
+                 anchor: "import LinearSetupCTA from 'dashboard/components/widgets/conversation/linear/LinearSetupCTA.vue';",
+                 insert: "\nimport ContactOpportunities from './ContactOpportunities.vue';"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/automation/Index.vue',
+                 anchor: "  store.dispatch('automations/get');",
+                 insert: "\n  store.dispatch('pipelineStages/fetch');"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/reports/reports.routes.js',
+                 anchor: "import SLAReports from './SLAReports.vue';",
+                 insert: "\nimport OpportunityFunnelReport from './OpportunityFunnelReport.vue';\nimport OpportunityAttributeReport from './OpportunityAttributeReport.vue';"
+               },
+               {
+                 file: 'app/javascript/dashboard/store/mutation-types.js',
+                 anchor: "  SET_SLA_REPORTS_META: 'SET_SLA_REPORTS_META',",
+                 insert: "\n  SET_OPPORTUNITY_FUNNEL_REPORTS_UI_FLAG:\n    'SET_OPPORTUNITY_FUNNEL_REPORTS_UI_FLAG',\n  SET_OPPORTUNITY_FUNNEL_REPORTS_DATA: 'SET_OPPORTUNITY_FUNNEL_REPORTS_DATA',\n  SET_OPPORTUNITY_ATTRIBUTE_REPORTS_UI_FLAG:\n    'SET_OPPORTUNITY_ATTRIBUTE_REPORTS_UI_FLAG',\n  SET_OPPORTUNITY_ATTRIBUTE_REPORTS_DATA:\n    'SET_OPPORTUNITY_ATTRIBUTE_REPORTS_DATA',"
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/en/conversation.json',
+                 anchor: '      "SHARED_FILES": "Attachments",',
+                 insert: "\n      \"PREVIOUS_OPPORTUNITIES\": \"Opportunities\"\n    },\n    \"PREVIOUS_OPPORTUNITIES\": {\n      \"EMPTY\": \"No opportunities found for this contact\""
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/en/report.json',
+                 anchor: '"CONVERSATIONS": "No. of conversations"',
+                 insert: '"OPPORTUNITY_FUNNEL_REPORTS"'
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/pt_BR/automation.json',
+                 anchor: '"URL_INPUT_PLACEHOLDER": "Insira URL",',
+                 insert: '"CREATE_OPPORTUNITY_STAGE_PLACEHOLDER"'
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/pt_BR/report.json',
+                 anchor: '"CONVERSATIONS": "Nº de Conversas"',
+                 insert: '"OPPORTUNITY_FUNNEL_REPORTS"'
+               },
                # The upstream account_spec asserts the exact flag set of feature_flags_ext_1;
                # keep the fork's opportunities flag in the expectation so the suite stays green.
                {
@@ -206,7 +258,8 @@ if mode == :audit
       'app/javascript/dashboard/routes/dashboard/settings/attributes/constants.js',
       'app/javascript/dashboard/routes/dashboard/settings/automation/constants.js',
       'app/javascript/dashboard/store/modules/attributes.js',
-      'app/models/custom_attribute_definition.rb'
+      'app/models/custom_attribute_definition.rb',
+      '.vscode/settings.json'
     ]
     return true if out_of_scope.include?(path)
 
