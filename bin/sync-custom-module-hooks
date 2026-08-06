@@ -58,12 +58,12 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'app/javascript/dashboard/store/index.js',
                  anchor: "import captainCustomTools from './captain/customTools';",
-                 insert: "import pipelineStages from './modules/pipelineStages';\nimport opportunities from './modules/opportunities';"
+                 insert: "import pipelineStages from './modules/pipelineStages';\nimport pipelineClosingRequiredFields from './modules/pipelineClosingRequiredFields';\nimport pipelineCardFieldConfigs from './modules/pipelineCardFieldConfigs';\nimport pipelineCurrencySetting from './modules/pipelineCurrencySetting';\nimport opportunities from './modules/opportunities';"
                },
                {
                  file: 'app/javascript/dashboard/store/index.js',
                  anchor: '    captainCustomTools,',
-                 insert: "    pipelineStages,\n    opportunities,"
+                 insert: "    pipelineStages,\n    pipelineClosingRequiredFields,\n    pipelineCardFieldConfigs,\n    pipelineCurrencySetting,\n    opportunities,"
                },
                # featureFlags.js
                {
@@ -100,7 +100,7 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'config/routes.rb',
                  anchor: "          resources :macros, only: [:index, :create, :show, :update, :destroy] do\n            post :execute, on: :member\n          end",
-                 insert: "          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do\n            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'\n          end\n          resources :opportunities, only: [:index, :show, :create, :update, :destroy]"
+                 insert: "          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do\n            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'\n          end\n          resources :pipeline_stage_aggregates, only: [:index]\n          resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]\n          resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]\n          resource :pipeline_currency_setting, only: [:show, :update]\n          resources :opportunities, only: [:index, :show, :create, :update, :destroy]\n          resources :opportunity_funnel_reports, only: [:index]\n          resources :opportunity_attribute_reports, only: [:index]"
                },
                {
                  file: 'config/features.yml',
@@ -120,12 +120,17 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'app/javascript/dashboard/i18n/locale/en/settings.json',
                  anchor: '    "AGENT_BOTS": "Bots",',
-                 insert: '    "PIPELINE_STAGES": "Pipeline Stages",'
+                 insert: '    "PIPELINE_STAGES": "Pipeline Setup",'
                },
                {
                  file: 'app/javascript/dashboard/i18n/locale/pt_BR/settings.json',
                  anchor: '  "SIDEBAR": {',
                  insert: '    "OPPORTUNITIES": "Oportunidades",'
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/pt_BR/settings.json',
+                 anchor: '    "AUTOMATION": "Automação",',
+                 insert: '    "PIPELINE_STAGES": "Configuração do Funil",'
                },
                {
                  file: 'app/javascript/dashboard/i18n/locale/en/automation.json',
@@ -141,16 +146,6 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  file: 'app/javascript/dashboard/composables/useAutomationValues.js',
                  anchor: '      priorityOptions: priorityOptions.value,',
                  insert: '      pipelineStages: pipelineStages.value,'
-               },
-               {
-                 file: 'app/javascript/dashboard/helper/automationHelper.js',
-                 anchor: '  priorityOptions,',
-                 insert: '  pipelineStages,'
-               },
-               {
-                 file: 'app/javascript/dashboard/helper/automationHelper.js',
-                 anchor: '    add_sla: slaPolicies,',
-                 insert: '    create_opportunity: pipelineStages,'
                }
              ]
            end
