@@ -3,6 +3,11 @@ import { mount } from '@vue/test-utils';
 import KanbanBoard from '../KanbanBoard.vue';
 import { createStore } from 'vuex';
 
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ name: 'opportunities_index', params: { accountId: 1 } }),
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 const createMockStore = moveCardMock => {
   return createStore({
     modules: {

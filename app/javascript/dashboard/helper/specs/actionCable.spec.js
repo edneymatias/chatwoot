@@ -386,7 +386,7 @@ describe('ActionCableConnector - Copilot Tests', () => {
       );
     });
 
-    it('should dispatch opportunities/updateOpportunity when opportunity_updated is received', () => {
+    it('should dispatch opportunities/syncOpportunity when opportunity_updated is received', () => {
       const opportunityData = {
         id: 123,
         pipeline_stage_id: 4,
@@ -403,7 +403,7 @@ describe('ActionCableConnector - Copilot Tests', () => {
       });
 
       expect(mockDispatch).toHaveBeenCalledWith(
-        'opportunities/updateOpportunity',
+        'opportunities/syncOpportunity',
         opportunityData
       );
     });

@@ -95,10 +95,7 @@ describe('Sidebar.vue', () => {
         plugins: [store, i18n],
         stubs: {
           RouterLink: { template: '<a><slot /></a>' },
-          SidebarGroup: {
-            template: '<div><slot /></div>',
-            props: ['name', 'label'],
-          },
+          SidebarGroup: true,
           SidebarProfileMenu: true,
           SidebarChangelogCard: true,
           SidebarChangelogButton: true,
