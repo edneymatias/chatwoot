@@ -146,6 +146,25 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  file: 'app/javascript/dashboard/composables/useAutomationValues.js',
                  anchor: '      priorityOptions: priorityOptions.value,',
                  insert: '      pipelineStages: pipelineStages.value,'
+               },
+               # The upstream account_spec asserts the exact flag set of feature_flags_ext_1;
+               # keep the fork's opportunities flag in the expectation so the suite stays green.
+               {
+                 file: 'spec/models/account_spec.rb',
+                 anchor: '        feature_whatsapp_embedded_signup_inbox_creation: 1 << 4',
+                 insert: ",\n        feature_opportunities: 1 << 5"
+               },
+               # Containerized dev leaks RAILS_ENV=development and FRONTEND_URL into exec'd
+               # processes; sanitize both so rspec runs like upstream CI regardless of env.
+               {
+                 file: 'spec/rails_helper.rb',
+                 anchor: "ENV['RAILS_ENV'] ||= 'test'",
+                 insert: "\n# Fork container sanitation: compose injects RAILS_ENV=development into every exec'd\n# process; force the test env before the application boots.\nENV['RAILS_ENV'] = 'test'"
+               },
+               {
+                 file: 'spec/rails_helper.rb',
+                 anchor: "abort('The Rails environment is running in production mode!') if Rails.env.production?",
+                 insert: "\n# dotenv-rails re-injects FRONTEND_URL from .env during the boot above; specs expect it\n# absent (upstream CI has no .env), so drop it once the environment is loaded.\nENV.delete('FRONTEND_URL')"
                }
              ]
            end

@@ -43,8 +43,12 @@ commands with `docker compose exec <service>`.
 - **Lint JS/Vue**: `docker compose exec vite pnpm eslint` / `docker compose exec vite pnpm eslint:fix`
 - **Lint Ruby**: `docker compose exec rails bundle exec rubocop -a`
 - **Test JS**: `docker compose exec vite pnpm test` or `docker compose exec vite pnpm test:watch`
-- **Test Ruby**: `docker compose exec rails bundle exec rspec spec/path/to/file_spec.rb`
-- **Single Test**: `docker compose exec rails bundle exec rspec spec/path/to/file_spec.rb:LINE_NUMBER`
+- **Test Ruby**: `docker compose exec rails env -u FRONTEND_URL RAILS_ENV=test bundle exec rspec spec/path/to/file_spec.rb`
+- **Single Test**: `docker compose exec rails env -u FRONTEND_URL RAILS_ENV=test bundle exec rspec spec/path/to/file_spec.rb:LINE_NUMBER`
+- **Test env caveat**: the compose services inject `.env` plus `RAILS_ENV=development` into every
+  `docker compose exec` process. Running rspec without the `env -u FRONTEND_URL RAILS_ENV=test`
+  prefix runs the suite against the development environment/database and breaks host-sensitive
+  specs (redirect safety, SAML entity ids). Always use the prefixed form above for rspec.
 - Always prefer `bundle exec` for Ruby CLI tasks (rspec, rake, rubocop, etc.), run inside the `rails` container.
 
 ## Code Style

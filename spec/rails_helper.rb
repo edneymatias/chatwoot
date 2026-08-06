@@ -1,8 +1,14 @@
 require 'spec_helper'
 ENV['RAILS_ENV'] ||= 'test'
+# Fork container sanitation: compose injects RAILS_ENV=development into every exec'd
+# process; force the test env before the application boots.
+ENV['RAILS_ENV'] = 'test'
 require File.expand_path('../config/environment', __dir__)
 # Prevent database truncation if the environment is production
 abort('The Rails environment is running in production mode!') if Rails.env.production?
+# dotenv-rails re-injects FRONTEND_URL from .env during the boot above; specs expect it
+# absent (upstream CI has no .env), so drop it once the environment is loaded.
+ENV.delete('FRONTEND_URL')
 require 'rspec/rails'
 require 'pundit/rspec'
 require 'sidekiq/testing'
