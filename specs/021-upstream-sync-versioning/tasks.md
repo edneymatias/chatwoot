@@ -35,7 +35,7 @@ git refs (`develop`, `matias-kanban`/`ichatr-main`, `origin`, `upstream`), the e
 
 - [ ] T001 Verify `origin` and `upstream` remotes are configured and `upstream` is reachable: `git remote -v` then `git fetch upstream --dry-run`
 - [ ] T002 [P] Confirm the working tree is clean on `matias-kanban` before starting: `git status`
-- [ ] T003 [P] Confirm `bin/sync-custom-module-hooks` is present and executable (`ls -l bin/sync-custom-module-hooks`) per [contracts/sync-gate-cli.md](./contracts/sync-gate-cli.md) — the actual `--check` baseline run happens once in Phase 2 (T004), not here
+- [X] T003 [P] Confirm `bin/sync-custom-module-hooks` is present and executable (`ls -l bin/sync-custom-module-hooks`) per [contracts/sync-gate-cli.md](./contracts/sync-gate-cli.md) — the actual `--check` baseline run happens once in Phase 2 (T004), not here
 
 ---
 
@@ -46,7 +46,7 @@ compared against a known-good starting point
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Run `bin/sync-custom-module-hooks --check` on `matias-kanban` pre-merge and confirm exit `0` (baseline manifest integrity, per [data-model.md](./data-model.md)'s Sync manifest gate entity)
+- [X] T004 Run `bin/sync-custom-module-hooks --check` on `matias-kanban` pre-merge and confirm exit `0` (baseline manifest integrity, per [data-model.md](./data-model.md)'s Sync manifest gate entity)
 - [ ] T005 [P] Run `docker compose exec rails bundle exec rspec` on `matias-kanban` pre-merge and confirm it is green (baseline correctness before the merge introduces any regression)
 - [ ] T006 [P] Run `docker compose exec vite pnpm test` on `matias-kanban` pre-merge and confirm it is green (baseline correctness before the merge introduces any regression)
 - [ ] T007 Confirm local `develop` has zero local-only commits relative to `upstream/develop`: `git log upstream/develop..develop` returns empty (per spec Assumptions)
@@ -121,9 +121,9 @@ a fresh-upstream-base release and a same-base hotfix release, without needing fu
 
 ### Implementation for User Story 3
 
-- [ ] T024 [P] [US3] Add a "Branch model" section to `CLAUDE.md` documenting `ichatr-main` as the fork's single permanent branch, `develop` as a fast-forward-only mirror, and that there is no separate `release/*` branch scheme (per research.md's "doc placement" decision)
-- [ ] T025 [P] [US3] Add a "Fork versioning scheme" section to `CLAUDE.md` documenting the `<upstream-base-version>-ichatr.<N>` tag format, that the base version is sourced from `package.json`'s `version` field, and that `N` is scoped per upstream base and resets to `1` on a new base
-- [ ] T026 [US3] Validate the documented rule against the three spec acceptance scenarios: base `4.16.2` first release → `4.16.2-ichatr.1`; same-base hotfix → `4.16.2-ichatr.2`; new base `4.17.0` first release → `4.17.0-ichatr.1` (not continuing `N` from the old base)
+- [X] T024 [P] [US3] Add a "Branch model" section to `CLAUDE.md` documenting `ichatr-main` as the fork's single permanent branch, `develop` as a fast-forward-only mirror, and that there is no separate `release/*` branch scheme (per research.md's "doc placement" decision)
+- [X] T025 [P] [US3] Add a "Fork versioning scheme" section to `CLAUDE.md` documenting the `<upstream-base-version>-ichatr.<N>` tag format, that the base version is sourced from `package.json`'s `version` field, and that `N` is scoped per upstream base and resets to `1` on a new base
+- [X] T026 [US3] Validate the documented rule against the three spec acceptance scenarios: base `4.16.2` first release → `4.16.2-ichatr.1`; same-base hotfix → `4.16.2-ichatr.2`; new base `4.17.0` first release → `4.17.0-ichatr.1` (not continuing `N` from the old base)
 
 **Checkpoint**: Versioning scheme is documented in `CLAUDE.md` and unambiguous per the validation
 above; no tag has been cut.
