@@ -4,6 +4,9 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
   let(:account) { create(:account) }
   let(:admin) { create(:user, account: account, role: :administrator) }
   let(:agent) { create(:user, account: account, role: :agent) }
+  let(:stage) { account.pipeline_stages.create!(name: 'Test Stage') }
+  let(:contact) { create(:contact, account: account) }
+
   if ChatwootApp.enterprise?
     let(:custom_role) { create(:custom_role, account: account, permissions: ['conversation_manage']) }
     let(:custom_role_user) do
@@ -12,8 +15,6 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
       user
     end
   end
-  let(:stage) { account.pipeline_stages.create!(name: 'Test Stage') }
-  let(:contact) { create(:contact, account: account) }
 
   before do
     # enable the opportunities feature
