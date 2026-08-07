@@ -4,14 +4,17 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
   let(:account) { create(:account) }
   let(:admin) { create(:user, account: account, role: :administrator) }
   let(:agent) { create(:user, account: account, role: :agent) }
-  let(:custom_role_user) do
-    user = create(:user, account: account, role: :agent)
-    user.account_users.find_by(account_id: account.id).update!(custom_role: create(:custom_role, account: account))
-    user
-  end
   let(:headers_admin) { admin.create_new_auth_token.merge('Content-Type' => 'application/json') }
   let(:headers_agent) { agent.create_new_auth_token.merge('Content-Type' => 'application/json') }
-  let(:headers_custom_role) { custom_role_user.create_new_auth_token.merge('Content-Type' => 'application/json') }
+
+  if ChatwootApp.enterprise?
+    let(:custom_role_user) do
+      user = create(:user, account: account, role: :agent)
+      user.account_users.find_by(account_id: account.id).update!(custom_role: create(:custom_role, account: account))
+      user
+    end
+    let(:headers_custom_role) { custom_role_user.create_new_auth_token.merge('Content-Type' => 'application/json') }
+  end
 
   before do
     account.enable_features!('opportunities')
@@ -33,10 +36,12 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
       end
     end
 
-    context 'when authenticated as custom_role user' do
-      it 'returns unauthorized (pundit)' do
-        get "/api/v1/accounts/#{account.id}/pipeline_stages", headers: headers_custom_role
-        expect(response).to have_http_status(:unauthorized)
+    if ChatwootApp.enterprise?
+      context 'when authenticated as custom_role user' do
+        it 'returns unauthorized (pundit)' do
+          get "/api/v1/accounts/#{account.id}/pipeline_stages", headers: headers_custom_role
+          expect(response).to have_http_status(:unauthorized)
+        end
       end
     end
 
