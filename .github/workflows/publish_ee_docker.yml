@@ -149,7 +149,7 @@ jobs:
 
       - name: Generate Changelog with git-cliff
         id: git-cliff
-        uses: orhun/git-cliff-action@v3
+        uses: orhun/git-cliff-action@v4
         with:
           args: ${{ steps.compute-range.outputs.range }}
 
