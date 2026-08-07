@@ -16,17 +16,15 @@ end
 
 # T002: Dirty tree check
 out, _err, status = run_cmd('git status --porcelain')
-if !out.empty? || !status.success?
-  abort_with_error("Working tree is dirty. Please commit or stash your changes before releasing.")
-end
+abort_with_error('Working tree is dirty. Please commit or stash your changes before releasing.') if !out.empty? || !status.success?
 
 # T003: Base version parsing
 package_json_path = File.join(__dir__, '..', 'package.json')
-abort_with_error("package.json not found") unless File.exist?(package_json_path)
+abort_with_error('package.json not found') unless File.exist?(package_json_path)
 
 package_data = JSON.parse(File.read(package_json_path))
 base_version = package_data['version']
-abort_with_error("Could not determine base version from package.json") if base_version.nil? || base_version.empty?
+abort_with_error('Could not determine base version from package.json') if base_version.nil? || base_version.empty?
 
 # T004: Fetch existing tags and compute the next tag
 tag_prefix = "#{base_version}-ichatr."
@@ -60,21 +58,21 @@ changelog_range = if highest_tag
 # T006: Interactive confirmation prompt
 puts "Current base version: #{base_version}"
 puts "Highest existing tag: #{highest_tag || 'None'}"
-puts ""
+puts
 puts "Next tag: \e[32m#{next_tag}\e[0m"
 puts "Changelog range: #{changelog_range}"
-puts ""
-print "Are you sure you want to cut this release? This will push the tag to origin immediately. [y/N]: "
-confirm = STDIN.gets.chomp.downcase
+puts
+print 'Are you sure you want to cut this release? This will push the tag to origin immediately. [y/N]: '
+confirm = $stdin.gets.chomp.downcase
 
-abort_with_error("Release aborted by user.") unless confirm == 'y' || confirm == 'yes'
+abort_with_error('Release aborted by user.') unless %w[y yes].include?(confirm)
 
 # T007: Execute git tag and push
 puts "Creating annotated tag #{next_tag}..."
 _, err, status = run_cmd("git tag -a #{next_tag} -m \"Release #{next_tag}\"")
 abort_with_error("Failed to create tag: #{err}") unless status.success?
 
-puts "Pushing tag to origin..."
+puts 'Pushing tag to origin...'
 _, err, status = run_cmd("git push origin #{next_tag}")
 abort_with_error("Failed to push tag: #{err}") unless status.success?
 
