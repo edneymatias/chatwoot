@@ -185,7 +185,7 @@ jobs:
           git add CHANGELOG.md
           if ! git diff --staged --quiet; then
             git commit -m "chore(release): update changelog for ${{ github.ref_name }} [skip ci]"
-            git push origin HEAD:ichatr-main
+            git push origin HEAD:refs/heads/ichatr-main
           fi
 
       - name: Create GitHub Release
