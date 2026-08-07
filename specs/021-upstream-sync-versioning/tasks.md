@@ -146,7 +146,7 @@ above; no tag has been cut.
 
 - [X] T027 Run through [quickstart.md](./quickstart.md) end-to-end on the final state to confirm all three user stories validate cleanly — US1 (parity confirmed, gate clean, tests green), US2 (rename/push/delete/verify done, PR #1 validated the merge flow), US3 (CLAUDE.md sections already validated against the three acceptance scenarios)
 - [X] T028 [P] Cross-reference `docs/kanban/ciclo 7/10-upstream-sync-and-versioning/spec30.md` to `specs/021-upstream-sync-versioning/` (e.g. a short "Implemented as" note) so the kanban doc and the spec-kit artifact stay linked — added "Implemented as" note to spec30.md; spec.md already cites the kanban doc as its source (line 9)
-- [ ] T029 Open a PR summarizing the sync (commit range pulled in), the branch rename, and the `CLAUDE.md` versioning-scheme doc update, per the repo's PR description format
+- [X] T029 Open a PR summarizing the sync (commit range pulled in), the branch rename, and the `CLAUDE.md` versioning-scheme doc update, per the repo's PR description format — PR #2: https://github.com/edneymatias/chatwoot/pull/2
 
 ---
 
