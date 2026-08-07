@@ -9,7 +9,7 @@ name: Publish Chatwoot EE docker images
 on:
   push:
     tags:
-      - '*'
+      - '*-ichatr.*'
   workflow_dispatch:
 
 env:
@@ -118,3 +118,75 @@ jobs:
           TAG_VERSION="${DOCKER_REPO}:${{ github.ref_name }}"
           
           docker buildx imagetools inspect $TAG_VERSION
+
+  release_notes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute Changelog Range
+        id: compute-range
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          BASE_VERSION=$(jq -r .version package.json)
+          TAG_PREFIX="${BASE_VERSION}-ichatr."
+          
+          PREVIOUS_TAG=$(git tag -l "${TAG_PREFIX}*" | grep -v "^${TAG}$" | sort -V | tail -n 1)
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            RANGE="v${BASE_VERSION}..${TAG}"
+          else
+            RANGE="${PREVIOUS_TAG}..${TAG}"
+          fi
+          
+          echo "Computed range: $RANGE"
+          echo "range=$RANGE" >> $GITHUB_OUTPUT
+
+      - name: Generate Changelog with git-cliff
+        id: git-cliff
+        uses: orhun/git-cliff-action@v3
+        with:
+          args: ${{ steps.compute-range.outputs.range }}
+
+      - name: Handle Empty Changelog and Prepend
+        id: process-changelog
+        run: |
+          NOTES="${{ steps.git-cliff.outputs.content }}"
+          
+          # T010b: Default fallback if empty
+          if [ -z "$NOTES" ] || ! echo "$NOTES" | grep -q "[a-zA-Z]"; then
+             NOTES="No notable changes."
+          fi
+          
+          # T011: Prepend to CHANGELOG.md
+          if [ -f CHANGELOG.md ]; then
+            echo -e "$NOTES\n" | cat - CHANGELOG.md > temp && mv temp CHANGELOG.md
+          else
+            echo -e "$NOTES\n" > CHANGELOG.md
+          fi
+          
+          # Save notes for gh release
+          echo "$NOTES" > release_notes.md
+
+      - name: Commit CHANGELOG.md to ichatr-main
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(release): update changelog for ${{ github.ref_name }} [skip ci]"
+            git push origin HEAD:ichatr-main
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --title "Release ${{ github.ref_name }}" \
+            --notes-file release_notes.md
