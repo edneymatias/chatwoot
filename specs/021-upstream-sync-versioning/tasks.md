@@ -33,8 +33,8 @@ git refs (`develop`, `matias-kanban`/`ichatr-main`, `origin`, `upstream`), the e
 
 **Purpose**: Confirm the environment is ready to run the sync before touching any branch state
 
-- [ ] T001 Verify `origin` and `upstream` remotes are configured and `upstream` is reachable: `git remote -v` then `git fetch upstream --dry-run`
-- [ ] T002 [P] Confirm the working tree is clean on `matias-kanban` before starting: `git status`
+- [X] T001 Verify `origin` and `upstream` remotes are configured and `upstream` is reachable: `git remote -v` then `git fetch upstream --dry-run`
+- [X] T002 [P] Confirm the working tree is clean on `matias-kanban` before starting: `git status`
 - [X] T003 [P] Confirm `bin/sync-custom-module-hooks` is present and executable (`ls -l bin/sync-custom-module-hooks`) per [contracts/sync-gate-cli.md](./contracts/sync-gate-cli.md) — the actual `--check` baseline run happens once in Phase 2 (T004), not here
 
 ---
@@ -49,7 +49,7 @@ compared against a known-good starting point
 - [X] T004 Run `bin/sync-custom-module-hooks --check` on `matias-kanban` pre-merge and confirm exit `0` (baseline manifest integrity, per [data-model.md](./data-model.md)'s Sync manifest gate entity)
 - [X] T005 [P] Run `docker compose exec rails bundle exec rspec` on `matias-kanban` pre-merge and confirm it is green (baseline correctness before the merge introduces any regression) — 8203 examples, 1 pre-existing unrelated failure (`spec/builders/agent_builder_spec.rb:47`, stock upstream code untouched by any fork commit, unrelated to sync-versioning scope; accepted as baseline per user decision)
 - [X] T006 [P] Run `docker compose exec vite pnpm test` on `matias-kanban` pre-merge and confirm it is green (baseline correctness before the merge introduces any regression)
-- [ ] T007 Confirm local `develop` has zero local-only commits relative to `upstream/develop`: `git log upstream/develop..develop` returns empty (per spec Assumptions) — `develop` is a reference mirror only, never the sync source
+- [X] T007 Confirm local `develop` has zero local-only commits relative to `upstream/develop`: `git log upstream/develop..develop` returns empty (per spec Assumptions) — `develop` is a reference mirror only, never the sync source
 
 **Checkpoint**: Baseline confirmed green — the sync merge can now begin
 
@@ -84,8 +84,8 @@ zero untriaged gaps, and both test suites pass (spec.md User Story 1 Independent
 - [X] T014 [US1] Run `bin/sync-custom-module-hooks --check` on the current (already-at-parity) tree and confirm exit `0` — all 40 wiring points present
 - [ ] T015 [US1] (Next sync only) Run `bin/sync-custom-module-hooks --audit` against the merge-base and triage every `gap` per [contracts/sync-gate-cli.md](./contracts/sync-gate-cli.md): add a `MANIFEST` entry, add the path to the script's `excluded`/`out_of_scope` list, or log a follow-up and fail the sync loudly (FR-006a)
 - [ ] T016 [US1] (Next sync only) Re-run `bin/sync-custom-module-hooks --audit` and confirm zero entries remain in the raw `gap` state
-- [ ] T017 [US1] Run `docker compose exec rails bundle exec rspec` on the current tree and confirm green — T005's baseline run was already performed on this exact commit (`c4f25799b`) before the bad merge attempt; only the manifest script (`bin/sync-custom-module-hooks`, not exercised by rspec) changed since, so re-running is a formality, not expected to surface anything new
-- [ ] T018 [US1] Run `docker compose exec vite pnpm test` on the current tree and confirm green — same rationale as T017, relative to T006's baseline run
+- [X] T017 [US1] Run `docker compose exec rails bundle exec rspec` on the current tree and confirm green — T005's baseline run was already performed on this exact commit (`c4f25799b`) before the bad merge attempt; only the manifest script (`bin/sync-custom-module-hooks`, not exercised by rspec) changed since, so re-running is a formality, not expected to surface anything new. Initial full run surfaced stale test-DB pollution (leftover data from an earlier interrupted run, e.g. `InstallationConfig.count` expected 0 got 105) unrelated to the sync; resolved via `rails db:test:prepare`. Re-run: 8203 examples, 1 failure, 65 pending — the one failure (`spec/builders/agent_builder_spec.rb:47`) is a known test-order-dependent flake, confirmed passing in isolation (12/12).
+- [X] T018 [US1] Run `docker compose exec vite pnpm test` on the current tree and confirm green — same rationale as T017, relative to T006's baseline run
 
 **Checkpoint**: `matias-kanban` is confirmed at parity with the latest upstream release tag
 (`v4.16.2`), the manifest gate is clean, and the `vite` container boots. This is the point at
@@ -108,11 +108,11 @@ Principle IV, research.md's "Sync order" decision).
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Rename the branch locally: `git branch -m matias-kanban ichatr-main`
-- [ ] T020 [US2] **Confirm with the user before pushing** (this creates the new shared ref on `origin`, visible to other contributors), then push the renamed branch: `git push origin ichatr-main`
-- [ ] T021 [US2] **Confirm with the user before deleting** — this is a hard-to-reverse operation on a shared ref (Constitution Principle IV) — then delete the old ref on `origin`: `git push origin --delete matias-kanban`
-- [ ] T022 [US2] Verify the rename: `git ls-remote --heads origin ichatr-main` returns one line, `git ls-remote --heads origin matias-kanban` returns empty
-- [ ] T023 [US2] Open a throwaway branch from `ichatr-main`, confirm it opens and merges back via PR (validates SC-004), then delete the throwaway branch
+- [X] T019 [US2] Rename the branch locally: `git branch -m matias-kanban ichatr-main`
+- [X] T020 [US2] **Confirm with the user before pushing** (this creates the new shared ref on `origin`, visible to other contributors), then push the renamed branch: `git push origin ichatr-main`
+- [X] T021 [US2] **Confirm with the user before deleting** — this is a hard-to-reverse operation on a shared ref (Constitution Principle IV) — then delete the old ref on `origin`: `git push origin --delete matias-kanban`
+- [X] T022 [US2] Verify the rename: `git ls-remote --heads origin ichatr-main` returns one line, `git ls-remote --heads origin matias-kanban` returns empty
+- [X] T023 [US2] Open a throwaway branch from `ichatr-main`, confirm it opens and merges back via PR (validates SC-004), then delete the throwaway branch — verified via PR #1 (`test/verify-ichatr-main-pr-flow` → `ichatr-main`), merged and remote branch auto-deleted
 
 **Checkpoint**: `ichatr-main` is the fork's sole permanent branch; `origin/matias-kanban` is gone.
 
@@ -144,8 +144,8 @@ above; no tag has been cut.
 
 **Purpose**: Final validation and closing out the source phase doc
 
-- [ ] T027 Run through [quickstart.md](./quickstart.md) end-to-end on the final state to confirm all three user stories validate cleanly
-- [ ] T028 [P] Cross-reference `docs/kanban/ciclo 7/10-upstream-sync-and-versioning/spec30.md` to `specs/021-upstream-sync-versioning/` (e.g. a short "Implemented as" note) so the kanban doc and the spec-kit artifact stay linked
+- [X] T027 Run through [quickstart.md](./quickstart.md) end-to-end on the final state to confirm all three user stories validate cleanly — US1 (parity confirmed, gate clean, tests green), US2 (rename/push/delete/verify done, PR #1 validated the merge flow), US3 (CLAUDE.md sections already validated against the three acceptance scenarios)
+- [X] T028 [P] Cross-reference `docs/kanban/ciclo 7/10-upstream-sync-and-versioning/spec30.md` to `specs/021-upstream-sync-versioning/` (e.g. a short "Implemented as" note) so the kanban doc and the spec-kit artifact stay linked — added "Implemented as" note to spec30.md; spec.md already cites the kanban doc as its source (line 9)
 - [ ] T029 Open a PR summarizing the sync (commit range pulled in), the branch rename, and the `CLAUDE.md` versioning-scheme doc update, per the repo's PR description format
 
 ---

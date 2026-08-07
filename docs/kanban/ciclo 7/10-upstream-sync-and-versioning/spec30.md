@@ -1,5 +1,8 @@
 # Phase 30: Upstream Sync, Branch Rebranding & Versioning Scheme
 
+**Implemented as**: [specs/021-upstream-sync-versioning](../../../../specs/021-upstream-sync-versioning/)
+(spec-kit feature `021-upstream-sync-versioning`)
+
 **Depends on**: Phase 10 (sync script + manifest — `bin/sync-custom-module-hooks`,
 must already exist and be runnable in `--check`/`--audit`/apply modes, which
 it is)
