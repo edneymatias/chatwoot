@@ -23,7 +23,7 @@ class Opportunity < ApplicationRecord
   after_update :record_subsequent_stage_change, if: :saved_change_to_pipeline_stage_id?
   after_commit :broadcast_opportunity_updated, on: %i[create update]
 
-  def as_json(options = {}) # rubocop:disable Metrics/AbcSize
+  def as_json(options = {})
     super(options).merge(
       'origin_conversation_display_id' => origin_conversation&.display_id,
       'created_at' => created_at.to_i,
@@ -43,7 +43,7 @@ class Opportunity < ApplicationRecord
     errors.add(:pipeline_stage, 'must belong to the same account')
   end
 
-  def validate_forward_stage_move_requirements # rubocop:disable Metrics/AbcSize
+  def validate_forward_stage_move_requirements
     return unless pipeline_stage_id_was
 
     old_stage = account.pipeline_stages.find_by(id: pipeline_stage_id_was)

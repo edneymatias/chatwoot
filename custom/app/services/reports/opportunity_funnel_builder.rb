@@ -126,7 +126,7 @@ class Reports::OpportunityFunnelBuilder
   end
 
   # FR-009: Count and summed value of opportunities created in the period, bucketed by day (no gaps).
-  def new_opportunities_over_time # rubocop:disable Metrics/AbcSize
+  def new_opportunities_over_time
     return { labels: [], count_data: [], value_data: [] } unless range
 
     start_date = range.begin.to_date
