@@ -76,7 +76,7 @@ RSpec.describe 'sync-custom-module-hooks' do
       end
     end
 
-    def setup_files
+    def setup_files # rubocop:disable Metrics/MethodLength
       File.write('covered_file.js', 'content')
       File.write('gap_file.js', 'content')
       FileUtils.mkdir_p('db')

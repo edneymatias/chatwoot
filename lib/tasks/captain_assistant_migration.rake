@@ -227,7 +227,7 @@ class CaptainAssistantMigrationTask
       scenarios.present?
     end
 
-    def csv_assistants # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def csv_assistants 
       rows = CSV.read(ENV.fetch('CSV_INPUT'), headers: true)
       ids = ENV.fetch('IDS', '').split(',').filter_map { |id| id.strip.presence }
       status = ENV.fetch('STATUS', '').presence

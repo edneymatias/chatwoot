@@ -16,7 +16,7 @@
 
 require 'csv'
 
-# rubocop:disable Metrics/CyclomaticComplexity
+
 # rubocop:disable Metrics/AbcSize
 # rubocop:disable Metrics/MethodLength
 # rubocop:disable Metrics/ModuleLength

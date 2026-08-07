@@ -157,7 +157,7 @@ class Seeders::AccountSeeder
     Seeders::InboxSeeder.new(account: @account, company_data: @account_data[:company]).perform!
   end
 
-  def seed_opportunities
+  def seed_opportunities # rubocop:disable Metrics/MethodLength
     return unless defined?(Opportunity) && defined?(PipelineStage)
 
     contact = @account.contacts.first
