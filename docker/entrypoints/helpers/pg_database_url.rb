@@ -2,9 +2,11 @@
 require 'uri'
 
 # Let DATABASE_URL env take presedence over individual connection params.
+# rubocop:disable Rails/Output
 if !ENV['DATABASE_URL'].nil? && ENV['DATABASE_URL'] != ''
   uri = URI(ENV.fetch('DATABASE_URL', nil))
-  Rails.logger.debug { "export POSTGRES_HOST=#{uri.host} POSTGRES_PORT=#{uri.port} POSTGRES_USERNAME=#{uri.user}" }
+  puts "export POSTGRES_HOST=#{uri.host} POSTGRES_PORT=#{uri.port} POSTGRES_USERNAME=#{uri.user}"
 elsif ENV['POSTGRES_PORT'].nil? || ENV['POSTGRES_PORT'] == ''
-  Rails.logger.debug 'export POSTGRES_PORT=5432'
+  puts 'export POSTGRES_PORT=5432'
 end
+# rubocop:enable Rails/Output
