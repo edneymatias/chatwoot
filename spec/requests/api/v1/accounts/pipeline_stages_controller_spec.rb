@@ -21,7 +21,7 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
     context 'when unauthenticated' do
       it 'returns unauthorized' do
         get "/api/v1/accounts/#{account.id}/pipeline_stages"
-        puts response.body if response.status == 500
+        Rails.logger.debug response.body if response.status == 500
         expect(response).to have_http_status(:unauthorized)
       end
     end
@@ -47,14 +47,14 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
         get "/api/v1/accounts/#{account.id}/pipeline_stages", headers: headers_admin
         expect(response).to have_http_status(:ok)
 
-        json_response = JSON.parse(response.body)
+        json_response = response.parsed_body
         expect(json_response.length).to eq(2)
         expect(json_response.map { |s| s['name'] }).to contain_exactly('Leads Recebidos', 'Em Contato')
 
         # Second call
         get "/api/v1/accounts/#{account.id}/pipeline_stages", headers: headers_admin
         expect(response).to have_http_status(:ok)
-        expect(JSON.parse(response.body).length).to eq(2)
+        expect(response.parsed_body.length).to eq(2)
       end
     end
 
@@ -76,7 +76,7 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
       post "/api/v1/accounts/#{account.id}/pipeline_stages", headers: headers_admin, params: valid_params
       expect(response).to have_http_status(:ok)
 
-      json_response = JSON.parse(response.body)
+      json_response = response.parsed_body
       expect(json_response['name']).to eq('New Stage')
       expect(json_response['position']).to eq(2)
     end
@@ -92,7 +92,7 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
       patch "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage2.id}", headers: headers_admin, params: valid_params
       expect(response).to have_http_status(:ok)
 
-      json_response = JSON.parse(response.body)
+      json_response = response.parsed_body
       expect(json_response).to be_a(Hash)
       expect(json_response['name']).to eq('Updated Stage')
       expect(stage2.reload.position).to eq(2)
@@ -102,7 +102,7 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
       patch "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage3.id}", headers: headers_admin, params: { pipeline_stage: { position: 1 } }.to_json
       expect(response).to have_http_status(:ok)
 
-      json_response = JSON.parse(response.body)
+      json_response = response.parsed_body
       expect(json_response).to be_an(Array)
       expect(json_response.length).to eq(3)
       expect(json_response.pluck('name')).to eq(['Stage 3', 'Stage 1', 'Stage 2'])
@@ -149,7 +149,7 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
     it 'deletes the pipeline stage' do
       delete "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage.id}", headers: headers_admin
       expect(response).to have_http_status(:ok)
-      expect(PipelineStage.exists?(stage.id)).to be_falsey
+      expect(PipelineStage).not_to exist(stage.id)
     end
 
     it 'cannot delete if it has opportunities' do
@@ -158,7 +158,7 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
 
       delete "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage.id}", headers: headers_admin
       expect(response).to have_http_status(:unprocessable_entity)
-      expect(PipelineStage.exists?(stage.id)).to be_truthy
+      expect(PipelineStage).to exist(stage.id)
     end
   end
 end

@@ -39,11 +39,11 @@ RSpec.describe PipelineStage, type: :model do
     let(:other_account) { create(:account) }
 
     before do
-      PipelineStage.seed_defaults_for!(account)
+      described_class.seed_defaults_for!(account)
       account.pipeline_stages.create!(name: 'Stage 3')
       account.pipeline_stages.create!(name: 'Stage 4')
       # other account stages to verify cross-account safety
-      PipelineStage.seed_defaults_for!(other_account)
+      described_class.seed_defaults_for!(other_account)
     end
 
     it 'renumbers siblings and maintains gapless unique positions' do

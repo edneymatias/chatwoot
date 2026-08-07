@@ -10,8 +10,8 @@ RSpec.configure do |config|
 
     next if opensearch_url.blank?
 
-    puts "\n==== OpenSearch Connectivity Check ===="
-    puts "OPENSEARCH_URL: #{opensearch_url}"
+    Rails.logger.debug "\n==== OpenSearch Connectivity Check ===="
+    Rails.logger.debug { "OPENSEARCH_URL: #{opensearch_url}" }
 
     begin
       uri = URI.parse("#{opensearch_url}/_cluster/health")
@@ -22,18 +22,18 @@ RSpec.configure do |config|
       health = JSON.parse(response.body)
       status = health['status']
 
-      puts "Cluster status: #{status}"
-      puts "Cluster name: #{health['cluster_name']}"
-      puts "Number of nodes: #{health['number_of_nodes']}"
+      Rails.logger.debug { "Cluster status: #{status}" }
+      Rails.logger.debug { "Cluster name: #{health['cluster_name']}" }
+      Rails.logger.debug { "Number of nodes: #{health['number_of_nodes']}" }
 
       raise "OpenSearch cluster is not healthy. Status: #{status}" unless %w[green yellow].include?(status)
 
-      puts '✓ OpenSearch is healthy and ready for tests'
-      puts "========================================\n\n"
+      Rails.logger.debug '✓ OpenSearch is healthy and ready for tests'
+      Rails.logger.debug "========================================\n\n"
     rescue StandardError => e
-      puts "\n❌ ERROR: Failed to connect to OpenSearch"
-      puts "Message: #{e.message}"
-      puts "========================================\n\n"
+      Rails.logger.debug "\n❌ ERROR: Failed to connect to OpenSearch"
+      Rails.logger.debug { "Message: #{e.message}" }
+      Rails.logger.debug "========================================\n\n"
       raise "OpenSearch connectivity check failed: #{e.message}"
     end
   end

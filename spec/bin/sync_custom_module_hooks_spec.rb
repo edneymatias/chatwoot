@@ -1,3 +1,4 @@
+require 'English'
 require 'rails_helper'
 require 'tempfile'
 require 'fileutils'
@@ -14,7 +15,7 @@ RSpec.describe 'sync-custom-module-hooks' do
     # Need to escape env vars properly for shell
     env_str = env.map { |k, v| "#{k}='#{v}'" }.join(' ')
     output = `#{env_str} #{script_path} #{args} 2>&1`
-    [output, $?.exitstatus]
+    [output, $CHILD_STATUS.exitstatus]
   end
 
   it 'returns 0 and reports present on --check for clean checkout' do

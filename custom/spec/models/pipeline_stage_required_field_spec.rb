@@ -18,7 +18,7 @@ RSpec.describe PipelineStageRequiredField, type: :model do
 
   describe 'validations' do
     subject do
-      PipelineStageRequiredField.create!(account: account, pipeline_stage: pipeline_stage, custom_attribute_definition: custom_attribute_definition)
+      described_class.create!(account: account, pipeline_stage: pipeline_stage, custom_attribute_definition: custom_attribute_definition)
     end
 
     it {

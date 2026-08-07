@@ -29,8 +29,8 @@ days_back = (ARGV[1] || 30).to_i
 
 messages = Message.where('created_at >= ?', days_back.days.ago)
 
-puts "Found #{messages.count} messages to index (last #{days_back} days)"
-puts ''
+Rails.logger.debug { "Found #{messages.count} messages to index (last #{days_back} days)" }
+Rails.logger.debug ''
 
 sleep(15)
 
@@ -47,12 +47,12 @@ messages.find_in_batches(batch_size: 1000).with_index do |batch, index|
   )
 
   batch_count += 1
-  print '.'
+  Rails.logger.debug '.'
   sleep(0.5)  # Small delay
 end
 
-puts ''
-puts '=' * 80
-puts "Done! Created #{batch_count} bulk reindex jobs"
-puts 'Messages will be indexed shortly via the bulk_reindex_low queue'
-puts '=' * 80
+Rails.logger.debug ''
+Rails.logger.debug '=' * 80
+Rails.logger.debug { "Done! Created #{batch_count} bulk reindex jobs" }
+Rails.logger.debug 'Messages will be indexed shortly via the bulk_reindex_low queue'
+Rails.logger.debug '=' * 80

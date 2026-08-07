@@ -24,12 +24,12 @@ RSpec.describe Opportunity, type: :model do
     let(:contact) { create(:contact, account: account1) }
 
     it 'is valid when pipeline_stage belongs to the same account' do
-      opp = Opportunity.new(account: account1, contact: contact, pipeline_stage: stage1, title: 'Opp')
+      opp = described_class.new(account: account1, contact: contact, pipeline_stage: stage1, title: 'Opp')
       expect(opp).to be_valid
     end
 
     it 'is invalid when pipeline_stage belongs to a different account' do
-      opp = Opportunity.new(account: account1, contact: contact, pipeline_stage: stage2, title: 'Opp')
+      opp = described_class.new(account: account1, contact: contact, pipeline_stage: stage2, title: 'Opp')
       expect(opp).not_to be_valid
       expect(opp.errors[:pipeline_stage]).to include('must belong to the same account')
     end
@@ -56,7 +56,7 @@ RSpec.describe Opportunity, type: :model do
         )
       )
 
-      Opportunity.create!(
+      described_class.create!(
         account: account,
         pipeline_stage: pipeline_stage,
         contact: contact,
@@ -67,7 +67,7 @@ RSpec.describe Opportunity, type: :model do
     end
 
     it 'broadcasts opportunity_updated on update' do
-      opp = Opportunity.create!(
+      opp = described_class.create!(
         account: account,
         pipeline_stage: pipeline_stage,
         contact: contact,

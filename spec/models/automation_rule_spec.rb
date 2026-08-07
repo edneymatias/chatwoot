@@ -140,7 +140,7 @@ RSpec.describe AutomationRule do
 
   describe '#create_opportunity' do
     it 'includes create_opportunity in actions_attributes' do
-      expect(AutomationRule.new.actions_attributes).to include('create_opportunity')
+      expect(described_class.new.actions_attributes).to include('create_opportunity')
     end
   end
 end

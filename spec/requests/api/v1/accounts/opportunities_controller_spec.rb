@@ -27,8 +27,8 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
           as: :json
 
       expect(response).to have_http_status(:ok)
-      expect(JSON.parse(response.body).length).to eq(1)
-      expect(JSON.parse(response.body).first['title']).to eq('My Opp')
+      expect(response.parsed_body.length).to eq(1)
+      expect(response.parsed_body.first['title']).to eq('My Opp')
     end
 
     it 'works for agents too' do
@@ -63,7 +63,7 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
            as: :json
 
       expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       expect(json['title']).to eq('New Opp')
       expect(json['status']).to eq('open')
     end
@@ -84,7 +84,7 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
            as: :json
 
       expect(response).to have_http_status(:unprocessable_entity)
-      expect(JSON.parse(response.body)['error']).to include('Pipeline stage must belong to the same account')
+      expect(response.parsed_body['error']).to include('Pipeline stage must belong to the same account')
     end
   end
 

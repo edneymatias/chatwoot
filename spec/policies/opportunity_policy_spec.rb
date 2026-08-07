@@ -39,8 +39,8 @@ RSpec.describe OpportunityPolicy do
     it 'permits index and create' do
       # For index/create, the policy is usually initialized with the Opportunity class, not an instance.
       # But since our policy allows index and create when account_user is present, it will pass here.
-      expect(policy.index?).to be_truthy
-      expect(policy.create?).to be_truthy
+      expect(policy).to be_index
+      expect(policy).to be_create
     end
   end
 
