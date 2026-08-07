@@ -1,5 +1,5 @@
 class PipelineCurrencySetting < ApplicationRecord
-  self.table_name = 'matias_pipeline_currency_settings'
+  self.table_name = 'ichatr_pipeline_currency_settings'
 
   belongs_to :account
 

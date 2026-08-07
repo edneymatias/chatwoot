@@ -45,7 +45,7 @@ class OpportunityPolicy < ApplicationPolicy
       scope.where(account_id: account.id)
            .left_outer_joins(:origin_conversation)
            .where(
-             'matias_opportunities.assignee_id = :user_id OR ' \
+             'ichatr_opportunities.assignee_id = :user_id OR ' \
              'conversations.inbox_id IN (:inbox_ids) OR ' \
              'conversations.team_id IN (:team_ids)',
              user_id: user.id,

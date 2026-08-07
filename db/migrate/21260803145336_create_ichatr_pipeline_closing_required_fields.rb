@@ -1,6 +1,6 @@
-class CreateMatiasPipelineClosingRequiredFields < ActiveRecord::Migration[7.1]
+class CreateIchatrPipelineClosingRequiredFields < ActiveRecord::Migration[7.1]
   def change
-    create_table :matias_pipeline_closing_required_fields do |t|
+    create_table :ichatr_pipeline_closing_required_fields do |t|
       t.references :account, null: false, foreign_key: true
       t.references :custom_attribute_definition, null: false, foreign_key: true
       t.integer :outcome, null: false
@@ -8,9 +8,9 @@ class CreateMatiasPipelineClosingRequiredFields < ActiveRecord::Migration[7.1]
       t.timestamps
     end
 
-    add_index :matias_pipeline_closing_required_fields,
+    add_index :ichatr_pipeline_closing_required_fields,
               [:account_id, :custom_attribute_definition_id, :outcome],
               unique: true,
-              name: 'idx_matias_pipeline_closing_req_fields_on_acc_attr_outcome'
+              name: 'idx_ichatr_pipeline_closing_req_fields_on_acc_attr_outcome'
   end
 end

@@ -1,5 +1,5 @@
 class PipelineStage < ApplicationRecord
-  self.table_name = 'matias_pipeline_stages'
+  self.table_name = 'ichatr_pipeline_stages'
 
   belongs_to :account
   has_many :opportunities, dependent: :restrict_with_error

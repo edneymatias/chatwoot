@@ -1,5 +1,5 @@
 class PipelineCardFieldConfig < ApplicationRecord
-  self.table_name = 'matias_pipeline_card_field_configs'
+  self.table_name = 'ichatr_pipeline_card_field_configs'
 
   belongs_to :account
   belongs_to :custom_attribute_definition, optional: true

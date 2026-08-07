@@ -130,6 +130,21 @@ commands with `docker compose exec <service>`.
 - Examples: base `4.16.2` first release → `4.16.2-ichatr.1`; same-base hotfix →
   `4.16.2-ichatr.2`; after syncing to base `4.17.0`, first release → `4.17.0-ichatr.1`.
 
+## Release Process
+
+- Prerequisites: working tree clean on `ichatr-main`, test suites green (`bundle exec rspec`,
+  `pnpm test`).
+- Run `bin/ichatr-release`; it computes the next `<upstream-base-version>-ichatr.<N>` tag (see
+  Fork Versioning Scheme above) and the changelog range for it, and asks for confirmation before
+  creating and pushing the tag.
+- Pushing the tag triggers CI automatically: it generates the changelog for that range, commits
+  the updated `CHANGELOG.md` directly to `ichatr-main`, creates a GitHub Release for the tag, and
+  publishes the Docker image.
+- Artifacts land in three places: `CHANGELOG.md` in the repo, a GitHub Release entry, and
+  `edneymatias/ichatr:<tag>` (plus a floating `latest`) on Docker Hub.
+- The changelog only covers fork-specific commits (the range excludes everything already present
+  in the upstream base tag); for upstream's own changes, consult upstream's release notes.
+
 ## Commit Messages
 
 - Prefer Conventional Commits: `type(scope): subject` (scope optional)

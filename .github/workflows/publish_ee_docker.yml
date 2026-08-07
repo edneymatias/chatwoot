@@ -8,15 +8,12 @@ name: Publish Chatwoot EE docker images
 
 on:
   push:
-    branches:
-      - develop
-      - master
     tags:
-      - v*
+      - '*'
   workflow_dispatch:
 
 env:
-  DOCKER_REPO: chatwoot/chatwoot
+  DOCKER_REPO: edneymatias/ichatr
 
 permissions:
   contents: read
@@ -47,14 +44,7 @@ jobs:
         run: |
           echo -en '\nENV CW_EDITION="ee"' >> docker/Dockerfile
 
-      - name: Set Docker Tags
-        run: |
-          SANITIZED_REF=$(echo "$GIT_REF" | sed 's/\//-/g')
-          if [ "${{ github.ref_name }}" = "master" ]; then
-            echo "DOCKER_TAG=${DOCKER_REPO}:latest" >> $GITHUB_ENV
-          else
-            echo "DOCKER_TAG=${DOCKER_REPO}:${SANITIZED_REF}" >> $GITHUB_ENV
-          fi
+
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -116,28 +106,15 @@ jobs:
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
-        env:
-          GIT_REF: ${{ github.head_ref || github.ref_name }}
         run: |
-          SANITIZED_REF=$(echo "$GIT_REF" | sed 's/\//-/g')
-          if [ "${{ github.ref_name }}" = "master" ]; then
-            TAG="${DOCKER_REPO}:latest"
-          else
-            TAG="${DOCKER_REPO}:${SANITIZED_REF}"
-          fi
+          TAG_VERSION="${DOCKER_REPO}:${{ github.ref_name }}"
+          TAG_LATEST="${DOCKER_REPO}:latest"
           
-          docker buildx imagetools create -t $TAG \
+          docker buildx imagetools create -t $TAG_VERSION -t $TAG_LATEST \
             $(printf '${{ env.DOCKER_REPO }}@sha256:%s ' *)
 
       - name: Inspect image
-        env:
-          GIT_REF: ${{ github.head_ref || github.ref_name }}
         run: |
-          SANITIZED_REF=$(echo "$GIT_REF" | sed 's/\//-/g')
-          if [ "${{ github.ref_name }}" = "master" ]; then
-            TAG="${DOCKER_REPO}:latest"
-          else
-            TAG="${DOCKER_REPO}:${SANITIZED_REF}"
-          fi
+          TAG_VERSION="${DOCKER_REPO}:${{ github.ref_name }}"
           
-          docker buildx imagetools inspect $TAG
+          docker buildx imagetools inspect $TAG_VERSION

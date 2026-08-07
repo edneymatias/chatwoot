@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+
+require 'open3'
+require 'fileutils'
+
+# Run the rails migration generator with all passed arguments
+stdout, stderr, status = Open3.capture3("bundle", "exec", "rails", "generate", "migration", *ARGV)
+
+# Print the output so the user still sees it
+puts stdout
+warn stderr if !stderr.empty?
+
+exit(status.exitstatus) unless status.success?
+
+# Find the generated migration file from stdout
+# Output typically looks like:
+#       invoke  active_record
+#       create    db/migrate/20260807123456_create_something.rb
+generated_file = nil
+stdout.each_line do |line|
+  if line =~ /create\s+(db\/migrate\/\d{14}_.*?\.rb)/
+    generated_file = $1
+    break
+  end
+end
+
+if generated_file && File.exist?(generated_file)
+  # Extract the timestamp and the rest of the filename
+  dir = File.dirname(generated_file)
+  filename = File.basename(generated_file)
+
+  if filename =~ /^(\d{4})(\d{10})(.*)$/
+    year = $1.to_i
+    rest_of_timestamp = $2
+    rest_of_filename = $3
+
+    new_year = year + 100
+    new_filename = "#{new_year}#{rest_of_timestamp}#{rest_of_filename}"
+    new_filepath = File.join(dir, new_filename)
+
+    FileUtils.mv(generated_file, new_filepath)
+    puts "--> Renamed to: #{new_filepath}"
+  else
+    puts "--> Could not parse timestamp in filename: #{filename}"
+  end
+else
+  puts "--> No migration file detected in output."
+end

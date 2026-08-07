@@ -1,5 +1,5 @@
 class Opportunity < ApplicationRecord
-  self.table_name = 'matias_opportunities'
+  self.table_name = 'ichatr_opportunities'
 
   belongs_to :account
   belongs_to :contact

@@ -1,6 +1,6 @@
 # == Schema Information
 #
-# Table name: matias_pipeline_stage_required_fields
+# Table name: ichatr_pipeline_stage_required_fields
 #
 #  id                             :bigint           not null, primary key
 #  account_id                     :bigint           not null
@@ -11,10 +11,10 @@
 #
 # Indexes
 #
-#  idx_matias_pipeline_stage_req_fields_on_acc_and_attr_def (account_id, custom_attribute_definition_id) UNIQUE
+#  idx_ichatr_pipeline_stage_req_fields_on_acc_and_attr_def (account_id, custom_attribute_definition_id) UNIQUE
 #
 class PipelineStageRequiredField < ApplicationRecord
-  self.table_name = 'matias_pipeline_stage_required_fields'
+  self.table_name = 'ichatr_pipeline_stage_required_fields'
 
   belongs_to :account
   belongs_to :pipeline_stage
