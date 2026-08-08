@@ -77,6 +77,14 @@ RSpec.describe 'sync-custom-module-hooks' do
     end
 
     def setup_files
+      setup_base_commit_files
+      @base_ref = `git rev-parse HEAD`.strip
+
+      system('git checkout -b feature >/dev/null 2>&1')
+      setup_feature_commit_files
+    end
+
+    def setup_base_commit_files
       File.write('covered_file.js', 'content')
       File.write('gap_file.js', 'content')
       FileUtils.mkdir_p('db')
@@ -89,10 +97,9 @@ RSpec.describe 'sync-custom-module-hooks' do
       File.write('app/models/user.rb', "# == Schema Information\n#\n# Table name: users\n#\nclass User; end")
 
       system('git add . && git commit -m "Base" >/dev/null 2>&1')
-      @base_ref = `git rev-parse HEAD`.strip
+    end
 
-      system('git checkout -b feature >/dev/null 2>&1')
-
+    def setup_feature_commit_files
       File.write('covered_file.js', 'modified')
       File.write('gap_file.js', 'modified')
       File.write('db/schema.rb', 'modified schema')

@@ -9,11 +9,7 @@ module Custom::AutomationRules::ActionService
 
     # Temporarily drop title_template parsing since we are using scalar arrays. We use default title.
     title = "Oportunidade ##{@conversation.display_id}"
-    assignee_id = if assignee_id_param == 'same_as_conversation'
-                    @conversation.assignee_id
-                  else
-                    assignee_id_param
-                  end
+    assignee_id = resolve_assignee_id(assignee_id_param)
 
     begin
       Opportunity.create!(
@@ -27,6 +23,14 @@ module Custom::AutomationRules::ActionService
       )
     rescue ActiveRecord::RecordNotUnique
       # Idempotent no-op
+    end
+  end
+
+  def resolve_assignee_id(assignee_id_param)
+    if assignee_id_param == 'same_as_conversation'
+      @conversation.assignee_id
+    else
+      assignee_id_param
     end
   end
 end

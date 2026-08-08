@@ -53,7 +53,7 @@ commands with `docker compose exec <service>`.
 
 ## Code Style
 
-- **Ruby**: Follow RuboCop rules (150 character max line length)
+- **Ruby**: Follow RuboCop rules (150 character max line length). Complexity offenses (e.g. `AbcSize`, `CyclomaticComplexity`, `MethodLength`) MUST be resolved by refactoring (extracting private helpers). Do NOT add new `Exclude` entries or `Max` overrides to `.rubocop_todo.yml` or `.rubocop.yml`.
 - **Vue/JS**: Use ESLint (Airbnb base + Vue 3 recommended)
 - **Vue Components**: Use PascalCase
 - **Events**: Use camelCase
@@ -163,9 +163,9 @@ commands with `docker compose exec <service>`.
 ## Project-Specific
 
 - **Translations**:
-  - For product and source-string changes, only update `en.yml` and `en.json`; other languages are handled through Crowdin and the community
-  - Crowdin-generated translation sync PRs may update non-English locale files; do not flag those changes solely for modifying translated locale files
-  - Backend i18n → `en.yml`, Frontend i18n → `en.json`
+  - This fork does not use Crowdin. The Kanban module is delivered with `pt-BR` translations included.
+  - For product and source-string changes, update both English (`en.yml`, `en.json`) and Portuguese (`pt_BR.yml`, `pt_BR.json`) files synchronously.
+  - Backend i18n → `en.yml` and `pt_BR.yml`, Frontend i18n → `en.json` and `pt_BR.json`
 - **Frontend**:
   - Use `components-next/` for message bubbles (the rest is being deprecated)
 
@@ -194,3 +194,4 @@ Practical checklist for any change impacting core logic or public APIs
 ## Branding / White-labeling note
 
 - For user-facing strings that currently contain "Chatwoot" but should adapt to branded/self-hosted installs, prefer applying `replaceInstallationName` from `shared/composables/useBranding` in the UI layer (for example tooltip and suggestion labels) instead of adding hardcoded brand-specific copy.
+- **Workflow Constraint**: NUNCA crie commits ou envie alterações (push) para o remote antes de expressa validação/teste local pelo usuário. Aguarde sempre o 'ok' explícito antes de comitar e atualizar tags.

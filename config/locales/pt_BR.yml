@@ -58,6 +58,12 @@ pt_BR:
     sessions:
       cannot_revoke_current: Você não pode revogar a sessão atual.
   errors:
+    pipeline_stage_required_field:
+      already_required: 'já é obrigatório em outro estágio do funil'
+      must_be_opportunity_attribute: 'deve ser um atributo de oportunidade'
+    pipeline_closing_required_field:
+      already_required: 'já é obrigatório para este fechamento'
+      not_an_opportunity_attribute: 'deve ser um atributo de oportunidade'
     account:
       not_authorized: Você não está autorizado a acessar esta conta
       reporting_timezone:

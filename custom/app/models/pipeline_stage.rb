@@ -52,8 +52,8 @@ class PipelineStage < ApplicationRecord
   end
 
   def ensure_single_lane_exclusivity_for_deal_value
-    # rubocop:disable Rails/SkipsModelValidations
-    account.pipeline_stages.where.not(id: id).update_all(requires_deal_value: false)
-    # rubocop:enable Rails/SkipsModelValidations
+    account.pipeline_stages.where.not(id: id).each do |stage|
+      stage.update!(requires_deal_value: false)
+    end
   end
 end

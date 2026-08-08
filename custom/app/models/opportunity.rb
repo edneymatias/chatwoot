@@ -28,8 +28,8 @@ class Opportunity < ApplicationRecord
       'origin_conversation_display_id' => origin_conversation&.display_id,
       'created_at' => created_at.to_i,
       'current_stage_entered_at' => stage_changes.order(changed_at: :desc).first&.changed_at&.to_i,
-      'contact' => contact ? { 'id' => contact.id, 'name' => contact.name, 'email' => contact.email, 'avatar_url' => contact.avatar_url } : nil,
-      'assignee' => assignee ? { 'id' => assignee.id, 'name' => assignee.name, 'avatar_url' => assignee.avatar_url } : nil
+      'contact' => contact_json,
+      'assignee' => assignee_json
     )
   end
 
@@ -51,12 +51,7 @@ class Opportunity < ApplicationRecord
 
     return if pipeline_stage.position <= old_stage.position
 
-    missing_keys = []
-    attrs = custom_attributes || {}
-
-    pipeline_stage.required_custom_attribute_definitions.each do |definition|
-      missing_keys << definition.attribute_key unless attrs.key?(definition.attribute_key)
-    end
+    missing_keys = missing_required_keys(pipeline_stage)
 
     value_missing = pipeline_stage.requires_deal_value? && value.nil?
 
@@ -143,5 +138,28 @@ class Opportunity < ApplicationRecord
       current_stage_entered_at: stage_changes.order(changed_at: :desc).first&.changed_at&.to_i
     }
     ActionCableBroadcastJob.perform_later(["account_#{account_id}"], 'opportunity_updated', payload)
+  end
+
+  def contact_json
+    return nil unless contact
+
+    { 'id' => contact.id, 'name' => contact.name, 'email' => contact.email, 'avatar_url' => contact.avatar_url }
+  end
+
+  def assignee_json
+    return nil unless assignee
+
+    { 'id' => assignee.id, 'name' => assignee.name, 'avatar_url' => assignee.avatar_url }
+  end
+
+  def missing_required_keys(stage)
+    missing_keys = []
+    attrs = custom_attributes || {}
+
+    stage.required_custom_attribute_definitions.each do |definition|
+      missing_keys << definition.attribute_key unless attrs.key?(definition.attribute_key)
+    end
+
+    missing_keys
   end
 end

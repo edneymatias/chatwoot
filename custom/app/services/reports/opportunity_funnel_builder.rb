@@ -132,14 +132,21 @@ class Reports::OpportunityFunnelBuilder
     start_date = range.begin.to_date
     end_date = (range.end || range.begin).to_date
     all_days = (start_date..end_date).map(&:to_s)
-    opps_in_range = account.opportunities.where(created_at: range)
-    counts = opps_in_range.group('DATE(created_at)').count.transform_keys(&:to_s)
-    values = opps_in_range.group('DATE(created_at)').sum(:value).transform_keys(&:to_s)
+
+    counts, values = fetch_daily_opportunity_metrics
+
     {
       labels: all_days,
       count_data: all_days.map { |day| counts[day] || 0 },
       value_data: all_days.map { |day| (values[day] || 0).to_f }
     }
+  end
+
+  def fetch_daily_opportunity_metrics
+    opps_in_range = account.opportunities.where(created_at: range)
+    counts = opps_in_range.group('DATE(created_at)').count.transform_keys(&:to_s)
+    values = opps_in_range.group('DATE(created_at)').sum(:value).transform_keys(&:to_s)
+    [counts, values]
   end
 
   # FR-010: Average (closed_at - created_at) in days for won opportunities closed in the period.

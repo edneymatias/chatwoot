@@ -13,8 +13,7 @@ RSpec.describe 'Api::V1::Accounts::PipelineStageRequiredFields', type: :request 
   end
 
   before do
-    allow(account).to receive(:feature_enabled?).and_call_original
-    allow(account).to receive(:feature_enabled?).with('kanban_board').and_return(true)
+    account.enable_features!('opportunities')
   end
 
   describe 'POST /api/v1/accounts/{account.id}/pipeline_stages/{pipeline_stage.id}/pipeline_stage_required_fields' do
@@ -55,14 +54,22 @@ RSpec.describe 'Api::V1::Accounts::PipelineStageRequiredFields', type: :request 
   end
 
   describe 'DELETE /api/v1/accounts/{account.id}/pipeline_stages/{pipeline_stage.id}/pipeline_stage_required_fields/{custom_attribute.id}' do
-    let!(:required_field) do
-      PipelineStageRequiredField.create!(account: account, pipeline_stage: pipeline_stage, custom_attribute_definition: custom_attribute)
+    before do
+      PipelineStageRequiredField.create!(
+        account: account,
+        pipeline_stage: pipeline_stage,
+        custom_attribute_definition: custom_attribute
+      )
     end
 
     context 'when it is an authenticated user' do
       it 'deletes the required field' do
         expect do
-          delete api_v1_account_pipeline_stage_required_field_url(account_id: account.id, pipeline_stage_id: pipeline_stage.id, id: custom_attribute.id),
+          delete api_v1_account_pipeline_stage_required_field_url(
+            account_id: account.id,
+            pipeline_stage_id: pipeline_stage.id,
+            id: custom_attribute.id
+          ),
                  headers: user.create_new_auth_token,
                  as: :json
         end.to change(PipelineStageRequiredField, :count).by(-1)

@@ -28,7 +28,10 @@ class PipelineClosingRequiredField < ApplicationRecord
 
   validates :account, presence: true
   validates :custom_attribute_definition, presence: true
-  validates :custom_attribute_definition_id, uniqueness: { scope: %i[account_id outcome], message: 'is already required for this outcome' } # rubocop:disable Rails/I18nLocaleTexts
+  validates :custom_attribute_definition_id, uniqueness: {
+    scope: %i[account_id outcome],
+    message: ->(_object, _data) { I18n.t('errors.pipeline_closing_required_field.already_required') }
+  }
   validate :definition_must_be_opportunity_attribute
 
   private
@@ -37,6 +40,6 @@ class PipelineClosingRequiredField < ApplicationRecord
     return unless custom_attribute_definition
     return if custom_attribute_definition.opportunity_attribute?
 
-    errors.add(:custom_attribute_definition, 'must be an opportunity attribute')
+    errors.add(:custom_attribute_definition, I18n.t('errors.pipeline_closing_required_field.not_an_opportunity_attribute'))
   end
 end

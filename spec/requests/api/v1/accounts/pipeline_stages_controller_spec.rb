@@ -88,10 +88,16 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
   end
 
   describe 'PATCH /api/v1/accounts/{account.id}/pipeline_stages/{id}' do
-    let!(:stage1) { account.pipeline_stages.create!(name: 'Stage 1') }
-    let!(:stage2) { account.pipeline_stages.create!(name: 'Stage 2') }
-    let!(:stage3) { account.pipeline_stages.create!(name: 'Stage 3') }
+    let(:stage1) { account.pipeline_stages.create!(name: 'Stage 1') }
     let(:valid_params) { { pipeline_stage: { name: 'Updated Stage' } }.to_json }
+    let(:stage2) { account.pipeline_stages.create!(name: 'Stage 2') }
+    let(:stage3) { account.pipeline_stages.create!(name: 'Stage 3') }
+
+    before do
+      stage1
+      stage2
+      stage3
+    end
 
     it 'updates the pipeline stage and returns an object when position is unchanged' do
       patch "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage2.id}", headers: headers_admin, params: valid_params
@@ -149,7 +155,9 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
   end
 
   describe 'DELETE /api/v1/accounts/{account.id}/pipeline_stages/{id}' do
-    let!(:stage) { account.pipeline_stages.create!(name: 'Stage 1') }
+    let(:stage) { account.pipeline_stages.create!(name: 'Stage 1') }
+
+    before { stage }
 
     it 'deletes the pipeline stage' do
       delete "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage.id}", headers: headers_admin
