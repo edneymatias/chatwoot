@@ -223,7 +223,7 @@ RSpec.describe AutomationRules::ActionService do
       let!(:pipeline_stage) { PipelineStage.create!(name: 'Test Stage', account: account) }
 
       before do
-        rule.actions = [{ action_name: 'create_opportunity', action_params: { pipeline_stage_id: pipeline_stage.id } }]
+        rule.actions = [{ action_name: 'create_opportunity', action_params: [{ pipeline_stage_id: pipeline_stage.id }] }]
         rule.save!
       end
 
@@ -243,7 +243,7 @@ RSpec.describe AutomationRules::ActionService do
 
       it 'creates exactly one Opportunity with a supplied title_template' do
         rule.actions = [{ action_name: 'create_opportunity',
-                          action_params: { pipeline_stage_id: pipeline_stage.id, title_template: 'Custom Title' } }]
+                          action_params: [{ pipeline_stage_id: pipeline_stage.id, title_template: 'Custom Title' }] }]
         rule.save!
 
         expect do
@@ -257,7 +257,7 @@ RSpec.describe AutomationRules::ActionService do
       it 'raises error for nonexistent/cross-account pipeline_stage_id' do
         other_account = create(:account)
         other_stage = PipelineStage.create!(name: 'Other Stage', account: other_account)
-        rule.actions = [{ action_name: 'create_opportunity', action_params: { pipeline_stage_id: other_stage.id } }]
+        rule.actions = [{ action_name: 'create_opportunity', action_params: [{ pipeline_stage_id: other_stage.id }] }]
         rule.save!
 
         tracker = double
@@ -296,7 +296,7 @@ RSpec.describe AutomationRules::ActionService do
 
       it 'assigns a specific agent when assignee_id is a user id' do
         rule.actions = [{ action_name: 'create_opportunity',
-                          action_params: { pipeline_stage_id: pipeline_stage.id, assignee_id: agent.id } }]
+                          action_params: [{ pipeline_stage_id: pipeline_stage.id, assignee_id: agent.id }] }]
         rule.save!
 
         described_class.new(rule, account, conversation).perform
@@ -307,8 +307,8 @@ RSpec.describe AutomationRules::ActionService do
       it "resolves 'same_as_conversation' to the conversation's current assignee" do
         conversation.update!(assignee: agent)
         rule.actions = [{ action_name: 'create_opportunity',
-                          action_params: { pipeline_stage_id: pipeline_stage.id,
-                                           assignee_id: 'same_as_conversation' } }]
+                          action_params: [{ pipeline_stage_id: pipeline_stage.id,
+                                           assignee_id: 'same_as_conversation' }] }]
         rule.save!
 
         described_class.new(rule, account, conversation).perform
@@ -319,8 +319,8 @@ RSpec.describe AutomationRules::ActionService do
       it "resolves 'same_as_conversation' to nil when conversation has no assignee" do
         conversation.update!(assignee: nil)
         rule.actions = [{ action_name: 'create_opportunity',
-                          action_params: { pipeline_stage_id: pipeline_stage.id,
-                                           assignee_id: 'same_as_conversation' } }]
+                          action_params: [{ pipeline_stage_id: pipeline_stage.id,
+                                           assignee_id: 'same_as_conversation' }] }]
         rule.save!
 
         described_class.new(rule, account, conversation).perform
@@ -330,7 +330,7 @@ RSpec.describe AutomationRules::ActionService do
 
       it 'creates the opportunity unassigned when assignee_id is blank' do
         rule.actions = [{ action_name: 'create_opportunity',
-                          action_params: { pipeline_stage_id: pipeline_stage.id, assignee_id: nil } }]
+                          action_params: [{ pipeline_stage_id: pipeline_stage.id, assignee_id: nil }] }]
         rule.save!
 
         described_class.new(rule, account, conversation).perform
