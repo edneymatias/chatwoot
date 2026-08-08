@@ -34,23 +34,13 @@ export default {
         ...notificationRoutes,
         ...helpcenterRoutes.routes,
         ...campaignsRoutes.routes,
+
         {
           path: 'opportunities',
           name: 'opportunities_index',
           roles: ['administrator', 'agent', 'custom_role'],
           component: () =>
-            import('dashboard/components-next/Opportunities/KanbanBoard.vue'),
-          meta: {
-            featureFlag: FEATURE_FLAGS.OPPORTUNITIES,
-            permissions: ['administrator', 'agent', 'custom_role'],
-          },
-        },
-        {
-          path: 'opportunities',
-          name: 'opportunities_index',
-          roles: ['administrator', 'agent', 'custom_role'],
-          component: () =>
-            import('dashboard/components-next/Opportunities/KanbanBoard.vue'),
+            import('dashboard/routes/dashboard/opportunities/Index.vue'),
           meta: {
             featureFlag: FEATURE_FLAGS.OPPORTUNITIES,
             permissions: ['administrator', 'agent', 'custom_role'],

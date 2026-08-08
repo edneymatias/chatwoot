@@ -11,8 +11,18 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
                      .order(created_at: :desc)
     @opportunities = @opportunities.where(pipeline_stage_id: params[:pipeline_stage_id]) if params[:pipeline_stage_id].present?
     @opportunities = @opportunities.where(contact_id: params[:contact_id]) if params[:contact_id].present?
-    @opportunities = @opportunities.page(params[:page]).per(10) if params[:page].present?
-    render json: @opportunities
+    if params[:page].present?
+      @opportunities = @opportunities.page(params[:page]).per(15)
+      render json: {
+        meta: {
+          count: @opportunities.total_count,
+          current_page: @opportunities.current_page
+        },
+        payload: @opportunities
+      }
+    else
+      render json: @opportunities
+    end
   end
 
   def show

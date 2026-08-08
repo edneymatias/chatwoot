@@ -16,7 +16,13 @@ const props = defineProps({
     type: String,
     default: 'relaxed',
   },
+  clickable: {
+    type: Boolean,
+    default: false,
+  },
 });
+
+const emit = defineEmits(['click']);
 
 const isRelaxed = computed(() => props.type === 'relaxed');
 const headerClass = computed(() =>
@@ -27,7 +33,7 @@ const headerClass = computed(() =>
 </script>
 
 <template>
-  <table :class="{ 'table-fixed': fixed }">
+  <table class="w-full" :class="{ 'table-fixed': fixed }">
     <thead class="sticky top-0 z-10 bg-n-slate-1">
       <tr
         v-for="headerGroup in table.getHeaderGroups()"
@@ -59,7 +65,16 @@ const headerClass = computed(() =>
     </thead>
 
     <tbody class="divide-y divide-n-slate-2">
-      <tr v-for="row in table.getRowModel().rows" :key="row.id">
+      <tr
+        v-for="row in table.getRowModel().rows"
+        :key="row.id"
+        :class="[
+          clickable
+            ? 'cursor-pointer hover:bg-n-slate-1 transition-colors'
+            : '',
+        ]"
+        @click="clickable && emit('click', row.original)"
+      >
         <td
           v-for="cell in row.getVisibleCells()"
           :key="cell.id"

@@ -32,12 +32,36 @@ export const actions = {
 
       commit('SET_PAGINATION', {
         stageId,
-        pagination: { page, hasMore: payload.length >= 10 },
+        pagination: { page, hasMore: payload.length >= 15 },
       });
     } catch (error) {
       throwErrorMessage(error);
     } finally {
       commit('SET_IS_FETCHING', { stageId, isFetching: false });
+    }
+  },
+  fetchAll: async ({ commit }, { page = 1 } = {}) => {
+    commit('SET_IS_FETCHING_ALL', true);
+    try {
+      const response = await opportunitiesAPI.get({ page });
+      const payload = response.data.payload || response.data;
+      const meta = response.data.meta || {};
+
+      commit('ADD_MANY_OPPORTUNITIES', payload);
+      commit(
+        'SET_ALL_CARDS',
+        payload.map(o => o.id)
+      );
+
+      commit('SET_PAGINATION_ALL', {
+        page,
+        hasMore: payload.length >= 15,
+        totalCount: meta.count || 0,
+      });
+    } catch (error) {
+      throwErrorMessage(error);
+    } finally {
+      commit('SET_IS_FETCHING_ALL', false);
     }
   },
   fetchForContact: async ({ commit }, { contactId }) => {

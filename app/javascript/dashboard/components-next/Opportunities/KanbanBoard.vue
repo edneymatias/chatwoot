@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
 import { useStore } from 'vuex';
-import { useRoute, useRouter } from 'vue-router';
 import KanbanColumn from './KanbanColumn.vue';
 import KanbanStatusBar from './KanbanStatusBar.vue';
 import OpportunityCreateModal from './OpportunityCreateModal.vue';
@@ -22,8 +21,6 @@ const onDragEnd = () => {
 };
 
 const store = useStore();
-const route = useRoute();
-const router = useRouter();
 
 const isCreateModalOpen = ref(false);
 const modalDefaultStageId = ref(null);
@@ -51,32 +48,12 @@ const closeBackfillModal = () => {
   backfillOpportunityId.value = null;
 };
 
-const isDrawerOpen = computed(
-  () => route.name === 'opportunities_conversation'
-);
-
-const closeDrawer = () => {
-  if (isDrawerOpen.value) {
-    router.push({
-      name: 'opportunities_index',
-      params: { accountId: route.params.accountId },
-    });
-  }
-};
-
 const stages = computed(
   () => store.getters['pipelineStages/stagesSortedByPosition']
 );
 
 onMounted(async () => {
-  await store.dispatch('pipelineStages/fetch');
-  store.dispatch('pipelineCardFieldConfigs/fetch');
-  store.dispatch('pipelineCurrencySetting/fetch');
-  if (stages.value?.length) {
-    store.dispatch('pipelineStages/fetchAggregates', {
-      stageIds: stages.value.map(s => s.id),
-    });
-  }
+  // Fetches are handled in Index.vue now to apply to all view modes
 });
 
 const pendingMove = ref({});
@@ -255,15 +232,6 @@ const onCardClick = opportunityId => {
       @status-changed="onStatusChanged"
     />
 
-    <!-- Backdrop for Drawer -->
-    <transition name="fade">
-      <div
-        v-if="isDrawerOpen"
-        class="absolute inset-0 z-[39] bg-black/20 dark:bg-black/40 backdrop-blur-sm transition-all"
-        @click="closeDrawer"
-      />
-    </transition>
-
     <OpportunityCreateModal
       v-if="isCreateModalOpen"
       :default-stage-id="modalDefaultStageId"
@@ -306,12 +274,6 @@ const onCardClick = opportunityId => {
       "
       @close="closeClosingRequirementsModal"
     />
-
-    <router-view v-slot="{ Component }">
-      <transition name="slide-right">
-        <component :is="Component" v-if="Component" />
-      </transition>
-    </router-view>
   </div>
 </template>
 

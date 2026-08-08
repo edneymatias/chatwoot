@@ -16,4 +16,15 @@ export const getters = {
   isFetchingForStage: state => stageId => {
     return state.uiFlags.isFetchingByStage[stageId] || false;
   },
+  allCards: state => {
+    return state.allIds
+      .map(id => state.byId[id])
+      .filter(card => card !== undefined);
+  },
+  hasMoreAll: state => {
+    return state.pagination.all?.hasMore || false;
+  },
+  isFetchingAll: state => {
+    return state.uiFlags.isFetchingAll || false;
+  },
 };

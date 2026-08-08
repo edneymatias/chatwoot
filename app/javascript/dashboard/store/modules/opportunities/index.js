@@ -9,9 +9,14 @@ const state = {
   allIds: [],
   pagination: {
     byStage: {},
+    all: {
+      page: 1,
+      hasMore: true,
+    },
   },
   uiFlags: {
     isFetchingByStage: {},
+    isFetchingAll: false,
     isCreating: false,
     isMoving: {},
   },

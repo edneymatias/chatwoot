@@ -1,5 +1,7 @@
 {
   "OPPORTUNITIES": {
+    "HEADER": "Oportunidades",
+    "LEAD_COUNT": "{count} Oportunidades",
     "BOARD": {
       "LOADING": "Carregando...",
       "STATUS": {

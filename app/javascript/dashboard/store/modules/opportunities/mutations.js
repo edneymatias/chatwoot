@@ -11,6 +11,9 @@ export const mutations = {
       [stageId]: isFetching,
     };
   },
+  SET_IS_FETCHING_ALL(state, isFetching) {
+    state.uiFlags.isFetchingAll = isFetching;
+  },
   ADD_MANY_OPPORTUNITIES(state, opportunities) {
     const byId = { ...state.byId };
     opportunities.forEach(opp => {
@@ -21,6 +24,12 @@ export const mutations = {
   ADD_MANY_OPPORTUNITIES_ID(state, opportunityIds) {
     const newIds = opportunityIds.filter(id => !state.allIds.includes(id));
     state.allIds.push(...newIds);
+  },
+  SET_ALL_CARDS(state, opportunityIds) {
+    state.allIds = opportunityIds;
+  },
+  SET_PAGINATION_ALL(state, pagination) {
+    state.pagination.all = pagination;
   },
   SET_IDS_BY_STAGE(state, { stageId, opportunityIds }) {
     state.idsByStage = {

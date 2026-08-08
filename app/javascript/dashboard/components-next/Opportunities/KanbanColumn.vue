@@ -4,7 +4,7 @@ import { useStore } from 'vuex';
 import Draggable from 'vuedraggable';
 import KanbanCard from './KanbanCard.vue';
 import IntersectionObserver from 'dashboard/components/IntersectionObserver.vue';
-import { getCurrencyConfig } from 'dashboard/constants/pipelineCurrency';
+import { formatCurrencyAmount } from 'dashboard/constants/pipelineCurrency';
 
 const props = defineProps({
   stage: {
@@ -90,14 +90,11 @@ const displayTotal = computed(() => {
     return props.stage.open_count || 0;
   }
 
-  const config = getCurrencyConfig(currencyCode.value);
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: config.code,
-    currencyDisplay: config.display,
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(props.stage.open_value_sum || 0);
+  return formatCurrencyAmount(
+    props.stage.open_value_sum || 0,
+    currencyCode.value,
+    true
+  );
 });
 </script>
 
