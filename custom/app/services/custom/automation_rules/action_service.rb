@@ -4,19 +4,22 @@ module Custom::AutomationRules::ActionService
   def create_opportunity(params)
     return if Opportunity.exists?(origin_conversation_id: @conversation.id)
 
-    opts = (params[0] || {}).with_indifferent_access
-    title = opts[:title_template].presence || "Oportunidade ##{@conversation.display_id}"
-    assignee_id = if opts[:assignee_id] == 'same_as_conversation'
+    stage_id = params[0]
+    assignee_id_param = params[1]&.presence
+
+    # Temporarily drop title_template parsing since we are using scalar arrays. We use default title.
+    title = "Oportunidade ##{@conversation.display_id}"
+    assignee_id = if assignee_id_param == 'same_as_conversation'
                     @conversation.assignee_id
                   else
-                    opts[:assignee_id]
+                    assignee_id_param
                   end
 
     begin
       Opportunity.create!(
         account: @conversation.account,
         contact: @conversation.contact,
-        pipeline_stage_id: opts[:pipeline_stage_id],
+        pipeline_stage_id: stage_id,
         origin_conversation: @conversation,
         status: :open,
         title: title,

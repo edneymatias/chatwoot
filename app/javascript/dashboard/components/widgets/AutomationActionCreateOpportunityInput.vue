@@ -35,11 +35,9 @@ export default {
   },
   methods: {
     initializeValues() {
-      const rawValue = Array.isArray(this.modelValue)
-        ? this.modelValue[0]
-        : this.modelValue;
-      const { pipeline_stage_id: stageId, assignee_id: assigneeId } =
-        rawValue || {};
+      const [stageId, assigneeId] = Array.isArray(this.modelValue)
+        ? this.modelValue
+        : [];
 
       if (stageId && Array.isArray(this.pipelineStages)) {
         this.selectedStage =
@@ -64,10 +62,13 @@ export default {
       }
     },
     updateValue() {
-      this.$emit('update:modelValue', {
-        pipeline_stage_id: this.selectedStage?.id ?? null,
-        assignee_id: this.selectedAgent?.id ?? null,
-      });
+      // By casting everything to a String, we bypass upstream's `actionQueryGenerator.js` 
+      // strict `allElementsString` check without needing to modify core files.
+      // Empty values are emitted as empty strings, which Rails will accept or treat as nil/empty.
+      this.$emit('update:modelValue', [
+        this.selectedStage?.id ? String(this.selectedStage.id) : '',
+        this.selectedAgent?.id ? String(this.selectedAgent.id) : '',
+      ]);
     },
   },
 };
