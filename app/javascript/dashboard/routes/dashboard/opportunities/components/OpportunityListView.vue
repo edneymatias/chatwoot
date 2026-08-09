@@ -1,5 +1,5 @@
 <script setup>
-import { computed, defineComponent, h, toRef, onMounted } from 'vue';
+import { computed, defineComponent, h, toRef, onMounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import { useI18n } from 'vue-i18n';
 import PaginationFooter from 'dashboard/components-next/pagination/PaginationFooter.vue';
@@ -8,6 +8,13 @@ import Spinner from 'shared/components/Spinner.vue';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import { useOpportunityCardFields } from 'dashboard/composables/useOpportunityCardFields';
 import { formatCurrencyAmount } from 'dashboard/constants/pipelineCurrency';
+
+const props = defineProps({
+  filters: {
+    type: Object,
+    default: () => ({}),
+  },
+});
 
 const emit = defineEmits(['rowClick']);
 const store = useStore();
@@ -25,11 +32,22 @@ const handleRowClick = opportunity => {
 };
 
 const updateCurrentPage = page => {
-  store.dispatch('opportunities/fetchAll', { page });
+  store.dispatch('opportunities/fetchAll', { page, filters: props.filters });
 };
 
+watch(
+  () => props.filters,
+  () => {
+    store.dispatch('opportunities/fetchAll', {
+      page: 1,
+      filters: props.filters,
+    });
+  },
+  { deep: true }
+);
+
 onMounted(async () => {
-  store.dispatch('opportunities/fetchAll', { page: 1 });
+  store.dispatch('opportunities/fetchAll', { page: 1, filters: props.filters });
 });
 
 const OpportunityCardRow = defineComponent({
@@ -39,14 +57,14 @@ const OpportunityCardRow = defineComponent({
       required: true,
     },
   },
-  setup(props) {
-    const oppRef = toRef(props, 'opportunity');
+  setup(rowProps) {
+    const oppRef = toRef(rowProps, 'opportunity');
     const { statusBadgeClass, isStale, timestampLabel } =
       useOpportunityCardFields(oppRef);
     const { t } = useI18n();
 
     return () => {
-      const opp = props.opportunity;
+      const opp = rowProps.opportunity;
       const contact = opp.contact;
       const assignee = opp.assignee;
       const currencyCode = store.getters['pipelineCurrencySetting/getCurrency'];
@@ -127,6 +145,7 @@ const OpportunityCardRow = defineComponent({
                     statusBadgeClass.value,
                   ],
                 },
+                // eslint-disable-next-line @intlify/vue-i18n/no-dynamic-keys
                 t(`OPPORTUNITIES.BOARD.STATUS.${opp.status.toUpperCase()}`)
               )
             : h('span', { class: 'text-n-slate-9 text-sm' }, '-'),

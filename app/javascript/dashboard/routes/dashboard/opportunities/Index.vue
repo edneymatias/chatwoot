@@ -14,6 +14,8 @@ onMounted(async () => {
   await store.dispatch('pipelineStages/fetch');
   store.dispatch('pipelineCardFieldConfigs/fetch');
   store.dispatch('pipelineCurrencySetting/fetch');
+  store.dispatch('agents/get');
+  store.dispatch('attributes/get');
 
   const stages = store.getters['pipelineStages/stagesSortedByPosition'];
   if (stages?.length) {
@@ -26,6 +28,8 @@ onMounted(async () => {
 const viewMode = ref(
   localStorage.getItem('opportunities_view_mode') || 'kanban'
 );
+
+const filters = ref({});
 
 watch(viewMode, newVal => {
   localStorage.setItem('opportunities_view_mode', newVal);
@@ -61,11 +65,20 @@ const closeDrawer = () => {
   <div
     class="flex flex-col h-full w-full bg-n-slate-1 relative overflow-hidden"
   >
-    <OpportunitiesViewBar v-model="viewMode" />
+    <OpportunitiesViewBar v-model="viewMode" v-model:filters="filters" />
 
     <div class="flex-grow overflow-hidden relative">
-      <KanbanBoard v-if="viewMode === 'kanban'" key="kanban" />
-      <OpportunityListView v-else key="list" @row-click="handleRowClick" />
+      <KanbanBoard
+        v-if="viewMode === 'kanban'"
+        key="kanban"
+        :filters="filters"
+      />
+      <OpportunityListView
+        v-else
+        key="list"
+        :filters="filters"
+        @row-click="handleRowClick"
+      />
 
       <!-- Backdrop for Drawer -->
       <transition name="fade">

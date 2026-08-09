@@ -8,6 +8,13 @@ import OpportunityBackfillModal from './OpportunityBackfillModal.vue';
 import StageTransitionRequirementsModal from './StageTransitionRequirementsModal.vue';
 import ClosingRequirementsModal from './ClosingRequirementsModal.vue';
 
+defineProps({
+  filters: {
+    type: Object,
+    default: () => ({}),
+  },
+});
+
 const emit = defineEmits(['cardClick']);
 
 const isCardDragging = ref(false);
@@ -214,6 +221,7 @@ const onCardClick = opportunityId => {
         v-for="stage in stages"
         :key="stage.id"
         :stage="stage"
+        :filters="filters"
         @card-added="onCardAdded"
         @card-removed="onCardRemoved"
         @card-click="onCardClick"

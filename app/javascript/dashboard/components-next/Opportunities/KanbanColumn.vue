@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import Draggable from 'vuedraggable';
 import KanbanCard from './KanbanCard.vue';
@@ -10,6 +10,10 @@ const props = defineProps({
   stage: {
     type: Object,
     required: true,
+  },
+  filters: {
+    type: Object,
+    default: () => ({}),
   },
 });
 
@@ -46,8 +50,17 @@ const loadCards = (page = 1) => {
   store.dispatch('opportunities/fetchForStage', {
     stageId: props.stage.id,
     page,
+    filters: props.filters,
   });
 };
+
+watch(
+  () => props.filters,
+  () => {
+    loadCards(1);
+  },
+  { deep: true }
+);
 
 onMounted(() => {
   loadCards(1);

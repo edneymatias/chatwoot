@@ -3,12 +3,13 @@ import opportunitiesAPI from 'dashboard/api/opportunities';
 import { throwErrorMessage } from 'dashboard/store/utils/api';
 
 export const actions = {
-  fetchForStage: async ({ commit }, { stageId, page = 1 }) => {
+  fetchForStage: async ({ commit }, { stageId, page = 1, filters = {} }) => {
     commit('SET_IS_FETCHING', { stageId, isFetching: true });
     try {
       const response = await opportunitiesAPI.get({
         pipeline_stage_id: stageId,
         page,
+        ...filters,
       });
       const payload = response.data.payload || response.data;
 
@@ -40,10 +41,10 @@ export const actions = {
       commit('SET_IS_FETCHING', { stageId, isFetching: false });
     }
   },
-  fetchAll: async ({ commit }, { page = 1 } = {}) => {
+  fetchAll: async ({ commit }, { page = 1, filters = {} } = {}) => {
     commit('SET_IS_FETCHING_ALL', true);
     try {
-      const response = await opportunitiesAPI.get({ page });
+      const response = await opportunitiesAPI.get({ page, ...filters });
       const payload = response.data.payload || response.data;
       const meta = response.data.meta || {};
 
