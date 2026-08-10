@@ -216,7 +216,9 @@ const onCardClick = opportunityId => {
 </script>
 
 <template>
-  <div class="flex h-full w-full overflow-hidden bg-n-slate-1 relative">
+  <div
+    class="flex flex-col h-full w-full overflow-hidden bg-n-slate-1 relative"
+  >
     <div class="flex flex-grow overflow-x-auto p-4 gap-4">
       <KanbanColumn
         v-for="stage in stages"

@@ -62,7 +62,7 @@ export default {
       }
     },
     updateValue() {
-      // By casting everything to a String, we bypass upstream's `actionQueryGenerator.js` 
+      // By casting everything to a String, we bypass upstream's `actionQueryGenerator.js`
       // strict `allElementsString` check without needing to modify core files.
       // Empty values are emitted as empty strings, which Rails will accept or treat as nil/empty.
       this.$emit('update:modelValue', [

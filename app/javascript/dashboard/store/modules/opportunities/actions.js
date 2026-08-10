@@ -67,7 +67,10 @@ export const actions = {
   },
   fetchForContact: async ({ commit }, { contactId }) => {
     try {
-      const response = await opportunitiesAPI.get({ contact_id: contactId });
+      const response = await opportunitiesAPI.get({
+        contact_id: contactId,
+        status: 'all',
+      });
       const payload = response.data.payload || response.data;
 
       commit('ADD_MANY_OPPORTUNITIES', payload);

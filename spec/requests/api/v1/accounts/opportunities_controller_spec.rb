@@ -22,8 +22,10 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
   end
 
   describe 'GET /api/v1/accounts/{account.id}/opportunities' do
-    it 'returns opportunities' do
-      Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'My Opp')
+    it 'returns open opportunities by default, excluding won/lost' do
+      Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'Open Opp', status: 'open')
+      Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'Won Opp', status: 'won')
+      Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'Lost Opp', status: 'lost')
 
       get "/api/v1/accounts/#{account.id}/opportunities",
           headers: admin.create_new_auth_token,
@@ -31,7 +33,50 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.length).to eq(1)
-      expect(response.parsed_body.first['title']).to eq('My Opp')
+      expect(response.parsed_body.first['title']).to eq('Open Opp')
+    end
+
+    it 'returns all opportunities when status=all' do
+      Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'Open Opp', status: 'open')
+      Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'Won Opp', status: 'won')
+
+      get "/api/v1/accounts/#{account.id}/opportunities",
+          params: { status: 'all' },
+          headers: admin.create_new_auth_token,
+          as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.length).to eq(2)
+      expect(response.parsed_body.map { |o| o['title'] }).to include('Open Opp', 'Won Opp')
+    end
+
+    it 'returns specific status opportunities when explicitly requested' do
+      Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'Open Opp', status: 'open')
+      Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'Won Opp', status: 'won')
+
+      get "/api/v1/accounts/#{account.id}/opportunities",
+          params: { status: 'won' },
+          headers: admin.create_new_auth_token,
+          as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.length).to eq(1)
+      expect(response.parsed_body.first['title']).to eq('Won Opp')
+    end
+
+    it 'ignores the default when payload targets status' do
+      Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'Won Opp', status: 'won')
+      Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'Lost Opp', status: 'lost')
+
+      payload = [{ attribute_key: 'status', filter_operator: 'equal_to', values: ['lost'] }].to_json
+      get "/api/v1/accounts/#{account.id}/opportunities",
+          params: { payload: payload },
+          headers: admin.create_new_auth_token,
+          as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.length).to eq(1)
+      expect(response.parsed_body.first['title']).to eq('Lost Opp')
     end
 
     it 'works for agents too' do

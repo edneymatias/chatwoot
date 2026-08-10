@@ -51,7 +51,7 @@ watch(
 
 <template>
   <div
-    class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-4 bg-n-surface-1 p-3 rounded-xl shadow-2xl border border-n-weak z-50"
+    class="flex justify-center gap-4 bg-n-surface-1 p-3 rounded-xl border border-n-weak shrink-0 mx-auto mb-4"
   >
     <Draggable
       v-model="lostList"

@@ -11,6 +11,8 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema[7.1].define(version: 2126_08_04_145603) do
+  create_schema "metabase_cache_0b4bd_2"
+
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -175,8 +177,8 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_04_145603) do
     t.bigint "account_id", null: false
     t.bigint "sla_policy_id", null: false
     t.bigint "conversation_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
     t.integer "sla_status", default: 0
     t.datetime "completed_at"
     t.index ["account_id", "sla_policy_id", "conversation_id"], name: "index_applied_slas_on_account_sla_policy_conversation", unique: true
@@ -892,8 +894,8 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_04_145603) do
     t.string "description"
     t.bigint "account_id", null: false
     t.text "permissions", default: [], array: true
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
     t.index ["account_id"], name: "index_custom_roles_on_account_id"
   end
 
@@ -1095,7 +1097,7 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_04_145603) do
     t.integer "position", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "requires_deal_value", default: false
+    t.boolean "requires_deal_value", default: false, null: false
     t.integer "total_display_mode", default: 0, null: false
     t.string "accent_color"
     t.integer "stale_after_days"
@@ -1153,6 +1155,9 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_04_145603) do
     t.bigint "portal_id"
     t.integer "sender_name_type", default: 0, null: false
     t.string "business_name"
+    t.string "external_token", default: "", null: false
+    t.boolean "csat_response_visible", default: false, null: false
+    t.boolean "allow_agent_to_delete_message", default: true, null: false
     t.jsonb "csat_config", default: {}, null: false
     t.index ["account_id"], name: "index_inboxes_on_account_id"
     t.index ["channel_id", "channel_type"], name: "index_inboxes_on_channel_id_and_channel_type"
@@ -1616,33 +1621,94 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_04_145603) do
   add_foreign_key "ichatr_pipeline_stages", "accounts"
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
-  create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
-      on("accounts").
-      after(:insert).
-      for_each(:row) do
-    "execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);"
-  end
+  # WARNING: generating adapter-specific definition for accounts_after_insert_row_tr() due to a mismatch.
+  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.accounts_after_insert_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
+$function$
+  SQL
 
-  create_trigger("conversations_before_insert_row_tr", :generated => true, :compatibility => 1).
-      on("conversations").
-      before(:insert).
-      for_each(:row) do
-    "NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);"
-  end
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER accounts_after_insert_row_tr AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION accounts_after_insert_row_tr()")
 
-  create_trigger("camp_dpid_before_insert", :generated => true, :compatibility => 1).
-      on("accounts").
-      name("camp_dpid_before_insert").
-      after(:insert).
-      for_each(:row) do
-    "execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);"
-  end
+  # WARNING: generating adapter-specific definition for camp_dpid_before_insert() due to a mismatch.
+  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.camp_dpid_before_insert()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
+$function$
+  SQL
 
-  create_trigger("campaigns_before_insert_row_tr", :generated => true, :compatibility => 1).
-      on("campaigns").
-      before(:insert).
-      for_each(:row) do
-    "NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);"
-  end
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER camp_dpid_before_insert AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION camp_dpid_before_insert()")
+
+  # WARNING: generating adapter-specific definition for campaigns_before_insert_row_tr() due to a mismatch.
+  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.campaigns_before_insert_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
+$function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER campaigns_before_insert_row_tr BEFORE INSERT ON \"campaigns\" FOR EACH ROW EXECUTE FUNCTION campaigns_before_insert_row_tr()")
+
+  # WARNING: generating adapter-specific definition for conversations_before_insert_row_tr() due to a mismatch.
+  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.conversations_before_insert_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
+$function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER conversations_before_insert_row_tr BEFORE INSERT ON \"conversations\" FOR EACH ROW EXECUTE FUNCTION conversations_before_insert_row_tr()")
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER n8n_trigger_717c52d1_52d2_406d_bc05_250afa7cfc2f AFTER INSERT ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()")
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$ begin perform pg_notify('n8n_channel_717c52d1_52d2_406d_bc05_250afa7cfc2f', row_to_json(NEW)::text); return null; end; $function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614e45cdea', row_to_json(OLD)::text); return null; end; $function$
+  SQL
 
 end
