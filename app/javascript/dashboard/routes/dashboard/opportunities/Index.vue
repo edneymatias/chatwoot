@@ -5,24 +5,34 @@ import { useRoute, useRouter } from 'vue-router';
 import KanbanBoard from 'dashboard/components-next/Opportunities/KanbanBoard.vue';
 import OpportunityListView from './components/OpportunityListView.vue';
 import OpportunitiesViewBar from './components/OpportunitiesViewBar.vue';
+import { BUS_EVENTS } from 'shared/constants/busEvents';
+import { useEmitter } from 'dashboard/composables/emitter';
 
 const route = useRoute();
 const router = useRouter();
 const store = useStore();
 
-onMounted(async () => {
-  await store.dispatch('pipelineStages/fetch');
-  store.dispatch('pipelineCardFieldConfigs/fetch');
-  store.dispatch('pipelineCurrencySetting/fetch');
-  store.dispatch('agents/get');
-  store.dispatch('attributes/get');
+const fetchInitialData = async () => {
+  try {
+    await store.dispatch('pipelineStages/fetch');
+    store.dispatch('pipelineCardFieldConfigs/fetch');
+    store.dispatch('pipelineCurrencySetting/fetch');
+    store.dispatch('agents/get');
+    store.dispatch('attributes/get');
 
-  const stages = store.getters['pipelineStages/stagesSortedByPosition'];
-  if (stages?.length) {
-    store.dispatch('pipelineStages/fetchAggregates', {
-      stageIds: stages.map(s => s.id),
-    });
+    const stages = store.getters['pipelineStages/stagesSortedByPosition'];
+    if (stages?.length) {
+      store.dispatch('pipelineStages/fetchAggregates', {
+        stageIds: stages.map(s => s.id),
+      });
+    }
+  } catch (error) {
+    // Error is caught so it doesn't break the component
   }
+};
+
+onMounted(() => {
+  fetchInitialData();
 });
 
 const viewMode = ref(
@@ -30,6 +40,24 @@ const viewMode = ref(
 );
 
 const filters = ref({});
+
+useEmitter(BUS_EVENTS.WEBSOCKET_RECONNECT_COMPLETED, () => {
+  const stages = store.getters['pipelineStages/stagesSortedByPosition'];
+  if (!stages || stages.length === 0) {
+    fetchInitialData();
+  }
+
+  if (viewMode.value === 'list') {
+    store.dispatch('opportunities/fetchAll', {
+      page: 1,
+      filters: filters.value,
+    });
+  } else {
+    // For Kanban, we can re-trigger column fetches by notifying the store
+    // or just let the columns fetch if they didn't, but columns watch `filters`.
+    // Re-fetching stages will trigger columns to render if they were empty.
+  }
+});
 
 watch(viewMode, newVal => {
   localStorage.setItem('opportunities_view_mode', newVal);

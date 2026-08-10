@@ -6,8 +6,10 @@ import PaginationFooter from 'dashboard/components-next/pagination/PaginationFoo
 import CardLayout from 'dashboard/components-next/CardLayout.vue';
 import Spinner from 'shared/components/Spinner.vue';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
 import { useOpportunityCardFields } from 'dashboard/composables/useOpportunityCardFields';
 import { formatCurrencyAmount } from 'dashboard/constants/pipelineCurrency';
+import StartOpportunityConversationButton from './StartOpportunityConversationButton.vue';
 
 const props = defineProps({
   filters: {
@@ -206,14 +208,25 @@ const OpportunityCardRow = defineComponent({
     <main class="flex-1 overflow-y-auto px-6 pt-4 w-full">
       <div class="w-full mx-auto max-w-5xl pb-6">
         <div class="flex flex-col gap-3">
-          <div v-for="card in allCards" :key="card.id" class="relative">
+          <div v-for="card in allCards" :key="card.id" class="relative group">
             <CardLayout
               layout="row"
-              class="cursor-pointer hover:bg-n-alpha-1 hover:border-n-slate-4 transition-colors"
+              class="transition-colors"
+              :class="[
+                card.origin_conversation_id
+                  ? 'cursor-pointer hover:bg-n-alpha-1 hover:border-n-slate-4'
+                  : 'cursor-default grayscale border-dashed bg-n-surface-1/50',
+              ]"
               @click="handleRowClick(card)"
             >
               <OpportunityCardRow :opportunity="card" />
             </CardLayout>
+            <div
+              v-if="!card.origin_conversation_id"
+              class="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-n-surface-1 rounded-md shadow-sm"
+            >
+              <StartOpportunityConversationButton :opportunity="card" />
+            </div>
           </div>
         </div>
 
@@ -223,6 +236,28 @@ const OpportunityCardRow = defineComponent({
           class="flex justify-center items-center py-6 w-full mt-2"
         >
           <Spinner />
+        </div>
+
+        <!-- Empty State -->
+        <div
+          v-else-if="allCards.length === 0"
+          class="flex flex-col items-center justify-center py-12 w-full mt-8"
+        >
+          <p class="text-n-slate-11 text-base mb-4">
+            {{ $t('OPPORTUNITIES.LIST.EMPTY_STATE') }}
+          </p>
+          <Button
+            size="small"
+            color-scheme="primary"
+            @click="
+              store.dispatch('opportunities/fetchAll', {
+                page: 1,
+                filters: props.filters,
+              })
+            "
+          >
+            {{ $t('OPPORTUNITIES.LIST.RETRY') }}
+          </Button>
         </div>
       </div>
     </main>

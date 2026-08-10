@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
+import ContactAPI from 'dashboard/api/contacts';
 import OpportunityRequiredFieldsForm from './OpportunityRequiredFieldsForm.vue';
 
 const props = defineProps({
@@ -79,13 +80,8 @@ const onSearch = () => {
   isSearching.value = true;
   searchTimeout = setTimeout(async () => {
     try {
-      const response = await store.dispatch('contacts/search', {
-        search: searchQuery.value,
-      });
-      // response is usually the array directly from the action or payload
-      searchResults.value = Array.isArray(response)
-        ? response
-        : response.payload || [];
+      const response = await ContactAPI.search(searchQuery.value);
+      searchResults.value = response.data.payload || [];
     } catch (e) {
       searchResults.value = [];
     } finally {

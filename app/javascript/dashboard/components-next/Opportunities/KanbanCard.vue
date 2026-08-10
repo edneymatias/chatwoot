@@ -4,6 +4,7 @@ import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import { useOpportunityCardFields } from 'dashboard/composables/useOpportunityCardFields';
+import StartOpportunityConversationButton from 'dashboard/routes/dashboard/opportunities/components/StartOpportunityConversationButton.vue';
 
 const props = defineProps({
   opportunity: {
@@ -164,6 +165,10 @@ const hasUnmetRequirements = computed(() => {
     <div
       class="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
     >
+      <StartOpportunityConversationButton
+        v-if="!opportunity.origin_conversation_id"
+        :opportunity="opportunity"
+      />
       <button
         v-if="opportunity.status !== 'open'"
         class="p-1 rounded bg-n-slate-3 text-n-slate-11 hover:bg-n-slate-4 transition-colors"

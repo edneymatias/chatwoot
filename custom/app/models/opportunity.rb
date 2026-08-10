@@ -14,6 +14,7 @@ class Opportunity < ApplicationRecord
   validate :pipeline_stage_belongs_to_account
   validate :validate_forward_stage_move_requirements, on: :update, if: :pipeline_stage_id_changed?
   validate :validate_closing_requirements, on: :update, if: :status_changed?
+  validate :validate_origin_conversation_id_immutability, on: :update, if: :origin_conversation_id_changed?
 
   attr_accessor :missing_required_fields
 
@@ -161,5 +162,11 @@ class Opportunity < ApplicationRecord
     end
 
     missing_keys
+  end
+
+  def validate_origin_conversation_id_immutability
+    return if origin_conversation_id_was.nil?
+
+    errors.add(:origin_conversation_id, 'cannot be changed once set')
   end
 end

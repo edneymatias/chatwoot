@@ -35,6 +35,10 @@
       "CANCEL": "Cancelar",
       "SUBMIT": "Criar"
     },
+    "LIST": {
+      "EMPTY_STATE": "Nenhuma oportunidade encontrada.",
+      "RETRY": "Tentar novamente"
+    },
     "SETTINGS": {},
     "DETAIL": {
       "STATUS_LABEL": "Status",

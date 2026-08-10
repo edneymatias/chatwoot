@@ -7,6 +7,7 @@ import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import OpportunitiesFilter from 'dashboard/components-next/filter/OpportunitiesFilter.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
+import OpportunityCreateModal from 'dashboard/components-next/Opportunities/OpportunityCreateModal.vue';
 
 const props = defineProps({
   modelValue: {
@@ -35,6 +36,7 @@ const currencyCode = computed(
   () => store.getters['pipelineCurrencySetting/getCurrency']
 );
 
+const isCreateModalOpen = ref(false);
 const isFilterModalOpen = ref(false);
 const activeFilters = ref([
   {
@@ -190,13 +192,16 @@ const setViewMode = mode => {
 
       <!-- Create Button -->
       <Button
-        v-tooltip.bottom="'Coming soon'"
         variant="solid"
         color="blue"
         size="md"
         icon="i-lucide-plus"
         :label="$t('OPPORTUNITIES.CREATE_MODAL.SUBMIT')"
-        disabled
+        @click="isCreateModalOpen = true"
+      />
+      <OpportunityCreateModal
+        v-if="isCreateModalOpen"
+        @close="isCreateModalOpen = false"
       />
     </div>
   </div>

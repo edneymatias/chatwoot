@@ -170,6 +170,7 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
       :contact_id,
       :pipeline_stage_id,
       :status,
+      :origin_conversation_id,
       :assignee_id,
       :value,
       custom_attributes: {}

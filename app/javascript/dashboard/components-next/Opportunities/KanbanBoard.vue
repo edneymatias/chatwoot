@@ -7,6 +7,7 @@ import OpportunityCreateModal from './OpportunityCreateModal.vue';
 import OpportunityBackfillModal from './OpportunityBackfillModal.vue';
 import StageTransitionRequirementsModal from './StageTransitionRequirementsModal.vue';
 import ClosingRequirementsModal from './ClosingRequirementsModal.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
 
 defineProps({
   filters: {
@@ -232,6 +233,23 @@ const onCardClick = opportunityId => {
         @complete-fields="openBackfillModal"
         @edit-card="openBackfillModal"
       />
+
+      <!-- Empty State for Board -->
+      <div
+        v-if="stages.length === 0"
+        class="flex flex-col items-center justify-center py-12 w-full h-full"
+      >
+        <p class="text-n-slate-11 text-base mb-4">
+          {{ $t('OPPORTUNITIES.LIST.EMPTY_STATE') }}
+        </p>
+        <Button
+          size="small"
+          color-scheme="primary"
+          @click="store.dispatch('pipelineStages/fetch')"
+        >
+          {{ $t('OPPORTUNITIES.LIST.RETRY') }}
+        </Button>
+      </div>
     </div>
 
     <KanbanStatusBar
