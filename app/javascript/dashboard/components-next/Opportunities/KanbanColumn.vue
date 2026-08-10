@@ -72,6 +72,11 @@ const onObserved = () => {
   }
 };
 
+const onDragStart = evt => {
+  const id = cards.value[evt.oldIndex]?.id;
+  emit('dragStart', id);
+};
+
 const onChange = event => {
   if (event.removed) {
     emit('cardRemoved', {
@@ -151,8 +156,9 @@ const displayTotal = computed(() => {
       class="flex-1 overflow-y-auto p-2 min-h-0 flex flex-col gap-2"
       ghost-class="opacity-50"
       filter=".is-closed"
+      :sort="false"
       @change="onChange"
-      @start="$emit('dragStart', $event)"
+      @start="onDragStart"
       @end="$emit('dragEnd', $event)"
     >
       <template #item="{ element }">

@@ -19,13 +19,14 @@ defineProps({
 const emit = defineEmits(['cardClick']);
 
 const isCardDragging = ref(false);
+const isStatusBarHovered = ref(false);
+const draggedCardId = ref(null);
+const statusBarHandledId = ref(null);
+const statusBarPendingMove = ref(null);
 
-const onDragStart = () => {
+const onDragStart = id => {
   isCardDragging.value = true;
-};
-
-const onDragEnd = () => {
-  isCardDragging.value = false;
+  draggedCardId.value = id;
 };
 
 const store = useStore();
@@ -75,6 +76,7 @@ const closeClosingRequirementsModal = () => {
 };
 
 const onStatusChanged = async ({ id, status }) => {
+  delete pendingMove.value[id];
   try {
     const opp = store.state.opportunities.byId[id];
     const stageId = opp?.pipeline_stage_id;
@@ -135,6 +137,37 @@ const executeMoveCard = async (id, move) => {
   }
 };
 
+// SortableJS mutates the DOM live as the card is dragged over other
+// columns, ahead of any Vuex commit. Vue never re-diffs that DOM on its
+// own, so once we know the move must NOT happen (or must be replaced by
+// a different action), we force a commit-then-revert so Vue's reconciler
+// visits the affected lists and wipes out SortableJS's raw DOM mutation.
+const forceDomReconcile = (id, move) => {
+  const previousStageIds = [
+    ...(store.state.opportunities.idsByStage[move.fromStageId] || []),
+  ];
+  const previousToStageIds = [
+    ...(store.state.opportunities.idsByStage[move.toStageId] || []),
+  ];
+
+  store.commit('opportunities/MOVE_CARD_OPTIMISTIC', {
+    id,
+    fromStageId: move.fromStageId,
+    toStageId: move.toStageId,
+    toIndex: move.toIndex,
+  });
+
+  setTimeout(() => {
+    store.commit('opportunities/REVERT_MOVE_CARD', {
+      id,
+      previousStageId: move.fromStageId,
+      previousStageIds,
+      previousToStageIds,
+      toStageId: move.toStageId,
+    });
+  }, 50);
+};
+
 const dispatchMoveIfComplete = id => {
   const move = pendingMove.value[id];
   if (
@@ -183,6 +216,8 @@ const dispatchMoveIfComplete = id => {
     }
 
     if (isMissingFields) {
+      forceDomReconcile(id, move);
+
       requirementsModalData.value = {
         opportunity,
         destinationStageId: move.toStageId,
@@ -197,16 +232,57 @@ const dispatchMoveIfComplete = id => {
   }
 };
 
+// Only bookkeeping here: SortableJS fires these live as the card transits
+// over other columns during the drag, well before the user actually drops
+// it. Committing here would apply a move the user never intended (e.g. when
+// they continue on to drop on the status bar instead). The real decision
+// happens once the drag actually ends, in onDragEnd.
 const onCardRemoved = ({ id, fromStageId }) => {
   if (!pendingMove.value[id]) pendingMove.value[id] = {};
-  pendingMove.value[id].fromStageId = fromStageId;
-  dispatchMoveIfComplete(id);
+  if (pendingMove.value[id].fromStageId === undefined) {
+    pendingMove.value[id].fromStageId = fromStageId;
+  }
 };
 
 const onCardAdded = ({ id, toStageId, toIndex }) => {
   if (!pendingMove.value[id]) pendingMove.value[id] = {};
   pendingMove.value[id].toStageId = toStageId;
   pendingMove.value[id].toIndex = toIndex;
+};
+
+const onStatusBarDrop = status => {
+  const id = draggedCardId.value;
+  if (!id) return;
+  statusBarHandledId.value = id;
+  // onStatusChanged deletes pendingMove.value[id] synchronously, and the
+  // native `drop` event fires before `dragend`, so onDragEnd would find it
+  // already gone. Snapshot it now while it's still there.
+  statusBarPendingMove.value = pendingMove.value[id];
+  onStatusChanged({ id, status });
+};
+
+const onDragEnd = () => {
+  const id = draggedCardId.value;
+  isCardDragging.value = false;
+  draggedCardId.value = null;
+
+  if (!id) return;
+
+  if (statusBarHandledId.value === id) {
+    statusBarHandledId.value = null;
+    const move = statusBarPendingMove.value;
+    statusBarPendingMove.value = null;
+    if (
+      move &&
+      move.fromStageId !== undefined &&
+      move.toStageId !== undefined
+    ) {
+      forceDomReconcile(id, move);
+    }
+    delete pendingMove.value[id];
+    return;
+  }
+
   dispatchMoveIfComplete(id);
 };
 
@@ -225,6 +301,7 @@ const onCardClick = opportunityId => {
         :key="stage.id"
         :stage="stage"
         :filters="filters"
+        :is-status-bar-hovered="isStatusBarHovered"
         @card-added="onCardAdded"
         @card-removed="onCardRemoved"
         @card-click="onCardClick"
@@ -257,7 +334,8 @@ const onCardClick = opportunityId => {
     <KanbanStatusBar
       v-show="isCardDragging"
       :is-dragging="isCardDragging"
-      @status-changed="onStatusChanged"
+      @drop="onStatusBarDrop"
+      @hover-state="isStatusBarHovered = $event"
     />
 
     <OpportunityCreateModal
