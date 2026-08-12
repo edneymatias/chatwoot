@@ -104,6 +104,32 @@ RSpec.describe AutomationRules::ConditionsFilterService do
         end
       end
 
+      context 'when filtering campaign_referral_present' do
+        it 'will return true when campaign_referral_present is true and referral exists' do
+          rule.update!(conditions: [{ 'values': [true], 'attribute_key': 'campaign_referral_present', 'query_operator': nil, 'filter_operator': 'equal_to' }])
+          message.update!(content_attributes: { 'referral' => { 'source_url' => 'http://example.com' } })
+          expect(described_class.new(rule, conversation, { message: message, changed_attributes: {} }).perform).to be(true)
+        end
+
+        it 'will return false when campaign_referral_present is true and referral does not exist' do
+          rule.update!(conditions: [{ 'values': [true], 'attribute_key': 'campaign_referral_present', 'query_operator': nil, 'filter_operator': 'equal_to' }])
+          message.update!(content_attributes: {})
+          expect(described_class.new(rule, conversation, { message: message, changed_attributes: {} }).perform).to be(false)
+        end
+        
+        it 'will return true when campaign_referral_present is false and referral does not exist' do
+          rule.update!(conditions: [{ 'values': [false], 'attribute_key': 'campaign_referral_present', 'query_operator': nil, 'filter_operator': 'equal_to' }])
+          message.update!(content_attributes: {})
+          expect(described_class.new(rule, conversation, { message: message, changed_attributes: {} }).perform).to be(true)
+        end
+        
+        it 'will return false when campaign_referral_present is false and referral exists' do
+          rule.update!(conditions: [{ 'values': [false], 'attribute_key': 'campaign_referral_present', 'query_operator': nil, 'filter_operator': 'equal_to' }])
+          message.update!(content_attributes: { 'referral' => { 'source_url' => 'http://example.com' } })
+          expect(described_class.new(rule, conversation, { message: message, changed_attributes: {} }).perform).to be(false)
+        end
+      end
+
       context 'when filter_operator is on processed_message_content' do
         before do
           rule.conditions = [

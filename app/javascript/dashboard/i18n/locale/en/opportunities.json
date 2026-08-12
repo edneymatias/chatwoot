@@ -1,1 +1,158 @@
-{"OPPORTUNITIES": {"HEADER": "Opportunities", "LEAD_COUNT": "{count} Leads", "BOARD": {"LOADING": "Loading...", "STATUS": {"OPEN": "Open", "WON": "Won", "LOST": "Lost"}, "ACTIONS": {"REOPEN": "Reopen", "COMPLETE_FIELDS": "Complete Fields", "EDIT": "Edit Opportunity"}, "TIME_IN_STAGE": "Time in current stage", "CREATED_TOOLTIP": "Created {date}", "CREATED_LABEL": "Created"}, "CREATE_MODAL": {"TITLE": "Create Opportunity", "TITLE_LABEL": "Title", "TITLE_PLACEHOLDER": "Enter opportunity title", "CONTACT_LABEL": "Contact", "SEARCH_PLACEHOLDER": "Search contacts by name or email...", "CLEAR": "Clear", "NO_RESULTS": "No contacts found.", "STAGE_LABEL": "Pipeline Stage", "STAGE_PLACEHOLDER": "Select a stage...", "CANCEL": "Cancel", "SUBMIT": "Create", "ASSIGNEE_LABEL": "Assignee", "ASSIGNEE_UNASSIGNED": "Unassigned"}, "LIST": {"EMPTY_STATE": "No opportunities found.", "RETRY": "Try again"}, "SETTINGS": {}, "DETAIL": {"STATUS_LABEL": "Status", "CONTACT_LABEL": "Contact", "ASSIGNEE_LABEL": "Assignee", "ORIGIN_CONVERSATION_LABEL": "Origin Conversation", "VIEW_CONVERSATION": "View Conversation", "NOT_FOUND": "Opportunity not found."}, "REQUIREMENTS_MODAL": {"TITLE": "Missing requirements", "REQUIRED_SECTION": "Required for this stage", "OPTIONAL_SECTION": "Optional (from previous stages)", "CANCEL": "Cancel", "SUBMIT": "Submit", "CLOSING_REQUIREMENTS_TITLE": "Closing Requirements", "CLOSING_REQUIREMENTS_DESC": "Configure required attributes when closing an opportunity", "REQUIRED_FOR_WON": "Required for won", "REQUIRED_FOR_LOST": "Required for lost", "SAVE": "Save Changes", "SAVE_SUCCESS": "Saved successfully"}, "BACKFILL_MODAL": {"CANCEL": "Cancel", "SUBMIT": "Save", "ASSIGNEE_LABEL": "Assignee", "ASSIGNEE_UNASSIGNED": "Unassigned", "STATUS_LABEL": "Status", "STAGE_LABEL": "Pipeline Stage", "DEAL_VALUE_ALWAYS_EDITABLE": "Deal value can be set at any stage."}, "DEAL_VALUE": "Deal Value"}, "PIPELINE_STAGES_MGMT": {"HEADER": "Pipeline Setup", "DESCRIPTION": "Configure your deal pipeline settings: customize which fields appear on your Kanban cards, define and reorder the stages of your pipeline, and set required fields for winning or losing deals.", "TABS": {"STAGES": "Pipeline Stages"}, "LIST": {"EMPTY_STATE": "No pipeline stages found."}, "ADD": {"TITLE": "Add Pipeline Stage", "API": {"SUCCESS_MESSAGE": "Pipeline stage added successfully.", "ERROR_MESSAGE": "Failed to add pipeline stage. Please try again."}}, "EDIT": {"TITLE": "Edit Pipeline Stage", "API": {"SUCCESS_MESSAGE": "Pipeline stage updated successfully.", "ERROR_MESSAGE": "Failed to update pipeline stage. Please try again."}}, "FORM": {"NAME_LABEL": "Name", "NAME_PLACEHOLDER": "Enter stage name", "DESC_LABEL": "Description", "DESC_PLACEHOLDER": "Enter stage description", "DISPLAY_MODE_LABEL": "Lane Total Display", "DISPLAY_MODE_VALUE": "Total value", "DISPLAY_MODE_COUNT": "Count", "ACCENT_COLOR_LABEL": "Accent Color", "CLEAR_COLOR": "Clear Color", "STALE_AFTER_DAYS_LABEL": "Stale after (days)", "STALE_AFTER_DAYS_HELP": "Time in this stage before showing alert styling", "CANCEL": "Cancel", "SUBMIT_CREATE": "Create", "SUBMIT_EDIT": "Save changes"}, "DELETE": {"CONFIRM": "Are you sure you want to delete this pipeline stage?", "SUCCESS": "Pipeline stage deleted successfully.", "ERROR": "Failed to delete pipeline stage.", "ERROR_OCCUPIED": "Cannot delete stage because it contains opportunities."}, "REORDER": {"ERROR": "Couldn't reorder pipeline stages. Please try again."}, "REQUIREMENTS": {"TITLE": "Stage Requirements", "DEAL_VALUE_LABEL": "Deal Value", "DEAL_VALUE_HELP": "Require Deal Value for this stage", "ATTRIBUTES_LABEL": "Required Custom Attributes", "NO_ATTRIBUTES": "No opportunity custom attributes available."}, "CARD_FIELDS": {"TITLE": "Card Fields", "FIELDS_LABEL": "Configured Fields", "SELECTED": "selected", "DEAL_VALUE": "Deal Value", "DEAL_VALUE_DESC": "Monetary value of the deal", "CURRENCY_LABEL": "Currency", "SAVE": "Save Changes", "SAVE_SUCCESS": "Saved successfully"}}}
+{
+  "OPPORTUNITIES": {
+    "HEADER": "Opportunities",
+    "LEAD_COUNT": "{count} Leads",
+    "BOARD": {
+      "LOADING": "Loading...",
+      "STATUS": {
+        "OPEN": "Open",
+        "WON": "Won",
+        "LOST": "Lost"
+      },
+      "ACTIONS": {
+        "REOPEN": "Reopen",
+        "COMPLETE_FIELDS": "Complete Fields",
+        "EDIT": "Edit Opportunity"
+      },
+      "TIME_IN_STAGE": "Time in current stage",
+      "CREATED_TOOLTIP": "Created {date}",
+      "CREATED_LABEL": "Created"
+    },
+    "CREATE_MODAL": {
+      "TITLE": "Create Opportunity",
+      "TITLE_LABEL": "Title",
+      "TITLE_PLACEHOLDER": "Enter opportunity title",
+      "CONTACT_LABEL": "Contact",
+      "SEARCH_PLACEHOLDER": "Search contacts by name or email...",
+      "CLEAR": "Clear",
+      "NO_RESULTS": "No contacts found.",
+      "STAGE_LABEL": "Pipeline Stage",
+      "STAGE_PLACEHOLDER": "Select a stage...",
+      "CANCEL": "Cancel",
+      "SUBMIT": "Create",
+      "ASSIGNEE_LABEL": "Assignee",
+      "ASSIGNEE_UNASSIGNED": "Unassigned"
+    },
+    "LIST": {
+      "EMPTY_STATE": "No opportunities found.",
+      "RETRY": "Try again"
+    },
+    "SETTINGS": {},
+    "DETAIL": {
+      "STATUS_LABEL": "Status",
+      "CONTACT_LABEL": "Contact",
+      "ASSIGNEE_LABEL": "Assignee",
+      "ORIGIN_CONVERSATION_LABEL": "Origin Conversation",
+      "VIEW_CONVERSATION": "View Conversation",
+      "NOT_FOUND": "Opportunity not found."
+    },
+    "REQUIREMENTS_MODAL": {
+      "TITLE": "Missing requirements",
+      "REQUIRED_SECTION": "Required for this stage",
+      "OPTIONAL_SECTION": "Optional (from previous stages)",
+      "CANCEL": "Cancel",
+      "SUBMIT": "Submit",
+      "CLOSING_REQUIREMENTS_TITLE": "Closing Requirements",
+      "CLOSING_REQUIREMENTS_DESC": "Configure required attributes when closing an opportunity",
+      "REQUIRED_FOR_WON": "Required for won",
+      "REQUIRED_FOR_LOST": "Required for lost",
+      "SAVE": "Save Changes",
+      "SAVE_SUCCESS": "Saved successfully"
+    },
+    "BACKFILL_MODAL": {
+      "CANCEL": "Cancel",
+      "SUBMIT": "Save",
+      "ASSIGNEE_LABEL": "Assignee",
+      "ASSIGNEE_UNASSIGNED": "Unassigned",
+      "STATUS_LABEL": "Status",
+      "STAGE_LABEL": "Pipeline Stage",
+      "DEAL_VALUE_ALWAYS_EDITABLE": "Deal value can be set at any stage."
+    },
+    "DEAL_VALUE": "Deal Value",
+    "CAMPAIGN": {
+      "PENDING": "Resolving attribution..."
+    }
+  },
+  "PIPELINE_STAGES_MGMT": {
+    "HEADER": "Pipeline Setup",
+    "DESCRIPTION": "Configure your deal pipeline settings: customize which fields appear on your Kanban cards, define and reorder the stages of your pipeline, and set required fields for winning or losing deals.",
+    "TABS": {
+      "STAGES": "Pipeline Stages"
+    },
+    "LIST": {
+      "EMPTY_STATE": "No pipeline stages found."
+    },
+    "ADD": {
+      "TITLE": "Add Pipeline Stage",
+      "API": {
+        "SUCCESS_MESSAGE": "Pipeline stage added successfully.",
+        "ERROR_MESSAGE": "Failed to add pipeline stage. Please try again."
+      }
+    },
+    "EDIT": {
+      "TITLE": "Edit Pipeline Stage",
+      "API": {
+        "SUCCESS_MESSAGE": "Pipeline stage updated successfully.",
+        "ERROR_MESSAGE": "Failed to update pipeline stage. Please try again."
+      }
+    },
+    "FORM": {
+      "NAME_LABEL": "Name",
+      "NAME_PLACEHOLDER": "Enter stage name",
+      "DESC_LABEL": "Description",
+      "DESC_PLACEHOLDER": "Enter stage description",
+      "DISPLAY_MODE_LABEL": "Lane Total Display",
+      "DISPLAY_MODE_VALUE": "Total value",
+      "DISPLAY_MODE_COUNT": "Count",
+      "ACCENT_COLOR_LABEL": "Accent Color",
+      "CLEAR_COLOR": "Clear Color",
+      "STALE_AFTER_DAYS_LABEL": "Stale after (days)",
+      "STALE_AFTER_DAYS_HELP": "Time in this stage before showing alert styling",
+      "CANCEL": "Cancel",
+      "SUBMIT_CREATE": "Create",
+      "SUBMIT_EDIT": "Save changes"
+    },
+    "DELETE": {
+      "CONFIRM": "Are you sure you want to delete this pipeline stage?",
+      "SUCCESS": "Pipeline stage deleted successfully.",
+      "ERROR": "Failed to delete pipeline stage.",
+      "ERROR_OCCUPIED": "Cannot delete stage because it contains opportunities."
+    },
+    "REORDER": {
+      "ERROR": "Couldn't reorder pipeline stages. Please try again."
+    },
+    "REQUIREMENTS": {
+      "TITLE": "Stage Requirements",
+      "DEAL_VALUE_LABEL": "Deal Value",
+      "DEAL_VALUE_HELP": "Require Deal Value for this stage",
+      "ATTRIBUTES_LABEL": "Required Custom Attributes",
+      "NO_ATTRIBUTES": "No opportunity custom attributes available."
+    },
+    "CARD_FIELDS": {
+      "TITLE": "Card Fields",
+      "FIELDS_LABEL": "Configured Fields",
+      "SELECTED": "selected",
+      "DEAL_VALUE": "Deal Value",
+      "DEAL_VALUE_DESC": "Monetary value of the deal",
+      "CURRENCY_LABEL": "Currency",
+      "SAVE": "Save Changes",
+      "SAVE_SUCCESS": "Saved successfully"
+    },
+    "CAMPAIGN_ATTRIBUTION": {
+      "TITLE": "Campaign Attribution",
+      "LOADING": "Loading settings...",
+      "FETCH_ERROR": "Could not fetch settings.",
+      "META_CONNECTION": "Meta Connection",
+      "META_CONNECTION_DESC": "Connect your Meta account to fetch ad and campaign details.",
+      "CONNECTED": "Connected",
+      "CONNECT_BUTTON": "Connect Meta",
+      "CONNECT_SUCCESS": "Connected successfully.",
+      "CONNECT_ERROR": "Failed to connect Meta.",
+      "ENABLE_ATTRIBUTION": "Enable Attribution",
+      "ENABLE_ATTRIBUTION_DESC": "Automatically track ad attributions on new opportunities.",
+      "NEED_CONNECTION": "You must connect Meta first.",
+      "UPDATE_SUCCESS": "Settings updated.",
+      "UPDATE_ERROR": "Failed to update settings."
+    }
+  }
+}

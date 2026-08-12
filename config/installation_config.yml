@@ -150,6 +150,23 @@
   type: boolean
 # ------- End of Facebook Channel Related Config ------- #
 
+# ------- Meta Marketing Config ------- #
+- name: META_MARKETING_APP_ID
+  display_title: 'Meta Marketing App ID'
+  description: 'The Facebook App ID for Meta Marketing integration'
+  locked: false
+- name: META_MARKETING_APP_SECRET
+  display_title: 'Meta Marketing App Secret'
+  description: 'The App Secret for Meta Marketing integration'
+  locked: false
+  type: secret
+- name: META_MARKETING_API_VERSION
+  display_title: 'Meta Marketing API Version'
+  description: 'Configure this if you want to use a different Meta Marketing API version. Make sure its prefixed with `v`'
+  value: 'v22.0'
+  locked: false
+# ------- End of Meta Marketing Config ------- #
+
 # ------- WhatsApp Channel Related Config ------- #
 - name: WHATSAPP_APP_ID
   display_title: 'WhatsApp App ID'

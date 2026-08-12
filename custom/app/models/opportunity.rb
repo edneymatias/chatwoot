@@ -29,6 +29,13 @@ class Opportunity < ApplicationRecord
       'origin_conversation_display_id' => origin_conversation&.display_id,
       'created_at' => created_at.to_i,
       'current_stage_entered_at' => stage_changes.order(changed_at: :desc).first&.changed_at&.to_i,
+      'campaign_source_id' => campaign_source_id,
+      'campaign_source_url' => campaign_source_url,
+      'campaign_platform' => campaign_platform,
+      'campaign_name' => campaign_name,
+      'campaign_adset_name' => campaign_adset_name,
+      'campaign_ad_name' => campaign_ad_name,
+      'campaign_resolution_status' => campaign_resolution_status,
       'contact' => contact_json,
       'assignee' => assignee_json
     )
@@ -127,18 +134,7 @@ class Opportunity < ApplicationRecord
   end
 
   def broadcast_opportunity_updated
-    payload = {
-      id: id,
-      pipeline_stage_id: pipeline_stage_id,
-      status: status,
-      contact_id: contact_id,
-      assignee_id: assignee_id,
-      updated_at: updated_at,
-      account_id: account_id,
-      origin_conversation_display_id: origin_conversation&.display_id,
-      current_stage_entered_at: stage_changes.order(changed_at: :desc).first&.changed_at&.to_i
-    }
-    ActionCableBroadcastJob.perform_later(["account_#{account_id}"], 'opportunity_updated', payload)
+    Rails.configuration.dispatcher.dispatch('opportunity_updated', Time.zone.now, opportunity: self)
   end
 
   def contact_json

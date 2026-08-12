@@ -112,6 +112,13 @@ class AutomationRules::ConditionsFilterService < FilterService
     attribute_key = query_hash['attribute_key']
     query_operator = query_hash['query_operator']
 
+    if attribute_key == 'campaign_referral_present'
+      present_check = query_hash['values'].first.to_s == 'true'
+      should_be_present = query_hash['filter_operator'] == 'equal_to' ? present_check : !present_check
+      sql = should_be_present ? 'IS NOT NULL' : 'IS NULL'
+      return " messages.content_attributes -> 'referral' #{sql} #{query_operator} "
+    end
+
     attribute_key = 'processed_message_content' if attribute_key == 'content'
     attribute_key = 'private' if attribute_key == 'private_note'
 

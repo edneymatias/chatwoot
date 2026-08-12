@@ -14,6 +14,7 @@ import AddPipelineStage from './AddPipelineStage.vue';
 import EditPipelineStage from './EditPipelineStage.vue';
 import ClosingRequiredFields from './ClosingRequiredFields.vue';
 import CardFieldConfig from './CardFieldConfig.vue';
+import CampaignAttributionSettings from './CampaignAttributionSettings.vue';
 
 const { t } = useI18n();
 const store = useStore();
@@ -38,6 +39,12 @@ const tabs = computed(() => {
       name:
         t('OPPORTUNITIES.REQUIREMENTS_MODAL.CLOSING_REQUIREMENTS_TITLE') ||
         'Closing Requirements',
+    },
+    {
+      key: 3,
+      name:
+        t('PIPELINE_STAGES_MGMT.CAMPAIGN_ATTRIBUTION.TITLE') ||
+        'Campaign Attribution',
     },
   ];
 });
@@ -196,6 +203,9 @@ const onChange = async event => {
       </template>
       <template v-else-if="selectedTabIndex === 2">
         <ClosingRequiredFields />
+      </template>
+      <template v-else-if="selectedTabIndex === 3">
+        <CampaignAttributionSettings />
       </template>
 
       <AddPipelineStage

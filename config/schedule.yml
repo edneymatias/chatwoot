@@ -74,3 +74,9 @@ remove_orphan_conversations_job:
   cron: '0 */12 * * *'
   class: 'Internal::RemoveOrphanConversationsJob'
   queue: housekeeping
+
+# executed daily at 0300 UTC
+meta_token_refresh_job:
+  cron: '0 3 * * *'
+  class: 'Meta::TokenRefreshJob'
+  queue: scheduled_jobs

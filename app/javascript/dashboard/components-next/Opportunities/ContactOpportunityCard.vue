@@ -25,6 +25,41 @@ const {
 const currentStage = computed(() =>
   store.getters['pipelineStages/stageById'](props.opportunity.pipeline_stage_id)
 );
+
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
+
+const campaignAttribution = computed(() => {
+  const {
+    campaign_source_id,
+    campaign_platform,
+    campaign_name,
+    campaign_adset_name,
+    campaign_ad_name,
+    campaign_resolution_status,
+  } = props.opportunity;
+
+  if (!campaign_source_id) return null;
+
+  let icon = 'i-lucide-megaphone';
+  if (['ig', 'instagram'].includes(campaign_platform))
+    icon = 'i-lucide-instagram';
+  else if (['fb', 'facebook'].includes(campaign_platform))
+    icon = 'i-lucide-facebook';
+
+  let label = '';
+  if (campaign_resolution_status === 'resolved') {
+    label = [campaign_name, campaign_adset_name, campaign_ad_name]
+      .filter(Boolean)
+      .join(' > ');
+  } else if (campaign_resolution_status === 'failed') {
+    label = campaign_source_id;
+  } else {
+    label = t('OPPORTUNITIES.CAMPAIGN.PENDING') || 'Resolving attribution...';
+  }
+
+  return { icon, label };
+});
 </script>
 
 <template>
@@ -34,10 +69,16 @@ const currentStage = computed(() =>
   >
     <div class="flex justify-between items-start gap-2">
       <h3
-        class="text-n-slate-12 text-sm font-medium leading-5 truncate"
+        class="text-n-slate-12 text-sm font-medium leading-5 truncate flex items-center gap-1.5"
         :title="opportunity.title"
       >
-        {{ opportunity.title }}
+        <span
+          v-if="campaignAttribution"
+          class="size-4 shrink-0 text-n-slate-11"
+          :class="[campaignAttribution.icon]"
+          :title="campaignAttribution.label"
+        />
+        <span class="truncate">{{ opportunity.title }}</span>
       </h3>
       <span
         class="text-[10px] px-1.5 py-0.5 rounded-full capitalize font-medium shrink-0"

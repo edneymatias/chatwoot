@@ -85,6 +85,39 @@ const hasUnmetRequirements = computed(() => {
 
   return false;
 });
+
+const campaignAttribution = computed(() => {
+  const {
+    campaign_source_id,
+    campaign_platform,
+    campaign_name,
+    campaign_adset_name,
+    campaign_ad_name,
+    campaign_resolution_status,
+  } = props.opportunity;
+
+  if (!campaign_source_id) return null;
+
+  let icon = 'i-lucide-megaphone';
+  if (['ig', 'instagram'].includes(campaign_platform))
+    icon = 'i-lucide-instagram';
+  else if (['fb', 'facebook'].includes(campaign_platform))
+    icon = 'i-lucide-facebook';
+
+  let label = '';
+  if (campaign_resolution_status === 'resolved') {
+    label = [campaign_name, campaign_adset_name, campaign_ad_name]
+      .filter(Boolean)
+      .join('\n');
+  } else if (campaign_resolution_status === 'failed') {
+    label = campaign_source_id;
+  } else {
+    // We cannot easily use i18n here without importing it, so fallback to simple text
+    label = 'Resolving attribution...';
+  }
+
+  return { icon, label };
+});
 </script>
 
 <template>
@@ -95,10 +128,16 @@ const hasUnmetRequirements = computed(() => {
   >
     <div class="flex justify-between items-start mb-2 gap-2">
       <h3
-        class="text-n-slate-12 text-sm font-medium leading-5 truncate"
+        class="text-n-slate-12 text-sm font-medium leading-5 truncate flex items-center gap-1.5"
         :title="opportunity.title"
       >
-        {{ opportunity.title }}
+        <span
+          v-if="campaignAttribution"
+          class="size-4 shrink-0 text-n-slate-11"
+          :class="[campaignAttribution.icon]"
+          :title="campaignAttribution.label"
+        />
+        <span class="truncate">{{ opportunity.title }}</span>
       </h3>
       <div class="flex items-center gap-2 shrink-0">
         <span

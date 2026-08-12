@@ -67,7 +67,10 @@
       "CANCEL": "Cancelar",
       "SUBMIT": "Salvar"
     },
-    "DEAL_VALUE": "Valor do Negócio"
+    "DEAL_VALUE": "Valor do Negócio",
+    "CAMPAIGN": {
+      "PENDING": "Resolvendo atribuição..."
+    }
   },
   "PIPELINE_STAGES_MGMT": {
     "HEADER": "Configuração do Funil",
@@ -133,6 +136,22 @@
       "CURRENCY_LABEL": "Moeda",
       "SAVE": "Salvar Alterações",
       "SAVE_SUCCESS": "Salvo com sucesso"
+    },
+    "CAMPAIGN_ATTRIBUTION": {
+      "TITLE": "Atribuição de Campanha",
+      "LOADING": "Carregando configurações...",
+      "FETCH_ERROR": "Não foi possível carregar as configurações.",
+      "META_CONNECTION": "Conexão Meta",
+      "META_CONNECTION_DESC": "Conecte sua conta Meta para buscar detalhes de anúncios e campanhas.",
+      "CONNECTED": "Conectado",
+      "CONNECT_BUTTON": "Conectar Meta",
+      "CONNECT_SUCCESS": "Conectado com sucesso.",
+      "CONNECT_ERROR": "Falha ao conectar Meta.",
+      "ENABLE_ATTRIBUTION": "Habilitar Atribuição",
+      "ENABLE_ATTRIBUTION_DESC": "Rastrear automaticamente as atribuições de anúncios em novas oportunidades.",
+      "NEED_CONNECTION": "Você deve conectar a Meta primeiro.",
+      "UPDATE_SUCCESS": "Configurações atualizadas.",
+      "UPDATE_ERROR": "Falha ao atualizar configurações."
     }
   }
 }

@@ -1011,6 +1011,15 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_04_145603) do
     t.datetime "updated_at", precision: nil, null: false
   end
 
+  create_table "ichatr_campaign_attribution_settings", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.boolean "enabled", default: false
+    t.jsonb "provider_config", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_campaign_attribution_settings_on_account_id", unique: true
+  end
+
   create_table "ichatr_opportunities", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "contact_id", null: false
@@ -1024,9 +1033,17 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_04_145603) do
     t.jsonb "custom_attributes", default: {}
     t.decimal "value"
     t.datetime "closed_at"
+    t.string "campaign_source_id"
+    t.string "campaign_source_url"
+    t.string "campaign_platform"
+    t.string "campaign_name"
+    t.string "campaign_adset_name"
+    t.string "campaign_ad_name"
+    t.string "campaign_resolution_status"
     t.index ["account_id", "closed_at"], name: "index_ichatr_opportunities_on_account_id_and_closed_at"
     t.index ["account_id"], name: "index_ichatr_opportunities_on_account_id"
     t.index ["assignee_id"], name: "index_ichatr_opportunities_on_assignee_id"
+    t.index ["campaign_resolution_status"], name: "index_ichatr_opportunities_on_campaign_resolution_status", where: "((campaign_resolution_status IS NULL) OR ((campaign_resolution_status)::text <> 'not_applicable'::text))"
     t.index ["contact_id"], name: "index_ichatr_opportunities_on_contact_id"
     t.index ["origin_conversation_id"], name: "index_ichatr_opportunities_on_origin_conversation_id", unique: true, where: "(origin_conversation_id IS NOT NULL)"
     t.index ["pipeline_stage_id"], name: "index_ichatr_opportunities_on_pipeline_stage_id"
@@ -1690,14 +1707,11 @@ $function$
   execute("CREATE TRIGGER conversations_before_insert_row_tr BEFORE INSERT ON \"conversations\" FOR EACH ROW EXECUTE FUNCTION conversations_before_insert_row_tr()")
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER n8n_trigger_717c52d1_52d2_406d_bc05_250afa7cfc2f AFTER INSERT ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()")
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$ begin perform pg_notify('n8n_channel_717c52d1_52d2_406d_bc05_250afa7cfc2f', row_to_json(NEW)::text); return null; end; $function$
@@ -1705,7 +1719,6 @@ AS $function$ begin perform pg_notify('n8n_channel_717c52d1_52d2_406d_bc05_250af
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614e45cdea', row_to_json(OLD)::text); return null; end; $function$

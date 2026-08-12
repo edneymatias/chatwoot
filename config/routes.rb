@@ -137,6 +137,9 @@ Rails.application.routes.draw do
           resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]
           resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]
           resource :pipeline_currency_setting, only: [:show, :update]
+          resource :campaign_attribution_setting, only: [:show, :update] do
+            post :connect, on: :collection
+          end
           resources :opportunities, only: [:index, :show, :create, :update, :destroy]
           resources :opportunity_funnel_reports, only: [:index]
           resources :opportunity_attribute_reports, only: [:index]

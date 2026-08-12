@@ -138,6 +138,12 @@ slack:
   enabled: true
   icon: 'icon-slack'
   config_key: 'slack'
+meta_marketing:
+  name: 'Meta Marketing'
+  description: 'Configuration for setting up Meta Marketing Integration'
+  enabled: true
+  icon: 'icon-megaphone-line'
+  config_key: 'meta_marketing'
 whatsapp_embedded:
   name: 'WhatsApp Embedded'
   description: 'Configuration for setting up WhatsApp Embedded Integration'
