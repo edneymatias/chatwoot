@@ -1706,22 +1706,4 @@ $function$
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER conversations_before_insert_row_tr BEFORE INSERT ON \"conversations\" FOR EACH ROW EXECUTE FUNCTION conversations_before_insert_row_tr()")
 
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute(<<-SQL)
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$ begin perform pg_notify('n8n_channel_717c52d1_52d2_406d_bc05_250afa7cfc2f', row_to_json(NEW)::text); return null; end; $function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute(<<-SQL)
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614e45cdea', row_to_json(OLD)::text); return null; end; $function$
-  SQL
-
 end
