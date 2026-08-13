@@ -20,6 +20,55 @@
 - *(rake)* Extend statement_timeout for referral backfill task
 - *(opportunities)* Resolve origin_conversation_id mismatch and stale broadcast overwrite
 - *(rake)* Cast content_attributes to jsonb before referral lookup
+- *(kanban)* Populate contact details and inboxes before opening start-conversation compose popover
+
+### 💼 Other
+
+- Integrate stray changelog commit from reverted 4.16.2-ichatr.3 tag
+
+### 📚 Documentation
+
+- *(kanban)* Add specs/plans for evolution-api referral patch and release CI/CD
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Update changelog for 4.16.2-ichatr.1 [skip ci]
+- *(lint)* Resolve rubocop complexity offenses and cleanup exclusions
+- *(i18n)* Add missing pt_BR translation for reports opportunities
+- *(i18n)* Add missing pt_BR translation for opportunity attribute reports
+- Silence sync hook audit gaps
+- *(release)* Update changelog for 4.16.2-ichatr.2 [skip ci]
+- *(release)* Update changelog for 4.16.2-ichatr.2 [skip ci]
+- *(release)* Update changelog for 4.16.2-ichatr.3 [skip ci]
+- *(release)* Fold changelog for 4.16.2-ichatr.3 back into 4.16.2-ichatr.2
+- *(release)* Update changelog for 4.16.2-ichatr.2 [skip ci]
+
+### ◀️ Revert
+
+- Remove clickable from base table
+
+## [4.16.2-ichatr.2] - 2026-08-13
+
+### 🚀 Features
+
+- *(opportunities)* Implement list view as kanban alternative
+- *(opportunities)* Unified search, sort, and filtering for Kanban and List views
+- *(opportunities)* Implement manual opportunity creation and conversation start
+- *(opportunities)* Hide closed opportunities by default and fix dnd bug
+- *(kanban)* Implement whatsapp referral attribution from meta ads
+- *(opportunities)* Add contact panel quick create and adjust kanban action footer
+- *(opportunities)* Add campaign attribution icon to opportunities list view
+
+### 🐛 Bug Fixes
+
+- *(opportunities)* Prevent kanban drag from committing unintended column moves
+- *(db)* Remove leaked n8n listen/notify triggers from schema.rb
+- Build errors and specs
+- *(spec)* Resolve have_enqueued_mail argument mismatch
+- Restore authenticated Meta connect request and campaign tooltip line breaks
+- *(rake)* Extend statement_timeout for referral backfill task
+- *(opportunities)* Resolve origin_conversation_id mismatch and stale broadcast overwrite
+- *(rake)* Cast content_attributes to jsonb before referral lookup
 
 ### 💼 Other
 
