@@ -2,7 +2,11 @@ namespace :meta_marketing do
   desc "Backfill referral attribution from Whatsapp referral messages to existing Opportunities"
   task backfill_referral_attribution: :environment do
     puts "Starting backfill for WhatsApp referral attribution..."
-    
+
+    # `content_attributes` has no index, so this scan can exceed the default
+    # statement_timeout on large messages tables; extend it for this session.
+    ActiveRecord::Base.connection.execute("SET statement_timeout = '30min'")
+
     # 1. Find all messages with referral content
     messages_with_referrals = Message
                                 .where(message_type: :incoming)
