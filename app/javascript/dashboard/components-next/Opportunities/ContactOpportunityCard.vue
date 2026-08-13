@@ -24,46 +24,12 @@ const {
   configuredFields,
   timestampLabel,
   timestampTooltip,
+  campaignAttribution,
 } = useOpportunityCardFields(toRef(props, 'opportunity'));
 
 const currentStage = computed(() =>
   store.getters['pipelineStages/stageById'](props.opportunity.pipeline_stage_id)
 );
-
-import { useI18n } from 'vue-i18n';
-const { t } = useI18n();
-
-const campaignAttribution = computed(() => {
-  const {
-    campaign_source_id,
-    campaign_platform,
-    campaign_name,
-    campaign_adset_name,
-    campaign_ad_name,
-    campaign_resolution_status,
-  } = props.opportunity;
-
-  if (!campaign_source_id) return null;
-
-  let icon = 'i-lucide-megaphone';
-  if (['ig', 'instagram'].includes(campaign_platform))
-    icon = 'i-lucide-instagram';
-  else if (['fb', 'facebook'].includes(campaign_platform))
-    icon = 'i-lucide-facebook';
-
-  let label = '';
-  if (campaign_resolution_status === 'resolved') {
-    label = [campaign_name, campaign_adset_name, campaign_ad_name]
-      .filter(Boolean)
-      .join(' > ');
-  } else if (campaign_resolution_status === 'failed') {
-    label = campaign_source_id;
-  } else {
-    label = t('OPPORTUNITIES.CAMPAIGN.PENDING') || 'Resolving attribution...';
-  }
-
-  return { icon, label };
-});
 </script>
 
 <template>

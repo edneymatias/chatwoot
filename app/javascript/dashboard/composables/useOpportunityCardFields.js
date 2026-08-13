@@ -156,6 +156,38 @@ export function useOpportunityCardFields(opportunityRef) {
     return lines.join(' • ');
   });
 
+  const campaignAttribution = computed(() => {
+    const {
+      campaign_source_id,
+      campaign_platform,
+      campaign_name,
+      campaign_adset_name,
+      campaign_ad_name,
+      campaign_resolution_status,
+    } = opportunityRef.value;
+
+    if (!campaign_source_id) return null;
+
+    let icon = 'i-lucide-megaphone';
+    if (['ig', 'instagram'].includes(campaign_platform))
+      icon = 'i-lucide-instagram';
+    else if (['fb', 'facebook'].includes(campaign_platform))
+      icon = 'i-lucide-facebook';
+
+    let label = '';
+    if (campaign_resolution_status === 'resolved') {
+      label = [campaign_name, campaign_adset_name, campaign_ad_name]
+        .filter(Boolean)
+        .join(' > ');
+    } else if (campaign_resolution_status === 'failed') {
+      label = campaign_source_id;
+    } else {
+      label = t('OPPORTUNITIES.CAMPAIGN.PENDING', 'Resolving attribution...');
+    }
+
+    return { icon, label };
+  });
+
   return {
     statusBadgeClass,
     isStale,
@@ -165,5 +197,6 @@ export function useOpportunityCardFields(opportunityRef) {
     createdTime,
     timestampLabel,
     timestampTooltip,
+    campaignAttribution,
   };
 }

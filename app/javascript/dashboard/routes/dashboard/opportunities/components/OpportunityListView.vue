@@ -61,7 +61,7 @@ const OpportunityCardRow = defineComponent({
   },
   setup(rowProps) {
     const oppRef = toRef(rowProps, 'opportunity');
-    const { statusBadgeClass, isStale, timestampLabel } =
+    const { statusBadgeClass, isStale, timestampLabel, campaignAttribution } =
       useOpportunityCardFields(oppRef);
     const { t } = useI18n();
 
@@ -83,15 +83,28 @@ const OpportunityCardRow = defineComponent({
         ? h(Avatar, { name: contact.name, src: contact.avatar_url, size: 42 })
         : h('div', { class: 'w-[42px] h-[42px]' });
 
+      const titleInner = [h('span', { class: 'truncate' }, opp.title)];
+      if (campaignAttribution.value) {
+        titleInner.unshift(
+          h('span', {
+            class: [
+              'size-4 shrink-0 text-n-slate-11',
+              campaignAttribution.value.icon,
+            ],
+            title: campaignAttribution.value.label,
+          })
+        );
+      }
+
       const titleBlock = h('div', { class: 'flex flex-col min-w-0' }, [
         h(
           'span',
           {
             class:
-              'text-n-slate-12 font-medium text-base truncate leading-snug',
+              'text-n-slate-12 font-medium text-base truncate leading-snug flex items-center gap-1.5',
             title: opp.title,
           },
-          opp.title
+          titleInner
         ),
         h(
           'span',
