@@ -33,7 +33,7 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
   end
 
   def create
-    @opportunity = Current.account.opportunities.build(opportunity_create_params)
+    @opportunity = Current.account.opportunities.build(resolve_origin_conversation_id(opportunity_create_params))
     if @opportunity.save
       render json: @opportunity
     else
@@ -42,7 +42,7 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
   end
 
   def update
-    if @opportunity.update(opportunity_update_params)
+    if @opportunity.update(resolve_origin_conversation_id(opportunity_update_params))
       render json: @opportunity
     elsif @opportunity.missing_required_fields.present?
       render json: {
@@ -175,6 +175,19 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
     @opportunity = Current.account.opportunities.find(params[:id])
   end
 
+  # The frontend only knows conversations by their per-account `display_id`
+  # (the conversation JSON exposes it as `id`), so `origin_conversation_id`
+  # arrives as a display_id here and must be resolved to the real
+  # conversation primary key before it's persisted on the `origin_conversation_id` column.
+  def resolve_origin_conversation_id(permitted_params)
+    return permitted_params unless permitted_params.key?(:origin_conversation_id)
+    return permitted_params if permitted_params[:origin_conversation_id].blank?
+
+    conversation = Current.account.conversations.find_by(display_id: permitted_params[:origin_conversation_id])
+    permitted_params[:origin_conversation_id] = conversation&.id
+    permitted_params
+  end
+
   def check_authorization
     authorize(@opportunity || Opportunity)
   end
@@ -198,6 +211,7 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
       :contact_id,
       :pipeline_stage_id,
       :status,
+      :origin_conversation_id,
       :assignee_id,
       :value,
       custom_attributes: {}

@@ -179,6 +179,7 @@ export const actions = {
   setStatus: async ({ commit, state }, { id, status, custom_attributes }) => {
     const previousStatus = state.byId[id]?.status || 'open';
     const previousCustomAttributes = state.byId[id]?.custom_attributes;
+    const stageId = state.byId[id]?.pipeline_stage_id;
 
     commit('SET_STATUS', { id, status });
     if (custom_attributes !== undefined) {
@@ -186,6 +187,11 @@ export const actions = {
         id,
         updates: { custom_attributes },
       });
+    }
+    if (stageId && previousStatus === 'open' && status !== 'open') {
+      commit('REMOVE_ID_FROM_STAGE', { stageId, id });
+    } else if (stageId && previousStatus !== 'open' && status === 'open') {
+      commit('PREPEND_ID_TO_STAGE', { stageId, opportunityId: id });
     }
 
     try {
@@ -200,10 +206,16 @@ export const actions = {
           status: responsePayload.status,
           custom_attributes: responsePayload.custom_attributes,
           value: responsePayload.value,
+          updated_at: responsePayload.updated_at,
         },
       });
     } catch (error) {
       commit('SET_STATUS', { id, status: previousStatus });
+      if (stageId && previousStatus === 'open' && status !== 'open') {
+        commit('PREPEND_ID_TO_STAGE', { stageId, opportunityId: id });
+      } else if (stageId && previousStatus !== 'open' && status === 'open') {
+        commit('REMOVE_ID_FROM_STAGE', { stageId, id });
+      }
       if (custom_attributes !== undefined) {
         commit('UPDATE_OPPORTUNITY', {
           id,
@@ -219,6 +231,7 @@ export const actions = {
       const payload = response.data.payload || response.data;
       if (state.byId[id]) {
         const previousStageId = state.byId[id].pipeline_stage_id;
+        const previousStatus = state.byId[id].status;
         commit('UPDATE_OPPORTUNITY', {
           id,
           updates: {
@@ -230,6 +243,10 @@ export const actions = {
             value: payload.value,
             pipeline_stage_id: payload.pipeline_stage_id,
             current_stage_entered_at: payload.current_stage_entered_at,
+            origin_conversation_id: payload.origin_conversation_id,
+            origin_conversation_display_id:
+              payload.origin_conversation_display_id,
+            updated_at: payload.updated_at,
           },
         });
         if (
@@ -240,6 +257,23 @@ export const actions = {
             id,
             fromStageId: previousStageId,
             toStageId: payload.pipeline_stage_id,
+          });
+        }
+        const currentStageId = payload.pipeline_stage_id || previousStageId;
+        if (
+          currentStageId &&
+          previousStatus === 'open' &&
+          payload.status !== 'open'
+        ) {
+          commit('REMOVE_ID_FROM_STAGE', { stageId: currentStageId, id });
+        } else if (
+          currentStageId &&
+          previousStatus !== 'open' &&
+          payload.status === 'open'
+        ) {
+          commit('PREPEND_ID_TO_STAGE', {
+            stageId: currentStageId,
+            opportunityId: id,
           });
         }
         if (payload.pipeline_stage_id) {
@@ -263,15 +297,52 @@ export const actions = {
     }
   },
   syncOpportunity: ({ commit, state, dispatch }, data) => {
-    if (state.byId[data.id]) {
-      commit('UPDATE_OPPORTUNITY', { id: data.id, updates: data });
-      if (data.pipeline_stage_id) {
-        dispatch(
-          'pipelineStages/fetchAggregates',
-          { stageIds: [data.pipeline_stage_id] },
-          { root: true }
-        );
-      }
+    const existing = state.byId[data.id];
+    if (!existing) return;
+
+    // Broadcasts are delivered via a background job and are not guaranteed
+    // to arrive in the order they were triggered — dropping an out-of-date
+    // broadcast prevents it from clobbering a more recent local update.
+    if (
+      existing.updated_at &&
+      data.updated_at &&
+      new Date(data.updated_at) < new Date(existing.updated_at)
+    ) {
+      return;
+    }
+
+    const previousStageId = existing.pipeline_stage_id;
+    const previousStatus = existing.status;
+
+    commit('UPDATE_OPPORTUNITY', { id: data.id, updates: data });
+
+    if (data.pipeline_stage_id && data.pipeline_stage_id !== previousStageId) {
+      commit('MOVE_ID_BETWEEN_STAGES', {
+        id: data.id,
+        fromStageId: previousStageId,
+        toStageId: data.pipeline_stage_id,
+      });
+    }
+    const currentStageId = data.pipeline_stage_id || previousStageId;
+    if (currentStageId && previousStatus === 'open' && data.status !== 'open') {
+      commit('REMOVE_ID_FROM_STAGE', { stageId: currentStageId, id: data.id });
+    } else if (
+      currentStageId &&
+      previousStatus !== 'open' &&
+      data.status === 'open'
+    ) {
+      commit('PREPEND_ID_TO_STAGE', {
+        stageId: currentStageId,
+        opportunityId: data.id,
+      });
+    }
+
+    if (data.pipeline_stage_id) {
+      dispatch(
+        'pipelineStages/fetchAggregates',
+        { stageIds: [data.pipeline_stage_id, previousStageId].filter(Boolean) },
+        { root: true }
+      );
     }
   },
 };

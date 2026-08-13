@@ -131,6 +131,14 @@ export const mutations = {
       };
     }
   },
+  REMOVE_ID_FROM_STAGE(state, { stageId, id }) {
+    const existing = state.idsByStage[stageId] || [];
+    if (!existing.includes(id)) return;
+    state.idsByStage = {
+      ...state.idsByStage,
+      [stageId]: existing.filter(cardId => cardId !== id),
+    };
+  },
   PREPEND_ID_TO_CONTACT(state, { contactId, opportunityId }) {
     if (state.idsByContact[contactId] === undefined) return;
     const existing = state.idsByContact[contactId];

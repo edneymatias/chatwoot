@@ -136,6 +136,25 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
       expect(response).to have_http_status(:unprocessable_entity)
       expect(response.parsed_body['error']).to include('Pipeline stage must belong to the same account')
     end
+
+    it 'resolves origin_conversation_id from the conversation display_id sent by the frontend' do
+      conversation = create(:conversation, account: account)
+
+      post "/api/v1/accounts/#{account.id}/opportunities",
+           headers: agent.create_new_auth_token,
+           params: {
+             opportunity: {
+               title: 'New Opp',
+               contact_id: contact.id,
+               pipeline_stage_id: stage.id,
+               origin_conversation_id: conversation.display_id
+             }
+           },
+           as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(Opportunity.find(response.parsed_body['id']).origin_conversation_id).to eq(conversation.id)
+    end
   end
 
   describe 'PATCH /api/v1/accounts/{account.id}/opportunities/{id}' do
@@ -161,8 +180,22 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
             params: { opportunity: { title: 'Updated Title', origin_conversation_id: nil } },
             as: :json
 
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body['error']).to include('cannot be changed once set')
+      expect(opp.reload.title).to eq('My Opp')
+      expect(opp.reload.origin_conversation_id).to eq(conversation.id)
+    end
+
+    it 'sets origin_conversation_id by resolving the conversation display_id' do
+      conversation = create(:conversation, account: account)
+      opp = Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, assignee: agent, title: 'My Opp')
+
+      patch "/api/v1/accounts/#{account.id}/opportunities/#{opp.id}",
+            headers: agent.create_new_auth_token,
+            params: { opportunity: { origin_conversation_id: conversation.display_id } },
+            as: :json
+
       expect(response).to have_http_status(:ok)
-      expect(opp.reload.title).to eq('Updated Title')
       expect(opp.reload.origin_conversation_id).to eq(conversation.id)
     end
   end

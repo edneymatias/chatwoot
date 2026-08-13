@@ -49,7 +49,7 @@ watch(
       isTracking.value = false;
 
       try {
-        await store.dispatch('opportunities/update', {
+        await store.dispatch('opportunities/updateOpportunity', {
           id: props.opportunity.id,
           origin_conversation_id: newConversation.id,
         });
