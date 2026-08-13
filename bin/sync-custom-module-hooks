@@ -224,24 +224,7 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  insert: "            :dropdown-values=\"\n              Array.isArray(getActionDropdownValues(action.action_name))\n                ? getActionDropdownValues(action.action_name)\n                : []\n            \"\n            :opportunity-dropdown-values=\"\n              !Array.isArray(getActionDropdownValues(action.action_name))\n                ? getActionDropdownValues(action.action_name)\n                : {}\n            \"",
                  replace: true
                },
-               {
-                 file: 'app/javascript/dashboard/components/table/Table.vue',
-                 anchor: "    type: String,\n    default: 'relaxed',\n  },\n});",
-                 insert: "    type: String,\n    default: 'relaxed',\n  },\n  clickable: {\n    type: Boolean,\n    default: false,\n  },\n});\n\nconst emit = defineEmits(['click']);",
-                 replace: true
-               },
-               {
-                 file: 'app/javascript/dashboard/components/table/Table.vue',
-                 anchor: '  <table :class="{ \'table-fixed\': fixed }">',
-                 insert: '  <table class="w-full" :class="{ \'table-fixed\': fixed }">',
-                 replace: true
-               },
-               {
-                 file: 'app/javascript/dashboard/components/table/Table.vue',
-                 anchor: '      <tr v-for="row in table.getRowModel().rows" :key="row.id">',
-                 insert: "      <tr\n        v-for=\"row in table.getRowModel().rows\"\n        :key=\"row.id\"\n        :class=\"[\n          clickable\n            ? 'cursor-pointer hover:bg-n-slate-1 transition-colors'\n            : '',\n        ]\"\n        @click=\"clickable && emit('click', row.original)\"\n      >",
-                 replace: true
-               },
+
                {
                  file: 'lib/filters/filter_keys.yml',
                  anchor: "  content:\n    attribute_type: \"standard\"",
