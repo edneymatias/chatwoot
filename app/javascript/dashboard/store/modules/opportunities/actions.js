@@ -164,6 +164,10 @@ export const actions = {
         stageId: payload.pipeline_stage_id,
         opportunityId: payload.id,
       });
+      commit('PREPEND_ID_TO_CONTACT', {
+        contactId: payload.contact_id,
+        opportunityId: payload.id,
+      });
       return payload;
     } catch (error) {
       throwErrorMessage(error);

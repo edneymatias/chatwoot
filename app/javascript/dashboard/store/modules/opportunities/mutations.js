@@ -131,6 +131,16 @@ export const mutations = {
       };
     }
   },
+  PREPEND_ID_TO_CONTACT(state, { contactId, opportunityId }) {
+    if (state.idsByContact[contactId] === undefined) return;
+    const existing = state.idsByContact[contactId];
+    if (!existing.includes(opportunityId)) {
+      state.idsByContact = {
+        ...state.idsByContact,
+        [contactId]: [opportunityId, ...existing],
+      };
+    }
+  },
   SET_STATUS(state, { id, status }) {
     if (state.byId[id]) {
       state.byId[id] = { ...state.byId[id], status };

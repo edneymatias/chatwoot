@@ -3,6 +3,7 @@ import { computed, toRef } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
 import { useOpportunityCardFields } from 'dashboard/composables/useOpportunityCardFields';
 import StartOpportunityConversationButton from 'dashboard/routes/dashboard/opportunities/components/StartOpportunityConversationButton.vue';
 
@@ -118,6 +119,14 @@ const campaignAttribution = computed(() => {
 
   return { icon, label };
 });
+
+const hasActions = computed(() => {
+  return (
+    !props.opportunity.origin_conversation_id ||
+    (props.opportunity.status && props.opportunity.status !== 'open') ||
+    props.opportunity.status === 'open'
+  );
+});
 </script>
 
 <template>
@@ -200,36 +209,47 @@ const campaignAttribution = computed(() => {
       </span>
     </div>
 
-    <!-- Quick Actions Overlay -->
+    <!-- Quick Actions Footer -->
     <div
-      class="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+      v-if="hasActions"
+      class="border-t border-n-slate-3 mt-3 pt-2 flex items-center justify-end"
     >
-      <StartOpportunityConversationButton
-        v-if="!opportunity.origin_conversation_id"
-        :opportunity="opportunity"
-      />
-      <button
-        v-if="opportunity.status !== 'open'"
-        class="p-1 rounded bg-n-slate-3 text-n-slate-11 hover:bg-n-slate-4 transition-colors"
-        :title="$t('OPPORTUNITIES.BOARD.ACTIONS.REOPEN')"
-        @click.stop="
-          $emit('statusChanged', { id: opportunity.id, status: 'open' })
-        "
-      >
-        <fluent-icon icon="arrow-reply" size="14" />
-      </button>
-      <button
-        v-if="opportunity.status === 'open'"
-        class="p-1 rounded transition-colors bg-n-brand-3 text-n-brand-11 hover:bg-n-brand-4"
-        :title="
-          hasUnmetRequirements
-            ? $t('OPPORTUNITIES.BOARD.ACTIONS.COMPLETE_FIELDS')
-            : $t('OPPORTUNITIES.BOARD.ACTIONS.EDIT')
-        "
-        @click.stop="$emit('completeFields', opportunity.id)"
-      >
-        <fluent-icon icon="edit" size="14" />
-      </button>
+      <div class="flex items-center gap-1">
+        <StartOpportunityConversationButton
+          v-if="!opportunity.origin_conversation_id"
+          :opportunity="opportunity"
+        />
+        <Button
+          v-if="opportunity.status && opportunity.status !== 'open'"
+          v-tooltip.bottom="$t('OPPORTUNITIES.BOARD.ACTIONS.REOPEN')"
+          variant="ghost"
+          color="slate"
+          size="sm"
+          @click.stop="
+            $emit('statusChanged', { id: opportunity.id, status: 'open' })
+          "
+        >
+          <template #icon>
+            <fluent-icon icon="arrow-reply" size="14" />
+          </template>
+        </Button>
+        <Button
+          v-if="opportunity.status === 'open'"
+          v-tooltip.bottom="
+            hasUnmetRequirements
+              ? $t('OPPORTUNITIES.BOARD.ACTIONS.COMPLETE_FIELDS')
+              : $t('OPPORTUNITIES.BOARD.ACTIONS.EDIT')
+          "
+          variant="ghost"
+          color="slate"
+          size="sm"
+          @click.stop="$emit('completeFields', opportunity.id)"
+        >
+          <template #icon>
+            <fluent-icon icon="edit" size="14" />
+          </template>
+        </Button>
+      </div>
     </div>
   </div>
 </template>

@@ -13,6 +13,10 @@ const props = defineProps({
     type: Number,
     default: null,
   },
+  initialContact: {
+    type: Object,
+    default: null,
+  },
 });
 
 const emit = defineEmits(['close', 'created']);
@@ -23,7 +27,7 @@ const title = ref('');
 const selectedStageId = ref(props.defaultStageId || '');
 const searchQuery = ref('');
 const searchResults = ref([]);
-const selectedContact = ref(null);
+const selectedContact = ref(props.initialContact || null);
 const isSearching = ref(false);
 const assigneeId = ref(null);
 
@@ -183,6 +187,7 @@ const submit = async () => {
             </span>
           </span>
           <button
+            v-if="!initialContact"
             class="text-n-slate-11 hover:text-n-slate-12 text-xs"
             @click="selectedContact = null"
           >

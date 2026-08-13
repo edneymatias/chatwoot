@@ -431,7 +431,8 @@
       "PREVIOUS_OPPORTUNITIES": "Opportunities"
     },
     "PREVIOUS_OPPORTUNITIES": {
-      "EMPTY": "No opportunities found for this contact"
+      "EMPTY": "No opportunities found for this contact",
+      "ADD_OPPORTUNITY": "Add opportunity"
     },
     "SHARED_FILES": {
       "EMPTY": "No attachments yet",

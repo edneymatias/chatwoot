@@ -8,6 +8,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  isCurrentConversation: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 defineEmits(['click']);
@@ -64,7 +68,8 @@ const campaignAttribution = computed(() => {
 
 <template>
   <div
-    class="flex flex-col gap-1 px-4 py-3 border-b border-n-slate-3 last:border-b-0 cursor-pointer hover:bg-n-alpha-1 dark:hover:bg-n-alpha-3"
+    class="flex flex-col gap-1 px-4 py-3 border-b last:border-b-0 cursor-pointer hover:bg-n-alpha-1 dark:hover:bg-n-alpha-3"
+    :class="isCurrentConversation ? 'border-n-brand' : 'border-n-slate-3'"
     @click="$emit('click', opportunity.id)"
   >
     <div class="flex justify-between items-start gap-2">
