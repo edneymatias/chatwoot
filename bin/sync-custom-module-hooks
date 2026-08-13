@@ -26,12 +26,7 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'app/javascript/dashboard/routes/dashboard/dashboard.routes.js',
                  anchor: '        ...campaignsRoutes.routes,',
-                 insert: "        {\n          path: 'opportunities',\n          name: 'opportunities_index',\n          roles: ['administrator', 'agent', 'custom_role'],\n          component: () =>\n            import('dashboard/components-next/Opportunities/KanbanBoard.vue'),\n          meta: {\n            featureFlag: FEATURE_FLAGS.OPPORTUNITIES,\n            permissions: ['administrator', 'agent', 'custom_role'],\n          },\n        },"
-               },
-               {
-                 file: 'app/javascript/dashboard/routes/dashboard/dashboard.routes.js',
-                 anchor: "            permissions: ['administrator', 'agent', 'custom_role'],\n          },",
-                 insert: "          children: [\n            {\n              path: 'conversations/:conversationId',\n              name: 'opportunities_conversation',\n              roles: ['administrator', 'agent', 'custom_role'],\n              component: () =>\n                import(\n                  'dashboard/components-next/Opportunities/OpportunityConversationDrawer.vue'\n                ),\n            },\n          ],"
+                 insert: "        {\n          path: 'opportunities',\n          name: 'opportunities_index',\n          roles: ['administrator', 'agent', 'custom_role'],\n          component: () =>\n            import('dashboard/routes/dashboard/opportunities/Index.vue'),\n          meta: {\n            featureFlag: FEATURE_FLAGS.OPPORTUNITIES,\n            permissions: ['administrator', 'agent', 'custom_role'],\n          },\n          children: [\n            {\n              path: 'conversations/:conversationId',\n              name: 'opportunities_conversation',\n              roles: ['administrator', 'agent', 'custom_role'],\n              component: () =>\n                import(\n                  'dashboard/components-next/Opportunities/OpportunityConversationDrawer.vue'\n                ),\n            },\n          ],\n        },"
                },
                {
                  file: 'app/javascript/dashboard/components-next/sidebar/Sidebar.vue',
@@ -100,7 +95,7 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'config/routes.rb',
                  anchor: "          resources :macros, only: [:index, :create, :show, :update, :destroy] do\n            post :execute, on: :member\n          end",
-                 insert: "          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do\n            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'\n          end\n          resources :pipeline_stage_aggregates, only: [:index]\n          resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]\n          resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]\n          resource :pipeline_currency_setting, only: [:show, :update]\n          resources :opportunities, only: [:index, :show, :create, :update, :destroy]\n          resources :opportunity_funnel_reports, only: [:index]\n          resources :opportunity_attribute_reports, only: [:index]"
+                 insert: "          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do\n            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'\n          end\n          resources :pipeline_stage_aggregates, only: [:index]\n          resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]\n          resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]\n          resource :pipeline_currency_setting, only: [:show, :update]\n          resource :campaign_attribution_setting, only: [:show, :update] do\n            post :connect, on: :collection\n          end\n          resources :opportunities, only: [:index, :show, :create, :update, :destroy]\n          resources :opportunity_funnel_reports, only: [:index]\n          resources :opportunity_attribute_reports, only: [:index]"
                },
                {
                  file: 'config/features.yml',
@@ -217,6 +212,56 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  file: 'spec/rails_helper.rb',
                  anchor: "abort('The Rails environment is running in production mode!') if Rails.env.production?",
                  insert: "\n# dotenv-rails re-injects FRONTEND_URL from .env during the boot above; specs expect it\n# absent (upstream CI has no .env), so drop it once the environment is loaded.\nENV.delete('FRONTEND_URL')"
+               },
+               {
+                 file: 'app/javascript/dashboard/helper/automationHelper.js',
+                 anchor: '    private_note: booleanFilterOptions,',
+                 insert: '    campaign_referral_present: booleanFilterOptions,'
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/automation/AutomationRuleForm.vue',
+                 anchor: '            :dropdown-values="getActionDropdownValues(action.action_name)"',
+                 insert: "            :dropdown-values=\"\n              Array.isArray(getActionDropdownValues(action.action_name))\n                ? getActionDropdownValues(action.action_name)\n                : []\n            \"\n            :opportunity-dropdown-values=\"\n              !Array.isArray(getActionDropdownValues(action.action_name))\n                ? getActionDropdownValues(action.action_name)\n                : {}\n            \"",
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/components/table/Table.vue',
+                 anchor: "    type: String,\n    default: 'relaxed',\n  },\n});",
+                 insert: "    type: String,\n    default: 'relaxed',\n  },\n  clickable: {\n    type: Boolean,\n    default: false,\n  },\n});\n\nconst emit = defineEmits(['click']);",
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/components/table/Table.vue',
+                 anchor: '  <table :class="{ \'table-fixed\': fixed }">',
+                 insert: '  <table class="w-full" :class="{ \'table-fixed\': fixed }">',
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/components/table/Table.vue',
+                 anchor: '      <tr v-for="row in table.getRowModel().rows" :key="row.id">',
+                 insert: "      <tr\n        v-for=\"row in table.getRowModel().rows\"\n        :key=\"row.id\"\n        :class=\"[\n          clickable\n            ? 'cursor-pointer hover:bg-n-slate-1 transition-colors'\n            : '',\n        ]\"\n        @click=\"clickable && emit('click', row.original)\"\n      >",
+                 replace: true
+               },
+               {
+                 file: 'lib/filters/filter_keys.yml',
+                 anchor: "  content:\n    attribute_type: \"standard\"",
+                 insert: "  campaign_referral_present:\n    attribute_type: \"standard\"\n    data_type: \"boolean\"\n    filter_operators:\n      - \"equal_to\"\n      - \"not_equal_to\"\n  content:\n    attribute_type: \"standard\"",
+                 replace: true
+               },
+               {
+                 file: 'app/controllers/super_admin/app_configs_controller.rb',
+                 anchor: "      'tiktok' => %w[TIKTOK_APP_ID TIKTOK_APP_SECRET TIKTOK_API_VERSION],",
+                 insert: "      'meta_marketing' => %w[META_MARKETING_APP_ID META_MARKETING_APP_SECRET META_MARKETING_API_VERSION],"
+               },
+               {
+                 file: 'app/helpers/super_admin/features.yml',
+                 anchor: "  enabled: true\n  icon: 'icon-slack'\n  config_key: 'slack'",
+                 insert: "meta_marketing:\n  name: 'Meta Marketing'\n  description: 'Configuration for setting up Meta Marketing Integration'\n  enabled: true\n  icon: 'icon-megaphone-line'\n  config_key: 'meta_marketing'"
+               },
+               {
+                 file: 'app/services/automation_rules/conditions_filter_service.rb',
+                 anchor: "    attribute_key = query_hash['attribute_key']\n    query_operator = query_hash['query_operator']",
+                 insert: "\n    if attribute_key == 'campaign_referral_present'\n      present_check = query_hash['values'].first.to_s == 'true'\n      should_be_present = query_hash['filter_operator'] == 'equal_to' ? present_check : !present_check\n      sql = should_be_present ? 'IS NOT NULL' : 'IS NULL'\n      return \" messages.content_attributes -> 'referral' \#{sql} \#{query_operator} \"\n    end"
                }
              ]
            end
@@ -259,7 +304,24 @@ if mode == :audit
       'app/javascript/dashboard/routes/dashboard/settings/automation/constants.js',
       'app/javascript/dashboard/store/modules/attributes.js',
       'app/models/custom_attribute_definition.rb',
-      '.vscode/settings.json'
+      '.vscode/settings.json',
+      '.github/workflows/publish_ee_docker.yml',
+      '.github/workflows/run_foss_spec.yml',
+      '.github/workflows/size-limit.yml',
+      '.rubocop.yml',
+      'app/javascript/dashboard/i18n/locale/pt_BR/conversation.json',
+      'config/initializers/01_inject_enterprise_edition_module.rb',
+      'config/installation_config.yml',
+      'config/locales/en.yml',
+      'config/locales/pt_BR.yml',
+      'config/schedule.yml',
+      'db/migrate/20231211010807_add_cached_labels_list.rb',
+      'docker/entrypoints/helpers/pg_database_url.rb',
+      'lib/tasks/captain_assistant_migration.rake',
+      'lib/tasks/download_report.rake',
+      'script/bulk_reindex_messages.rb',
+      'script/monitor_reindex.rb',
+      'script/reindex_single_account.rb'
     ]
     return true if out_of_scope.include?(path)
 
@@ -337,7 +399,7 @@ MANIFEST.each do |entry|
 
   content = File.read(file_path)
 
-  if content.include?(insert_text)
+  if content.include?(insert_text) || (entry[:replace] && !content.include?(anchor))
     puts "present   #{file_path} (already has insert)" if mode == :check
     next
   end
@@ -349,7 +411,11 @@ MANIFEST.each do |entry|
   end
 
   if mode == :apply
-    new_content = content.sub(anchor, "#{anchor}\n#{insert_text}")
+    new_content = if entry[:replace]
+                    content.sub(anchor, insert_text)
+                  else
+                    content.sub(anchor, "#{anchor}\n#{insert_text}")
+                  end
     File.write(file_path, new_content)
     puts "inserted  #{file_path}"
   else
