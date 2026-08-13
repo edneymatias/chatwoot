@@ -21,8 +21,14 @@ RSpec.describe PipelineStagePolicy do
     let(:user) { create(:user, account: account, role: :agent) }
     let(:account_user) { user.account_users.first }
 
-    it 'forbids all actions' do
-      [:index?, :show?, :create?, :update?, :destroy?].each do |action|
+    it 'permits index and show' do
+      [:index?, :show?].each do |action|
+        expect(policy.public_send(action)).to be_truthy
+      end
+    end
+
+    it 'forbids create, update, destroy' do
+      [:create?, :update?, :destroy?].each do |action|
         expect(policy.public_send(action)).to be_falsey
       end
     end

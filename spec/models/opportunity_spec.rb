@@ -46,13 +46,13 @@ RSpec.describe Opportunity, type: :model do
         ["account_#{account.id}"],
         'opportunity_updated',
         hash_including(
-          id: anything,
-          pipeline_stage_id: pipeline_stage.id,
-          status: 'open',
-          contact_id: contact.id,
-          assignee_id: assignee.id,
-          updated_at: anything,
-          account_id: account.id
+          'id' => anything,
+          'pipeline_stage_id' => pipeline_stage.id,
+          'status' => 'open',
+          'contact_id' => contact.id,
+          'assignee_id' => assignee.id,
+          'updated_at' => anything,
+          'account_id' => account.id
         )
       )
 
@@ -82,13 +82,13 @@ RSpec.describe Opportunity, type: :model do
         ["account_#{account.id}"],
         'opportunity_updated',
         hash_including(
-          id: opp.id,
-          pipeline_stage_id: new_stage.id,
-          status: 'won',
-          contact_id: contact.id,
-          assignee_id: assignee.id,
-          updated_at: anything,
-          account_id: account.id
+          'id' => opp.id,
+          'pipeline_stage_id' => new_stage.id,
+          'status' => 'won',
+          'contact_id' => contact.id,
+          'assignee_id' => assignee.id,
+          'updated_at' => anything,
+          'account_id' => account.id
         )
       )
 

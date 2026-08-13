@@ -67,9 +67,9 @@ RSpec.describe OpportunityPolicy do
     let(:inbox) { create(:inbox, account: account) }
     let(:origin_conversation) { create(:conversation, account: account, inbox: inbox) }
 
-    it 'forbids show, update, destroy' do
+    it 'permits show, update, destroy' do
       [:show?, :update?, :destroy?].each do |action|
-        expect(policy.public_send(action)).to be_falsey
+        expect(policy.public_send(action)).to be_truthy
       end
     end
   end

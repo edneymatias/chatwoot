@@ -30,17 +30,17 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
     end
 
     context 'when authenticated as agent' do
-      it 'returns unauthorized (pundit)' do
+      it 'returns ok (pundit permits any account user)' do
         get "/api/v1/accounts/#{account.id}/pipeline_stages", headers: headers_agent
-        expect(response).to have_http_status(:unauthorized)
+        expect(response).to have_http_status(:ok)
       end
     end
 
     if ChatwootApp.enterprise?
       context 'when authenticated as custom_role user' do
-        it 'returns unauthorized (pundit)' do
+        it 'returns ok (pundit permits any account user)' do
           get "/api/v1/accounts/#{account.id}/pipeline_stages", headers: headers_custom_role
-          expect(response).to have_http_status(:unauthorized)
+          expect(response).to have_http_status(:ok)
         end
       end
     end

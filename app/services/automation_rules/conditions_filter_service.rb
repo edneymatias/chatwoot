@@ -116,7 +116,7 @@ class AutomationRules::ConditionsFilterService < FilterService
       present_check = query_hash['values'].first.to_s == 'true'
       should_be_present = query_hash['filter_operator'] == 'equal_to' ? present_check : !present_check
       sql = should_be_present ? 'IS NOT NULL' : 'IS NULL'
-      return " messages.content_attributes -> 'referral' #{sql} #{query_operator} "
+      return " (messages.content_attributes #>> '{}')::jsonb -> 'referral' #{sql} #{query_operator} "
     end
 
     attribute_key = 'processed_message_content' if attribute_key == 'content'

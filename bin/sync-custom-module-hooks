@@ -244,7 +244,13 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'app/services/automation_rules/conditions_filter_service.rb',
                  anchor: "    attribute_key = query_hash['attribute_key']\n    query_operator = query_hash['query_operator']",
-                 insert: "\n    if attribute_key == 'campaign_referral_present'\n      present_check = query_hash['values'].first.to_s == 'true'\n      should_be_present = query_hash['filter_operator'] == 'equal_to' ? present_check : !present_check\n      sql = should_be_present ? 'IS NOT NULL' : 'IS NULL'\n      return \" messages.content_attributes -> 'referral' \#{sql} \#{query_operator} \"\n    end"
+                 insert: "\n    if attribute_key == 'campaign_referral_present'\n      present_check = query_hash['values'].first.to_s == 'true'\n      should_be_present = query_hash['filter_operator'] == 'equal_to' ? present_check : !present_check\n      sql = should_be_present ? 'IS NOT NULL' : 'IS NULL'\n      return \" (messages.content_attributes #>> '{}')::jsonb -> 'referral' \#{sql} \#{query_operator} \"\n    end"
+               },
+               {
+                 file: 'app/models/automation_rule.rb',
+                 anchor: "mail_subject phone_number priority conversation_language labels private_note]",
+                 insert: "mail_subject phone_number priority conversation_language labels private_note campaign_referral_present]",
+                 replace: true
                }
              ]
            end

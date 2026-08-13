@@ -17,6 +17,7 @@ const createMockStore = moveCardMock => {
           byId: {
             1: { id: 1, pipeline_stage_id: 2, custom_attributes: {} },
           },
+          idsByStage: {},
           pagination: {
             byStage: {},
           },
@@ -63,7 +64,7 @@ const createMockStore = moveCardMock => {
 };
 
 describe('KanbanBoard', () => {
-  it('dispatches moveCard immediately for backward/lateral moves even if missing fields', async () => {
+  it('only dispatches moveCard once the drag ends, for backward/lateral moves even if missing fields', async () => {
     const moveCardSpy = vi.fn();
     const store = createMockStore(moveCardSpy);
 
@@ -85,12 +86,19 @@ describe('KanbanBoard', () => {
       },
     });
 
-    // Simulate removing card from stage 2
+    // Simulate a drag: onCardRemoved/onCardAdded fire live as SortableJS
+    // moves the card across columns, before the user actually drops it.
+    wrapper.vm.onDragStart(1);
     wrapper.vm.onCardRemoved({ id: 1, fromStageId: 2 });
     // Simulate adding card to stage 1 (backward move)
     wrapper.vm.onCardAdded({ id: 1, toStageId: 1, toIndex: 0 });
 
-    // The guard `dispatchMoveIfComplete` should have immediately dispatched the move
+    // Bookkeeping only: the move must not dispatch until the drag ends
+    expect(moveCardSpy).not.toHaveBeenCalled();
+
+    wrapper.vm.onDragEnd();
+
+    // dispatchMoveIfComplete runs on drag end
     expect(moveCardSpy).toHaveBeenCalledWith(expect.anything(), {
       id: 1,
       fromStageId: 2,
@@ -100,10 +108,12 @@ describe('KanbanBoard', () => {
 
     // Test forward move to a stage with missing fields
     moveCardSpy.mockClear();
+    wrapper.vm.onDragStart(1);
     wrapper.vm.onCardRemoved({ id: 1, fromStageId: 2 });
     wrapper.vm.onCardAdded({ id: 1, toStageId: 3, toIndex: 0 });
+    wrapper.vm.onDragEnd();
 
-    // Should NOT have dispatched the move immediately (it will open the modal)
+    // Should NOT have dispatched the move (it will open the modal instead)
     expect(moveCardSpy).not.toHaveBeenCalled();
     expect(wrapper.vm.isRequirementsModalOpen).toBe(true);
   });

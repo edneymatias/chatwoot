@@ -43,7 +43,7 @@ RSpec.describe Sla::BackfillAppliedSlaCompletedAtService do
       event_start_time: applied_sla.created_at,
       event_end_time: 36.hours.ago
     )
-    original_updated_at = applied_sla.updated_at
+    original_updated_at = applied_sla.reload.updated_at
 
     result = described_class.new(account_id: account.id, apply: true, output: output).perform
 
