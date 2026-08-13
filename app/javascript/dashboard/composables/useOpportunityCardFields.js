@@ -178,7 +178,7 @@ export function useOpportunityCardFields(opportunityRef) {
     if (campaign_resolution_status === 'resolved') {
       label = [campaign_name, campaign_adset_name, campaign_ad_name]
         .filter(Boolean)
-        .join(' > ');
+        .join('\n');
     } else if (campaign_resolution_status === 'failed') {
       label = campaign_source_id;
     } else {
