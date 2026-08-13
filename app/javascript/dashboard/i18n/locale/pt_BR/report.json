@@ -714,5 +714,26 @@
       "NO_AGENTS": "Nenhum agente para exibir",
       "LOADING_MESSAGE": "Carregando desempenho dos agentes..."
     }
+  },
+  "OPPORTUNITY_ATTRIBUTE_REPORTS": {
+    "HEADER": "Relatório por Atributo da Oportunidade",
+    "DESCRIPTION": "Selecione um atributo de oportunidade do tipo lista e um intervalo de datas para ver o funil detalhado por seus valores.",
+    "LOADING": "Carregando relatório de atributo...",
+    "TABLE": {
+      "VALUE": "Valor",
+      "OPPORTUNITIES": "Oportunidades",
+      "WON": "Ganha",
+      "LOST": "Perdida",
+      "AVG_TIME_TO_CLOSE": "Tempo médio",
+      "NO_VALUE": "Sem valor"
+    },
+    "EMPTY": {
+      "TITLE": "Nenhum atributo de oportunidade do tipo lista",
+      "DESCRIPTION": "Crie um atributo personalizado de oportunidade do tipo lista em Atributos Personalizados para usar este relatório."
+    },
+    "NO_DATA": {
+      "TITLE": "Nenhum dado de oportunidade para este atributo",
+      "DESCRIPTION": "Tente um intervalo de datas diferente ou selecione outro atributo para ver as métricas de oportunidade."
+    }
   }
 }
