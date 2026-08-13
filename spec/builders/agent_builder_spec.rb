@@ -47,7 +47,7 @@ RSpec.describe AgentBuilder, type: :model do
       it 'reserves email capacity and enqueues the invitation' do
         allow(ChatwootApp).to receive(:chatwoot_cloud?).and_return(true)
 
-        expect { agent_builder.perform }.to have_enqueued_mail(Devise::Mailer, :confirmation_instructions)
+        expect { agent_builder.perform }.to have_enqueued_mail(Devise::Mailer, :confirmation_instructions).with(any_args)
         expect(account.emails_sent_today).to eq(1)
       end
 
