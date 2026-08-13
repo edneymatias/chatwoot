@@ -10,7 +10,7 @@ namespace :meta_marketing do
     # 1. Find all messages with referral content
     messages_with_referrals = Message
                                 .where(message_type: :incoming)
-                                .where("content_attributes -> 'referral' IS NOT NULL")
+                                .where("(content_attributes #>> '{}')::jsonb -> 'referral' IS NOT NULL")
                                 .order(created_at: :asc)
 
     processed_count = 0
