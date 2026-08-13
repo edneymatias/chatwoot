@@ -1,3 +1,13 @@
+## [4.16.2-ichatr.3] - 2026-08-13
+
+### 🐛 Bug Fixes
+
+- *(rake)* Extend statement_timeout for referral backfill task
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Update changelog for 4.16.2-ichatr.2 [skip ci]
+
 ## [4.16.2-ichatr.2] - 2026-08-13
 
 ### 🚀 Features
