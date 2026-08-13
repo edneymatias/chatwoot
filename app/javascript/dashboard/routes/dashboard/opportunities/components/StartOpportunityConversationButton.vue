@@ -30,6 +30,15 @@ const contactConversations = computed(() => {
 const snapshotConversations = () => {
   initialConversationsLength = contactConversations.value.length;
   isTracking.value = true;
+  // ComposeConversation only reads contact details and inboxes already
+  // present on the store's contact record, and the kanban card only carries
+  // a lightweight embedded contact, so both must be fetched before the
+  // popover opens.
+  store.dispatch('contacts/show', { id: props.opportunity.contact_id });
+  store.dispatch(
+    'contacts/fetchContactableInbox',
+    props.opportunity.contact_id
+  );
 };
 
 const handleClose = () => {
