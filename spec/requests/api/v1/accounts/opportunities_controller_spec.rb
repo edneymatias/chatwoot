@@ -79,6 +79,65 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
       expect(response.parsed_body.first['title']).to eq('Lost Opp')
     end
 
+    it 'filters custom attributes using is_greater_than and is_less_than date comparisons' do
+      opp1 = Opportunity.create!(
+        account: account, contact: contact, pipeline_stage: stage, title: 'Early Opp', status: 'open',
+        custom_attributes: { 'data_agendamento' => '2026-08-05' }
+      )
+      opp2 = Opportunity.create!(
+        account: account, contact: contact, pipeline_stage: stage, title: 'Late Opp', status: 'open',
+        custom_attributes: { 'data_agendamento' => '2026-08-13' }
+      )
+      Opportunity.create!(
+        account: account, contact: contact, pipeline_stage: stage, title: 'No Date Opp', status: 'open',
+        custom_attributes: { 'data_agendamento' => '' }
+      )
+
+      # Test is_greater_than
+      payload_gt = [{ attribute_key: 'data_agendamento', filter_operator: 'is_greater_than', values: ['2026-08-08'] }].to_json
+      get "/api/v1/accounts/#{account.id}/opportunities",
+          params: { payload: payload_gt },
+          headers: admin.create_new_auth_token,
+          as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.length).to eq(1)
+      expect(response.parsed_body.first['id']).to eq(opp2.id)
+
+      # Test is_less_than
+      payload_lt = [{ attribute_key: 'data_agendamento', filter_operator: 'is_less_than', values: ['2026-08-10'] }].to_json
+      get "/api/v1/accounts/#{account.id}/opportunities",
+          params: { payload: payload_lt },
+          headers: admin.create_new_auth_token,
+          as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.length).to eq(1)
+      expect(response.parsed_body.first['id']).to eq(opp1.id)
+    end
+
+    it 'filters custom attributes using days_before operator' do
+      target_date = (Date.current - 3.days).strftime('%Y-%m-%d')
+      opp = Opportunity.create!(
+        account: account, contact: contact, pipeline_stage: stage, title: 'Scheduled Opp', status: 'open',
+        custom_attributes: { 'data_agendamento' => target_date }
+      )
+      Opportunity.create!(
+        account: account, contact: contact, pipeline_stage: stage, title: 'Other Opp', status: 'open',
+        custom_attributes: { 'data_agendamento' => (Date.current - 10.days).strftime('%Y-%m-%d') }
+      )
+
+      payload = [{ attribute_key: 'data_agendamento', filter_operator: 'days_before', values: ['3'] }].to_json
+      get "/api/v1/accounts/#{account.id}/opportunities",
+          params: { payload: payload },
+          headers: admin.create_new_auth_token,
+          as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.length).to eq(1)
+      expect(response.parsed_body.first['id']).to eq(opp.id)
+    end
+
     it 'works for agents too' do
       get "/api/v1/accounts/#{account.id}/opportunities",
           headers: agent.create_new_auth_token,

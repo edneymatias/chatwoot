@@ -128,6 +128,17 @@ export function useOperators() {
     operators.value[FILTER_OPS.DAYS_BEFORE],
   ]);
 
+  /** @type {import('vue').ComputedRef<Array<Operator>>} */
+  const customDateOperators = computed(() => [
+    operators.value[FILTER_OPS.EQUAL_TO],
+    operators.value[FILTER_OPS.NOT_EQUAL_TO],
+    operators.value[FILTER_OPS.IS_GREATER_THAN],
+    operators.value[FILTER_OPS.IS_LESS_THAN],
+    operators.value[FILTER_OPS.DAYS_BEFORE],
+    operators.value[FILTER_OPS.IS_PRESENT],
+    operators.value[FILTER_OPS.IS_NOT_PRESENT],
+  ]);
+
   /**
    * Get operator types based on key
    * @param {string} key - Type of operator to get
@@ -140,11 +151,11 @@ export function useOperators() {
       case 'text':
         return containmentOperators.value;
       case 'number':
-        return equalityOperators.value;
+        return comparisonOperators.value;
       case 'link':
         return equalityOperators.value;
       case 'date':
-        return comparisonOperators.value;
+        return customDateOperators.value;
       case 'checkbox':
         return equalityOperators.value;
       default:
@@ -159,6 +170,7 @@ export function useOperators() {
     containmentOperators,
     comparisonOperators,
     dateOperators,
+    customDateOperators,
     getOperatorTypes,
   };
 }

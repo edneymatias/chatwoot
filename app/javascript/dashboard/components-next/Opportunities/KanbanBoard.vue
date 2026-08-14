@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import KanbanColumn from './KanbanColumn.vue';
 import KanbanStatusBar from './KanbanStatusBar.vue';
@@ -289,13 +289,64 @@ const onDragEnd = () => {
 const onCardClick = opportunityId => {
   emit('cardClick', opportunityId);
 };
+
+const boardContainerRef = ref(null);
+const isPanning = ref(false);
+let startX = 0;
+let initialScrollLeft = 0;
+
+const onGlobalMouseMove = e => {
+  if (!isPanning.value || !boardContainerRef.value) return;
+  const x = e.pageX - boardContainerRef.value.offsetLeft;
+  const walk = x - startX;
+  boardContainerRef.value.scrollLeft = initialScrollLeft - walk;
+};
+
+const onGlobalMouseUp = () => {
+  if (isPanning.value) {
+    isPanning.value = false;
+    window.removeEventListener('mousemove', onGlobalMouseMove);
+    window.removeEventListener('mouseup', onGlobalMouseUp);
+  }
+};
+
+const onBoardMouseDown = e => {
+  if (e.button !== 0 || isCardDragging.value || !boardContainerRef.value)
+    return;
+
+  const target = e.target;
+  const interactiveTarget = target.closest(
+    'button, a, input, textarea, select, [role="button"], .kanban-card, [data-draggable="true"]'
+  );
+  if (interactiveTarget) return;
+
+  isPanning.value = true;
+  startX = e.pageX - boardContainerRef.value.offsetLeft;
+  initialScrollLeft = boardContainerRef.value.scrollLeft;
+
+  window.addEventListener('mousemove', onGlobalMouseMove);
+  window.addEventListener('mouseup', onGlobalMouseUp);
+};
+
+onUnmounted(() => {
+  window.removeEventListener('mousemove', onGlobalMouseMove);
+  window.removeEventListener('mouseup', onGlobalMouseUp);
+});
 </script>
 
 <template>
   <div
     class="flex flex-col h-full w-full overflow-hidden bg-n-slate-1 relative"
   >
-    <div class="flex flex-grow overflow-x-auto p-4 gap-4">
+    <div
+      ref="boardContainerRef"
+      class="flex flex-grow overflow-x-auto p-4 gap-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      :class="{
+        'cursor-grab': !isPanning && !isCardDragging,
+        'cursor-grabbing select-none': isPanning,
+      }"
+      @mousedown="onBoardMouseDown"
+    >
       <KanbanColumn
         v-for="stage in stages"
         :key="stage.id"

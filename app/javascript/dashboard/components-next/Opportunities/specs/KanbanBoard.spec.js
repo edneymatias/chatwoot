@@ -117,4 +117,45 @@ describe('KanbanBoard', () => {
     expect(moveCardSpy).not.toHaveBeenCalled();
     expect(wrapper.vm.isRequirementsModalOpen).toBe(true);
   });
+
+  it('renders the board container with hidden scrollbar classes and handles mouse panning', async () => {
+    const moveCardSpy = vi.fn();
+    const store = createMockStore(moveCardSpy);
+
+    const wrapper = mount(KanbanBoard, {
+      global: {
+        plugins: [store],
+        stubs: {
+          KanbanColumn: true,
+          OpportunityCreateModal: true,
+          OpportunityBackfillModal: true,
+          StageTransitionRequirementsModal: true,
+          'router-view': true,
+        },
+        mocks: {
+          $t: msg => msg,
+          $route: { name: 'opportunities_index', params: {} },
+          $router: { push: vi.fn() },
+        },
+      },
+    });
+
+    const boardContainer = wrapper.find({ ref: 'boardContainerRef' });
+    expect(boardContainer.exists()).toBe(true);
+    expect(boardContainer.classes()).toContain('[scrollbar-width:none]');
+    expect(boardContainer.classes()).toContain('[&::-webkit-scrollbar]:hidden');
+
+    // Trigger mousedown on board
+    await boardContainer.trigger('mousedown', { button: 0, pageX: 100 });
+    expect(wrapper.vm.isPanning).toBe(true);
+
+    // Trigger mousemove on window
+    const moveEvent = new MouseEvent('mousemove', { pageX: 50 });
+    window.dispatchEvent(moveEvent);
+
+    // Trigger mouseup on window
+    const upEvent = new MouseEvent('mouseup');
+    window.dispatchEvent(upEvent);
+    expect(wrapper.vm.isPanning).toBe(false);
+  });
 });

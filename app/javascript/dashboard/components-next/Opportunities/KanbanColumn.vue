@@ -196,6 +196,7 @@ const displayTotal = computed(() => {
       <template #item="{ element }">
         <KanbanCard
           :opportunity="element"
+          class="kanban-card"
           :class="{ 'is-closed': element.status !== 'open' }"
           @click="$emit('cardClick', $event)"
           @status-changed="$emit('statusChanged', $event)"
