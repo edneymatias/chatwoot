@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import Draggable from 'vuedraggable';
 import KanbanCard from './KanbanCard.vue';
@@ -97,6 +97,14 @@ const currencyCode = computed(
   () => store.getters['pipelineCurrencySetting/getCurrency']
 );
 
+const isInfoExpanded = ref(false);
+
+const hasDescription = computed(() => {
+  if (!props.stage.description) return false;
+  const trimmed = props.stage.description.trim();
+  return trimmed.length > 0 && trimmed !== '<p></p>';
+});
+
 const displayTotal = computed(() => {
   if (
     props.stage.open_count === undefined ||
@@ -126,13 +134,27 @@ const displayTotal = computed(() => {
         stage.accent_color ? { borderBottomColor: stage.accent_color } : {}
       "
     >
-      <h2
-        class="text-n-slate-12 font-medium text-sm truncate"
-        :title="stage.name"
-      >
-        {{ stage.name }}
-      </h2>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+        <button
+          type="button"
+          class="flex-shrink-0 flex items-center justify-center size-5 rounded-full text-n-slate-11 hover:text-n-slate-12 hover:bg-n-slate-3 dark:hover:bg-n-solid-3 transition-colors"
+          :class="{
+            'text-n-brand-9 bg-n-alpha-2': isInfoExpanded,
+          }"
+          :title="$t('OPPORTUNITIES.BOARD.STAGE_INFO.INFO_TOOLTIP')"
+          :aria-label="$t('OPPORTUNITIES.BOARD.STAGE_INFO.INFO_TOOLTIP')"
+          @click="isInfoExpanded = !isInfoExpanded"
+        >
+          <span class="size-4 shrink-0 i-lucide-info" />
+        </button>
+        <h2
+          class="text-n-slate-12 font-medium text-sm truncate"
+          :title="stage.name"
+        >
+          {{ stage.name }}
+        </h2>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
         <span
           v-if="displayTotal !== null"
           class="text-xs font-medium text-n-slate-11 bg-n-slate-3 px-2 py-0.5 rounded-full"
@@ -147,6 +169,16 @@ const displayTotal = computed(() => {
           <fluent-icon icon="add" size="14" />
         </button>
       </div>
+    </div>
+
+    <div
+      v-if="isInfoExpanded"
+      class="p-3 border-b border-n-weak bg-n-surface-1 text-xs text-n-slate-12 shrink-0 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:mb-1 [&_p:last-child]:mb-0 [&_s]:line-through [&_u]:underline"
+    >
+      <div v-if="hasDescription" v-dompurify-html="stage.description" />
+      <p v-else class="text-n-slate-11 italic m-0">
+        {{ $t('OPPORTUNITIES.BOARD.STAGE_INFO.EMPTY_STATE') }}
+      </p>
     </div>
 
     <Draggable

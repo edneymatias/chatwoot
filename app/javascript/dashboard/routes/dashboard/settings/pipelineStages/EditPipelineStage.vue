@@ -4,6 +4,7 @@ import { useStore } from 'vuex';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import ColorPicker from 'dashboard/components-next/colorpicker/ColorPicker.vue';
+import StageDescriptionEditor from 'dashboard/components-next/Opportunities/StageDescriptionEditor.vue';
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -62,7 +63,7 @@ const submit = async () => {
     await store.dispatch('pipelineStages/update', {
       id: props.stage.id,
       name: name.value.trim(),
-      description: description.value.trim(),
+      description: description.value ? description.value.trim() : '',
       requires_deal_value: requiresDealValue.value,
       accent_color: accentColor.value || null,
       total_display_mode: totalDisplayMode.value,
@@ -127,11 +128,7 @@ const submit = async () => {
         <label class="text-sm font-medium text-n-slate-12">
           {{ $t('PIPELINE_STAGES_MGMT.FORM.DESC_LABEL') }}
         </label>
-        <textarea
-          v-model="description"
-          rows="3"
-          class="w-full px-3 py-2 border border-n-weak rounded-md bg-n-surface-1 text-n-slate-12 text-sm focus:outline-none focus:ring-1 focus:ring-n-brand-9"
-        />
+        <StageDescriptionEditor v-model="description" />
       </div>
 
       <div class="flex flex-col gap-2 mt-2">

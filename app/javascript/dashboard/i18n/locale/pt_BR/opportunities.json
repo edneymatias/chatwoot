@@ -18,7 +18,11 @@
       },
       "TIME_IN_STAGE": "Tempo neste estágio",
       "CREATED_TOOLTIP": "Criado em {date}",
-      "CREATED_LABEL": "Criado"
+      "CREATED_LABEL": "Criado",
+      "STAGE_INFO": {
+        "INFO_TOOLTIP": "Descrição do estágio",
+        "EMPTY_STATE": "Adicione uma descrição na configuração dos estágios do funil para visualizá-la aqui."
+      }
     },
     "CREATE_MODAL": {
       "TITLE": "Criar Oportunidade",
@@ -109,7 +113,15 @@
       "STALE_AFTER_DAYS_HELP": "Tempo nesta etapa antes de exibir o alerta visual",
       "CANCEL": "Cancelar",
       "SUBMIT_CREATE": "Criar",
-      "SUBMIT_EDIT": "Salvar alterações"
+      "SUBMIT_EDIT": "Salvar alterações",
+      "DESCRIPTION_EDITOR": {
+        "BOLD": "Negrito",
+        "ITALIC": "Itálico",
+        "STRIKE": "Tachado",
+        "UNDERLINE": "Sublinhado",
+        "ORDERED_LIST": "Lista numerada",
+        "BULLET_LIST": "Lista com marcadores"
+      }
     },
     "DELETE": {
       "CONFIRM": "Tem certeza que deseja excluir este estágio do pipeline?",

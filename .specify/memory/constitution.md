@@ -1,14 +1,10 @@
 <!--
 Sync Impact Report
-Version change: 1.1.0 → 1.1.1
+Version change: 1.1.1 → 1.2.0
 Modified principles: none
-Added sections: none (scoped clarification appended to the existing Personalization
-  Boundaries translation bullet)
+Added sections: none (expanded Personalization Boundaries translation guideline to align with fork-wide AGENTS.md rule)
 Removed sections: none
-Rationale: The project owner explicitly required pt-BR translations for the
-  015-opportunity-funnel-report feature's OPPORTUNITY_FUNNEL_REPORTS strings because the
-  feature is used in practice in that locale today, ahead of the normal Crowdin sync cycle.
-  This is a narrow, named exception, not a change to the general rule.
+Rationale: The fork does not use Crowdin; all Kanban/Opportunities module features and fork-specific changes maintain synchronous en and pt-BR translations per project guidelines.
 Templates requiring updates:
   - .specify/templates/plan-template.md ✅ no edit needed
   - .specify/templates/spec-template.md ✅ no edit needed
@@ -111,12 +107,7 @@ but MUST be built so they can be toggled or lifted out without surgery on core f
 - Do not remove or weaken upstream tests, lint rules, or CI gates to make a personal feature fit.
   If a personal feature is fundamentally incompatible with an upstream constraint, that tension
   MUST be resolved by redesigning the feature, not by loosening the constraint.
-- Translation changes for product/source strings touch only `en.yml` / `en.json`; other locales
-  remain Crowdin-owned and are not hand-edited. **Named exception**: the
-  `OPPORTUNITY_FUNNEL_REPORTS` keys in `app/javascript/dashboard/i18n/locale/pt_BR/report.json`
-  (feature `015-opportunity-funnel-report`) were hand-edited by explicit project-owner request,
-  since that locale is used in practice ahead of the normal Crowdin cycle. This exception is
-  scoped to those keys only and does not extend to other features or locales.
+- Translation changes: This fork does not use Crowdin. The Kanban module and fork-specific additions are delivered with `pt-BR` translations included. For product and source-string changes in fork-owned features and modules, update both English (`en.yml`, `en.json`) and Portuguese (`pt_BR.yml`, `pt_BR.json`) files synchronously. Core upstream strings outside fork features remain English-first.
 
 ## Development Workflow & Quality Gates
 
@@ -152,4 +143,4 @@ Every plan or feature produced under Spec Kit MUST pass a Constitution Check aga
 principles above before implementation begins; violations must be justified explicitly (see the
 Complexity Tracking section of the plan template) or the approach must be revised.
 
-**Version**: 1.1.1 | **Ratified**: 2026-07-29 | **Last Amended**: 2026-08-04
+**Version**: 1.2.0 | **Ratified**: 2026-07-29 | **Last Amended**: 2026-08-14

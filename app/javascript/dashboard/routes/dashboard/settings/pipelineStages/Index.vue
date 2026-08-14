@@ -108,6 +108,12 @@ const onChange = async event => {
     }
   }
 };
+
+const stripHtml = html => {
+  if (!html) return '';
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return doc.body.textContent || '';
+};
 </script>
 
 <template>
@@ -171,9 +177,9 @@ const onChange = async event => {
                         }}</span>
                         <span
                           v-if="element.description"
-                          class="text-xs text-n-slate-11"
+                          class="text-xs text-n-slate-11 line-clamp-2"
                         >
-                          {{ element.description }}
+                          {{ stripHtml(element.description) }}
                         </span>
                       </div>
                     </div>

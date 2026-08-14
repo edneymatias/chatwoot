@@ -16,7 +16,11 @@
       },
       "TIME_IN_STAGE": "Time in current stage",
       "CREATED_TOOLTIP": "Created {date}",
-      "CREATED_LABEL": "Created"
+      "CREATED_LABEL": "Created",
+      "STAGE_INFO": {
+        "INFO_TOOLTIP": "Stage description",
+        "EMPTY_STATE": "Add a description in the funnel stage settings to see it here."
+      }
     },
     "CREATE_MODAL": {
       "TITLE": "Create Opportunity",
@@ -110,7 +114,15 @@
       "STALE_AFTER_DAYS_HELP": "Time in this stage before showing alert styling",
       "CANCEL": "Cancel",
       "SUBMIT_CREATE": "Create",
-      "SUBMIT_EDIT": "Save changes"
+      "SUBMIT_EDIT": "Save changes",
+      "DESCRIPTION_EDITOR": {
+        "BOLD": "Bold",
+        "ITALIC": "Italic",
+        "STRIKE": "Strikethrough",
+        "UNDERLINE": "Underline",
+        "ORDERED_LIST": "Ordered list",
+        "BULLET_LIST": "Bulleted list"
+      }
     },
     "DELETE": {
       "CONFIRM": "Are you sure you want to delete this pipeline stage?",

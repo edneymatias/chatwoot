@@ -91,7 +91,7 @@ const closeDrawer = () => {
 
 <template>
   <div
-    class="flex flex-col h-full w-full bg-n-slate-1 relative overflow-hidden"
+    class="flex flex-col h-full w-full bg-n-background relative overflow-hidden"
   >
     <OpportunitiesViewBar v-model="viewMode" v-model:filters="filters" />
 
