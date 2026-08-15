@@ -52,6 +52,7 @@ class Opportunity < ApplicationRecord
   end
 
   def validate_forward_stage_move_requirements
+    return if Current.executed_by.is_a?(AutomationRule)
     return unless pipeline_stage_id_was
 
     old_stage = account.pipeline_stages.find_by(id: pipeline_stage_id_was)
@@ -73,6 +74,7 @@ class Opportunity < ApplicationRecord
   end
 
   def validate_closing_requirements
+    return if Current.executed_by.is_a?(AutomationRule)
     return unless status.to_s.in?(%w[won lost])
 
     missing_keys = []
@@ -134,7 +136,34 @@ class Opportunity < ApplicationRecord
   end
 
   def broadcast_opportunity_updated
-    Rails.configuration.dispatcher.dispatch('opportunity_updated', Time.zone.now, opportunity: self)
+    event_data = {
+      opportunity: self,
+      changed_attributes: saved_changes,
+      from_pipeline_stage_id: pipeline_stage_id_before_last_save,
+      performed_by: Current.executed_by || Current.user
+    }
+
+    if previously_new_record?
+      Rails.configuration.dispatcher.dispatch('opportunity_created', Time.zone.now, event_data)
+    else
+      Rails.configuration.dispatcher.dispatch('opportunity_updated', Time.zone.now, event_data)
+      dispatch_status_and_stage_events(event_data)
+    end
+  end
+
+  def dispatch_status_and_stage_events(event_data)
+    Rails.configuration.dispatcher.dispatch('opportunity_stage_changed', Time.zone.now, event_data) if saved_change_to_pipeline_stage_id?
+
+    return unless saved_change_to_status?
+
+    case status.to_s
+    when 'won'
+      Rails.configuration.dispatcher.dispatch('opportunity_won', Time.zone.now, event_data)
+    when 'lost'
+      Rails.configuration.dispatcher.dispatch('opportunity_lost', Time.zone.now, event_data)
+    when 'open'
+      Rails.configuration.dispatcher.dispatch('opportunity_reopened', Time.zone.now, event_data) if status_before_last_save.in?(%w[won lost])
+    end
   end
 
   def contact_json

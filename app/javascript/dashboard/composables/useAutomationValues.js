@@ -115,6 +115,7 @@ export default function useAutomationValues() {
       languages,
       countries,
       type,
+      pipelineStages: pipelineStages.value,
     });
   };
 

@@ -143,6 +143,10 @@ export function useAutomation(startValue = null) {
     ].value('conversation_attribute');
     const contactCustomAttributesRaw =
       getters['attributes/getAttributesByModel'].value('contact_attribute');
+    const opportunityCustomAttributesRaw =
+      getters['attributes/getAttributesByModel'].value(
+        'opportunity_attribute'
+      ) || [];
 
     const conversationCustomAttributeTypes = generateCustomAttributeTypes(
       conversationCustomAttributesRaw,
@@ -152,15 +156,22 @@ export function useAutomation(startValue = null) {
       contactCustomAttributesRaw,
       'contact_attribute'
     );
+    const opportunityCustomAttributeTypes = generateCustomAttributeTypes(
+      opportunityCustomAttributesRaw,
+      'opportunity_attribute'
+    );
 
     const manifestedCustomAttributes = generateCustomAttributes(
       conversationCustomAttributeTypes,
       contactCustomAttributeTypes,
       t('AUTOMATION.CONDITION.CONVERSATION_CUSTOM_ATTR_LABEL'),
-      t('AUTOMATION.CONDITION.CONTACT_CUSTOM_ATTR_LABEL')
+      t('AUTOMATION.CONDITION.CONTACT_CUSTOM_ATTR_LABEL'),
+      opportunityCustomAttributeTypes,
+      t('AUTOMATION.CONDITION.OPPORTUNITY_CUSTOM_ATTR_LABEL')
     );
 
     const CUSTOM_ATTR_HEADER_KEYS = new Set([
+      'opportunity_custom_attribute',
       'conversation_custom_attribute',
       'contact_custom_attribute',
     ]);
@@ -170,7 +181,15 @@ export function useAutomation(startValue = null) {
       'conversation_created',
       'conversation_updated',
       'conversation_opened',
+      'opportunity_created',
+      'opportunity_updated',
+      'opportunity_stage_changed',
+      'opportunity_won',
+      'opportunity_lost',
+      'opportunity_reopened',
     ].forEach(eventToUpdate => {
+      if (!automationTypes[eventToUpdate]) return;
+
       const standardConditions = automationTypes[
         eventToUpdate
       ].conditions.filter(

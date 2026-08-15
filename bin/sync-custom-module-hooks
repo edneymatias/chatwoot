@@ -108,6 +108,11 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  insert: "\nAutomationRules::ActionService.prepend_mod_with('AutomationRules::ActionService')"
                },
                {
+                 file: 'app/listeners/automation_rule_listener.rb',
+                 anchor: "    performed_by_automation?(event) || message.activity? || message.auto_reply_email?\n  end\nend",
+                 insert: "\nAutomationRuleListener.prepend_mod_with('AutomationRuleListener')"
+               },
+               {
                  file: 'app/javascript/dashboard/i18n/locale/en/settings.json',
                  anchor: '  "SIDEBAR": {',
                  insert: '    "OPPORTUNITIES": "Opportunities",'

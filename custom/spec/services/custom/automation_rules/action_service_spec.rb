@@ -4,10 +4,12 @@ RSpec.describe Custom::AutomationRules::ActionService do
   let!(:account) { create(:account) }
   let!(:contact) { create(:contact, account: account) }
   let!(:conversation) { create(:conversation, account: account, contact: contact) }
+  let!(:stage) { PipelineStage.create!(account: account, name: 'Lead', position: 1) }
   let!(:opportunity) do
     Opportunity.create!(
       account: account,
       contact: contact,
+      pipeline_stage: stage,
       origin_conversation: conversation,
       status: :open,
       title: 'Test Opportunity',
@@ -60,7 +62,7 @@ RSpec.describe Custom::AutomationRules::ActionService do
 
       context 'and account attribution is disabled' do
         before do
-          create(:campaign_attribution_setting, account: account, enabled: false)
+          CampaignAttributionSetting.create!(account: account, enabled: false)
         end
 
         it 'sets the attributes but does not enqueue a job' do
@@ -77,7 +79,7 @@ RSpec.describe Custom::AutomationRules::ActionService do
 
       context 'and account attribution is enabled' do
         before do
-          create(:campaign_attribution_setting, account: account, enabled: true)
+          CampaignAttributionSetting.create!(account: account, enabled: true)
         end
 
         it 'sets the attributes and enqueues a job' do

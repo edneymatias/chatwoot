@@ -2,6 +2,7 @@ import {
   OPERATOR_TYPES_1,
   OPERATOR_TYPES_2,
   OPERATOR_TYPES_3,
+  OPERATOR_TYPES_4,
   OPERATOR_TYPES_6,
 } from './operators';
 
@@ -710,6 +711,718 @@ export const AUTOMATIONS = {
       },
     ],
   },
+  opportunity_created: {
+    conditions: [
+      {
+        key: 'pipeline_stage_id',
+        name: 'PIPELINE_STAGE',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'status',
+        name: 'OPPORTUNITY_STATUS',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'value',
+        name: 'OPPORTUNITY_VALUE',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_4,
+      },
+      {
+        key: 'assignee_id',
+        name: 'ASSIGNEE_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'loss_reason',
+        name: 'LOSS_REASON',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'email',
+        name: 'EMAIL',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'phone_number',
+        name: 'PHONE_NUMBER',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'company_name',
+        name: 'COMPANY_NAME',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'inbox_id',
+        name: 'INBOX',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'priority',
+        name: 'PRIORITY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'labels',
+        name: 'LABELS',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+    ],
+    actions: [
+      {
+        key: 'update_opportunity_stage',
+        name: 'UPDATE_OPPORTUNITY_STAGE',
+      },
+      {
+        key: 'update_opportunity_assignee',
+        name: 'UPDATE_OPPORTUNITY_ASSIGNEE',
+      },
+      {
+        key: 'update_opportunity_status',
+        name: 'UPDATE_OPPORTUNITY_STATUS',
+      },
+      {
+        key: 'update_opportunity_value',
+        name: 'UPDATE_OPPORTUNITY_VALUE',
+      },
+      {
+        key: 'send_message',
+        name: 'SEND_MESSAGE',
+      },
+      {
+        key: 'add_private_note',
+        name: 'ADD_PRIVATE_NOTE',
+      },
+      {
+        key: 'add_label',
+        name: 'ADD_LABEL',
+      },
+      {
+        key: 'remove_label',
+        name: 'REMOVE_LABEL',
+      },
+      {
+        key: 'assign_agent',
+        name: 'ASSIGN_AGENT',
+      },
+      {
+        key: 'assign_team',
+        name: 'ASSIGN_TEAM',
+      },
+      {
+        key: 'remove_assigned_agent',
+        name: 'REMOVE_ASSIGNED_AGENT',
+      },
+      {
+        key: 'remove_assigned_team',
+        name: 'REMOVE_ASSIGNED_TEAM',
+      },
+      {
+        key: 'resolve_conversation',
+        name: 'RESOLVE_CONVERSATION',
+      },
+      {
+        key: 'open_conversation',
+        name: 'OPEN_CONVERSATION',
+      },
+      {
+        key: 'snooze_conversation',
+        name: 'SNOOZE_CONVERSATION',
+      },
+      {
+        key: 'pending_conversation',
+        name: 'PENDING_CONVERSATION',
+      },
+      {
+        key: 'change_priority',
+        name: 'CHANGE_PRIORITY',
+      },
+      {
+        key: 'send_webhook_event',
+        name: 'SEND_WEBHOOK_EVENT',
+      },
+      {
+        key: 'send_email_to_team',
+        name: 'SEND_EMAIL_TO_TEAM',
+      },
+    ],
+  },
+  opportunity_updated: {
+    conditions: [
+      {
+        key: 'pipeline_stage_id',
+        name: 'PIPELINE_STAGE',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'status',
+        name: 'OPPORTUNITY_STATUS',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'value',
+        name: 'OPPORTUNITY_VALUE',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_4,
+      },
+      {
+        key: 'assignee_id',
+        name: 'ASSIGNEE_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'loss_reason',
+        name: 'LOSS_REASON',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'email',
+        name: 'EMAIL',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'phone_number',
+        name: 'PHONE_NUMBER',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'company_name',
+        name: 'COMPANY_NAME',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'inbox_id',
+        name: 'INBOX',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'priority',
+        name: 'PRIORITY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'labels',
+        name: 'LABELS',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+    ],
+    actions: [
+      {
+        key: 'update_opportunity_stage',
+        name: 'UPDATE_OPPORTUNITY_STAGE',
+      },
+      {
+        key: 'update_opportunity_assignee',
+        name: 'UPDATE_OPPORTUNITY_ASSIGNEE',
+      },
+      {
+        key: 'update_opportunity_status',
+        name: 'UPDATE_OPPORTUNITY_STATUS',
+      },
+      {
+        key: 'update_opportunity_value',
+        name: 'UPDATE_OPPORTUNITY_VALUE',
+      },
+      {
+        key: 'send_message',
+        name: 'SEND_MESSAGE',
+      },
+      {
+        key: 'add_private_note',
+        name: 'ADD_PRIVATE_NOTE',
+      },
+      {
+        key: 'add_label',
+        name: 'ADD_LABEL',
+      },
+      {
+        key: 'remove_label',
+        name: 'REMOVE_LABEL',
+      },
+      {
+        key: 'assign_agent',
+        name: 'ASSIGN_AGENT',
+      },
+      {
+        key: 'assign_team',
+        name: 'ASSIGN_TEAM',
+      },
+      {
+        key: 'remove_assigned_agent',
+        name: 'REMOVE_ASSIGNED_AGENT',
+      },
+      {
+        key: 'remove_assigned_team',
+        name: 'REMOVE_ASSIGNED_TEAM',
+      },
+      {
+        key: 'resolve_conversation',
+        name: 'RESOLVE_CONVERSATION',
+      },
+      {
+        key: 'open_conversation',
+        name: 'OPEN_CONVERSATION',
+      },
+      {
+        key: 'snooze_conversation',
+        name: 'SNOOZE_CONVERSATION',
+      },
+      {
+        key: 'pending_conversation',
+        name: 'PENDING_CONVERSATION',
+      },
+      {
+        key: 'change_priority',
+        name: 'CHANGE_PRIORITY',
+      },
+      {
+        key: 'send_webhook_event',
+        name: 'SEND_WEBHOOK_EVENT',
+      },
+      {
+        key: 'send_email_to_team',
+        name: 'SEND_EMAIL_TO_TEAM',
+      },
+    ],
+  },
+  opportunity_stage_changed: {
+    conditions: [
+      {
+        key: 'pipeline_stage_id',
+        name: 'PIPELINE_STAGE',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'from_pipeline_stage_id',
+        name: 'FROM_PIPELINE_STAGE',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'status',
+        name: 'OPPORTUNITY_STATUS',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'value',
+        name: 'OPPORTUNITY_VALUE',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_4,
+      },
+      {
+        key: 'assignee_id',
+        name: 'ASSIGNEE_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'loss_reason',
+        name: 'LOSS_REASON',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'email',
+        name: 'EMAIL',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'phone_number',
+        name: 'PHONE_NUMBER',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'company_name',
+        name: 'COMPANY_NAME',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'inbox_id',
+        name: 'INBOX',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'priority',
+        name: 'PRIORITY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'labels',
+        name: 'LABELS',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+    ],
+    actions: [
+      {
+        key: 'update_opportunity_stage',
+        name: 'UPDATE_OPPORTUNITY_STAGE',
+      },
+      {
+        key: 'update_opportunity_assignee',
+        name: 'UPDATE_OPPORTUNITY_ASSIGNEE',
+      },
+      {
+        key: 'update_opportunity_status',
+        name: 'UPDATE_OPPORTUNITY_STATUS',
+      },
+      {
+        key: 'update_opportunity_value',
+        name: 'UPDATE_OPPORTUNITY_VALUE',
+      },
+      {
+        key: 'send_message',
+        name: 'SEND_MESSAGE',
+      },
+      {
+        key: 'add_private_note',
+        name: 'ADD_PRIVATE_NOTE',
+      },
+      {
+        key: 'add_label',
+        name: 'ADD_LABEL',
+      },
+      {
+        key: 'remove_label',
+        name: 'REMOVE_LABEL',
+      },
+      {
+        key: 'assign_agent',
+        name: 'ASSIGN_AGENT',
+      },
+      {
+        key: 'assign_team',
+        name: 'ASSIGN_TEAM',
+      },
+      {
+        key: 'remove_assigned_agent',
+        name: 'REMOVE_ASSIGNED_AGENT',
+      },
+      {
+        key: 'remove_assigned_team',
+        name: 'REMOVE_ASSIGNED_TEAM',
+      },
+      {
+        key: 'resolve_conversation',
+        name: 'RESOLVE_CONVERSATION',
+      },
+      {
+        key: 'open_conversation',
+        name: 'OPEN_CONVERSATION',
+      },
+      {
+        key: 'snooze_conversation',
+        name: 'SNOOZE_CONVERSATION',
+      },
+      {
+        key: 'pending_conversation',
+        name: 'PENDING_CONVERSATION',
+      },
+      {
+        key: 'change_priority',
+        name: 'CHANGE_PRIORITY',
+      },
+      {
+        key: 'send_webhook_event',
+        name: 'SEND_WEBHOOK_EVENT',
+      },
+      {
+        key: 'send_email_to_team',
+        name: 'SEND_EMAIL_TO_TEAM',
+      },
+    ],
+  },
+  opportunity_won: {
+    conditions: [
+      {
+        key: 'pipeline_stage_id',
+        name: 'PIPELINE_STAGE',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'value',
+        name: 'OPPORTUNITY_VALUE',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_4,
+      },
+      {
+        key: 'assignee_id',
+        name: 'ASSIGNEE_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'email',
+        name: 'EMAIL',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'phone_number',
+        name: 'PHONE_NUMBER',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'company_name',
+        name: 'COMPANY_NAME',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'inbox_id',
+        name: 'INBOX',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'priority',
+        name: 'PRIORITY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'labels',
+        name: 'LABELS',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+    ],
+    actions: [
+      {
+        key: 'update_opportunity_stage',
+        name: 'UPDATE_OPPORTUNITY_STAGE',
+      },
+      {
+        key: 'update_opportunity_assignee',
+        name: 'UPDATE_OPPORTUNITY_ASSIGNEE',
+      },
+      {
+        key: 'update_opportunity_value',
+        name: 'UPDATE_OPPORTUNITY_VALUE',
+      },
+      {
+        key: 'send_message',
+        name: 'SEND_MESSAGE',
+      },
+      {
+        key: 'add_private_note',
+        name: 'ADD_PRIVATE_NOTE',
+      },
+      {
+        key: 'add_label',
+        name: 'ADD_LABEL',
+      },
+      {
+        key: 'remove_label',
+        name: 'REMOVE_LABEL',
+      },
+      {
+        key: 'assign_agent',
+        name: 'ASSIGN_AGENT',
+      },
+      {
+        key: 'assign_team',
+        name: 'ASSIGN_TEAM',
+      },
+      {
+        key: 'resolve_conversation',
+        name: 'RESOLVE_CONVERSATION',
+      },
+      {
+        key: 'send_webhook_event',
+        name: 'SEND_WEBHOOK_EVENT',
+      },
+      {
+        key: 'send_email_to_team',
+        name: 'SEND_EMAIL_TO_TEAM',
+      },
+    ],
+  },
+  opportunity_lost: {
+    conditions: [
+      {
+        key: 'pipeline_stage_id',
+        name: 'PIPELINE_STAGE',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'value',
+        name: 'OPPORTUNITY_VALUE',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_4,
+      },
+      {
+        key: 'assignee_id',
+        name: 'ASSIGNEE_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'loss_reason',
+        name: 'LOSS_REASON',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'email',
+        name: 'EMAIL',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'company_name',
+        name: 'COMPANY_NAME',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_2,
+      },
+      {
+        key: 'inbox_id',
+        name: 'INBOX',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'labels',
+        name: 'LABELS',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+    ],
+    actions: [
+      {
+        key: 'update_opportunity_stage',
+        name: 'UPDATE_OPPORTUNITY_STAGE',
+      },
+      {
+        key: 'update_opportunity_assignee',
+        name: 'UPDATE_OPPORTUNITY_ASSIGNEE',
+      },
+      {
+        key: 'send_message',
+        name: 'SEND_MESSAGE',
+      },
+      {
+        key: 'add_private_note',
+        name: 'ADD_PRIVATE_NOTE',
+      },
+      {
+        key: 'add_label',
+        name: 'ADD_LABEL',
+      },
+      {
+        key: 'remove_label',
+        name: 'REMOVE_LABEL',
+      },
+      {
+        key: 'resolve_conversation',
+        name: 'RESOLVE_CONVERSATION',
+      },
+      {
+        key: 'send_webhook_event',
+        name: 'SEND_WEBHOOK_EVENT',
+      },
+      {
+        key: 'send_email_to_team',
+        name: 'SEND_EMAIL_TO_TEAM',
+      },
+    ],
+  },
+  opportunity_reopened: {
+    conditions: [
+      {
+        key: 'pipeline_stage_id',
+        name: 'PIPELINE_STAGE',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'value',
+        name: 'OPPORTUNITY_VALUE',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_4,
+      },
+      {
+        key: 'assignee_id',
+        name: 'ASSIGNEE_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'inbox_id',
+        name: 'INBOX',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'labels',
+        name: 'LABELS',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+    ],
+    actions: [
+      {
+        key: 'update_opportunity_stage',
+        name: 'UPDATE_OPPORTUNITY_STAGE',
+      },
+      {
+        key: 'update_opportunity_assignee',
+        name: 'UPDATE_OPPORTUNITY_ASSIGNEE',
+      },
+      {
+        key: 'update_opportunity_value',
+        name: 'UPDATE_OPPORTUNITY_VALUE',
+      },
+      {
+        key: 'send_message',
+        name: 'SEND_MESSAGE',
+      },
+      {
+        key: 'add_private_note',
+        name: 'ADD_PRIVATE_NOTE',
+      },
+      {
+        key: 'open_conversation',
+        name: 'OPEN_CONVERSATION',
+      },
+      {
+        key: 'send_webhook_event',
+        name: 'SEND_WEBHOOK_EVENT',
+      },
+    ],
+  },
 };
 
 export const AUTOMATION_RULE_EVENTS = [
@@ -732,6 +1445,30 @@ export const AUTOMATION_RULE_EVENTS = [
   {
     key: 'conversation_opened',
     value: 'CONVERSATION_OPENED',
+  },
+  {
+    key: 'opportunity_created',
+    value: 'OPPORTUNITY_CREATED',
+  },
+  {
+    key: 'opportunity_updated',
+    value: 'OPPORTUNITY_UPDATED',
+  },
+  {
+    key: 'opportunity_stage_changed',
+    value: 'OPPORTUNITY_STAGE_CHANGED',
+  },
+  {
+    key: 'opportunity_won',
+    value: 'OPPORTUNITY_WON',
+  },
+  {
+    key: 'opportunity_lost',
+    value: 'OPPORTUNITY_LOST',
+  },
+  {
+    key: 'opportunity_reopened',
+    value: 'OPPORTUNITY_REOPENED',
   },
 ];
 
@@ -835,5 +1572,25 @@ export const AUTOMATION_ACTION_TYPES = [
     key: 'add_sla',
     label: 'ADD_SLA',
     inputType: 'search_select',
+  },
+  {
+    key: 'update_opportunity_stage',
+    label: 'UPDATE_OPPORTUNITY_STAGE',
+    inputType: 'search_select',
+  },
+  {
+    key: 'update_opportunity_assignee',
+    label: 'UPDATE_OPPORTUNITY_ASSIGNEE',
+    inputType: 'search_select',
+  },
+  {
+    key: 'update_opportunity_status',
+    label: 'UPDATE_OPPORTUNITY_STATUS',
+    inputType: 'search_select',
+  },
+  {
+    key: 'update_opportunity_value',
+    label: 'UPDATE_OPPORTUNITY_VALUE',
+    inputType: 'plain_text',
   },
 ];

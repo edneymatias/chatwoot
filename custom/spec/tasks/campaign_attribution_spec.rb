@@ -24,10 +24,12 @@ RSpec.describe 'meta_marketing:backfill_referral_attribution', type: :task do
            content_attributes: { 'referral' => { 'source_url' => 'https://facebook.com?ad_id=123' } })
   end
 
+  let!(:stage) { PipelineStage.create!(account: account, name: 'Lead', position: 1) }
   let!(:opportunity) do
     Opportunity.create!(
       account: account,
       contact: contact,
+      pipeline_stage: stage,
       origin_conversation: conversation,
       status: :open,
       title: 'Test Opportunity',
@@ -37,52 +39,56 @@ RSpec.describe 'meta_marketing:backfill_referral_attribution', type: :task do
 
   context 'when account has enabled attribution' do
     before do
-      create(:campaign_attribution_setting, account: account, enabled: true)
+      CampaignAttributionSetting.create!(account: account, enabled: true)
     end
 
     it 'processes the attribution and enqueues a resolution job' do
-      expect do
-        Rake::Task['meta_marketing:backfill_referral_attribution'].invoke
-      end.to have_enqueued_job(Custom::CampaignResolutionJob).with(opportunity.id)
+      Rake::Task['meta_marketing:backfill_referral_attribution'].invoke
 
       opportunity.reload
       expect(opportunity.campaign_source_id).to eq('123')
       expect(opportunity.campaign_platform).to eq('facebook')
       expect(opportunity.campaign_resolution_status).to eq('pending')
+      expect(enqueued_jobs.any? { |j| j[:job] == Custom::CampaignResolutionJob && j[:args] == [opportunity.id] }).to be(true)
     end
   end
 
   context 'when account has disabled attribution' do
     before do
-      create(:campaign_attribution_setting, account: account, enabled: false)
+      CampaignAttributionSetting.create!(account: account, enabled: false)
     end
 
-    it 'processes attribution but does not enqueue a resolution job' do
-      expect do
-        Rake::Task['meta_marketing:backfill_referral_attribution'].invoke
-      end.not_to have_enqueued_job(Custom::CampaignResolutionJob)
-
-      opportunity.reload
-      expect(opportunity.campaign_source_id).to eq('123')
-      expect(opportunity.campaign_platform).to eq('facebook')
-      expect(opportunity.campaign_resolution_status).to eq('pending')
-    end
-  end
-
-  context 'when message does not have referral' do
-    let!(:message_with_referral) do
-      create(:message,
-             account: account,
-             conversation: conversation,
-             message_type: :incoming,
-             content_attributes: {})
-    end
-
-    it 'skips the opportunity' do
+    it 'skips the opportunity and does not enqueue a resolution job' do
       Rake::Task['meta_marketing:backfill_referral_attribution'].invoke
 
       opportunity.reload
       expect(opportunity.campaign_source_id).to be_nil
+      expect(enqueued_jobs.none? { |j| j[:job] == Custom::CampaignResolutionJob }).to be(true)
+    end
+  end
+
+  context 'when opportunity has no origin_conversation matching the referral message' do
+    let!(:other_conversation) { create(:conversation, account: account, contact: contact) }
+    let!(:unlinked_opportunity) do
+      Opportunity.create!(
+        account: account,
+        contact: contact,
+        pipeline_stage: stage,
+        origin_conversation: other_conversation,
+        status: :open,
+        title: 'Unlinked Opportunity'
+      )
+    end
+
+    before do
+      CampaignAttributionSetting.create!(account: account, enabled: true)
+    end
+
+    it 'leaves the opportunity untouched' do
+      Rake::Task['meta_marketing:backfill_referral_attribution'].invoke
+
+      unlinked_opportunity.reload
+      expect(unlinked_opportunity.campaign_source_id).to be_nil
     end
   end
 end

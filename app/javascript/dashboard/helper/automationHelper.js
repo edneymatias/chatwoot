@@ -102,6 +102,7 @@ export const getActionOptions = ({
   type,
   addNoneToListFn,
   priorityOptions,
+  pipelineStages = [],
 }) => {
   const actionsMap = {
     assign_agent: addNoneToListFn ? addNoneToListFn(agents) : agents,
@@ -111,6 +112,15 @@ export const getActionOptions = ({
     remove_label: generateConditionOptions(labels, 'title'),
     change_priority: priorityOptions,
     add_sla: slaPolicies,
+    update_opportunity_stage: pipelineStages,
+    update_opportunity_assignee: addNoneToListFn
+      ? addNoneToListFn(agents)
+      : agents,
+    update_opportunity_status: [
+      { id: 'open', name: 'Open' },
+      { id: 'won', name: 'Won' },
+      { id: 'lost', name: 'Lost' },
+    ],
   };
   return actionsMap[type];
 };
@@ -130,6 +140,7 @@ export const getConditionOptions = ({
   type,
   priorityOptions,
   messageTypeOptions,
+  pipelineStages = [],
 }) => {
   if (isCustomAttributeCheckbox(customAttributes, type)) {
     return booleanFilterOptions;
@@ -154,6 +165,8 @@ export const getConditionOptions = ({
     campaign_referral_present: booleanFilterOptions,
     priority: priorityOptions,
     labels: generateConditionOptions(labels, 'title'),
+    pipeline_stage_id: pipelineStages,
+    from_pipeline_stage_id: pipelineStages,
   };
 
   return conditionFilterMaps[type];
@@ -178,6 +191,16 @@ export const getDefaultConditions = eventName => {
     eventName === 'conversation_resolved'
   ) {
     return structuredClone(DEFAULT_CONVERSATION_CONDITION);
+  }
+  if (eventName && eventName.startsWith('opportunity_')) {
+    return [
+      {
+        attribute_key: 'pipeline_stage_id',
+        filter_operator: 'equal_to',
+        values: '',
+        query_operator: 'and',
+      },
+    ];
   }
   return structuredClone(DEFAULT_OTHER_CONDITION);
 };
@@ -219,9 +242,22 @@ export const generateCustomAttributes = (
   // eslint-disable-next-line default-param-last
   contactAttributes = [],
   conversationlabel,
-  contactlabel
+  contactlabel,
+  // eslint-disable-next-line default-param-last
+  opportunityAttributes = [],
+  opportunitylabel = ''
 ) => {
   const customAttributes = [];
+  if (opportunityAttributes.length) {
+    customAttributes.push(
+      {
+        key: `opportunity_custom_attribute`,
+        name: opportunitylabel,
+        disabled: true,
+      },
+      ...opportunityAttributes
+    );
+  }
   if (conversationAttributes.length) {
     customAttributes.push(
       {

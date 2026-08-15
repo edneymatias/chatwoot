@@ -92,7 +92,8 @@
     "CONDITION": {
       "DELETE_MESSAGE": "You need to have atleast one condition to save",
       "CONTACT_CUSTOM_ATTR_LABEL": "Contact Custom Attributes",
-      "CONVERSATION_CUSTOM_ATTR_LABEL": "Conversation Custom Attributes"
+      "CONVERSATION_CUSTOM_ATTR_LABEL": "Conversation Custom Attributes",
+      "OPPORTUNITY_CUSTOM_ATTR_LABEL": "Opportunity Custom Attributes"
     },
     "ACTION": {
       "DELETE_MESSAGE": "You need to have atleast one action to save",
@@ -100,6 +101,7 @@
       "TEAM_DROPDOWN_PLACEHOLDER": "Select teams",
       "EMAIL_INPUT_PLACEHOLDER": "Enter email",
       "URL_INPUT_PLACEHOLDER": "Enter URL",
+      "TEXT_INPUT_PLACEHOLDER": "Enter value",
       "CREATE_OPPORTUNITY_STAGE_PLACEHOLDER": "Select a pipeline stage",
       "CREATE_OPPORTUNITY_ASSIGNEE_PLACEHOLDER": "Select an assignee (optional)"
     },
@@ -134,12 +136,23 @@
     "NONE_OPTION": "None",
     "LAST_RESPONDING_AGENT": "Last Responding Agent",
     "CREATE_OPPORTUNITY_SAME_AS_CONVERSATION": "Same as the conversation",
+    "STATUS": {
+      "OPEN": "Open",
+      "WON": "Won",
+      "LOST": "Lost"
+    },
     "EVENTS": {
       "CONVERSATION_CREATED": "Conversation Created",
       "CONVERSATION_UPDATED": "Conversation Updated",
       "MESSAGE_CREATED": "Message Created",
       "CONVERSATION_RESOLVED": "Conversation Resolved",
-      "CONVERSATION_OPENED": "Conversation Opened"
+      "CONVERSATION_OPENED": "Conversation Opened",
+      "OPPORTUNITY_CREATED": "Opportunity Created",
+      "OPPORTUNITY_UPDATED": "Opportunity Updated",
+      "OPPORTUNITY_STAGE_CHANGED": "Opportunity Stage Changed",
+      "OPPORTUNITY_WON": "Opportunity Won",
+      "OPPORTUNITY_LOST": "Opportunity Lost",
+      "OPPORTUNITY_REOPENED": "Opportunity Reopened"
     },
     "ACTIONS": {
       "ASSIGN_AGENT": "Assign to Agent",
@@ -161,7 +174,11 @@
       "ADD_SLA": "Add SLA",
       "OPEN_CONVERSATION": "Open conversation",
       "CREATE_OPPORTUNITY": "Create Opportunity",
-      "PENDING_CONVERSATION": "Mark conversation as pending"
+      "PENDING_CONVERSATION": "Mark conversation as pending",
+      "UPDATE_OPPORTUNITY_STAGE": "Update Opportunity Stage",
+      "UPDATE_OPPORTUNITY_ASSIGNEE": "Update Opportunity Assignee",
+      "UPDATE_OPPORTUNITY_STATUS": "Update Opportunity Status",
+      "UPDATE_OPPORTUNITY_VALUE": "Update Opportunity Value"
     },
     "MESSAGE_TYPES": {
       "INCOMING": "Incoming Message",
@@ -192,7 +209,12 @@
       "ASSIGNEE_NAME": "Assignee",
       "TEAM_NAME": "Team",
       "PRIORITY": "Priority",
-      "LABELS": "Labels"
+      "LABELS": "Labels",
+      "PIPELINE_STAGE": "Pipeline Stage",
+      "FROM_PIPELINE_STAGE": "Previous Pipeline Stage",
+      "OPPORTUNITY_STATUS": "Opportunity Status",
+      "OPPORTUNITY_VALUE": "Opportunity Value",
+      "LOSS_REASON": "Loss Reason"
     }
   }
 }

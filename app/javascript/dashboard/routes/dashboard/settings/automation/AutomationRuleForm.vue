@@ -97,9 +97,11 @@ const getTranslatedAttributes = (type, event) => {
   return getAttributes(type, event).map(attribute => {
     const skipTranslation =
       attribute.customAttributeType ||
-      ['contact_custom_attribute', 'conversation_custom_attribute'].includes(
-        attribute.key
-      );
+      [
+        'contact_custom_attribute',
+        'conversation_custom_attribute',
+        'opportunity_custom_attribute',
+      ].includes(attribute.key);
     return {
       ...attribute,
       name: skipTranslation

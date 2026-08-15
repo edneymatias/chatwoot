@@ -172,6 +172,13 @@ export default {
             size="sm"
             :placeholder="$t('AUTOMATION.ACTION.URL_INPUT_PLACEHOLDER')"
           />
+          <NextInput
+            v-else-if="inputType === 'plain_text'"
+            v-model="action_params"
+            type="text"
+            size="sm"
+            :placeholder="$t('AUTOMATION.ACTION.TEXT_INPUT_PLACEHOLDER')"
+          />
           <AutomationActionFileInput
             v-else-if="inputType === 'attachment'"
             v-model="action_params"

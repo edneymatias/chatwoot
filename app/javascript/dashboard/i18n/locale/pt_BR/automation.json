@@ -92,7 +92,8 @@
     "CONDITION": {
       "DELETE_MESSAGE": "Você precisa ter pelo menos uma condição para salvar",
       "CONTACT_CUSTOM_ATTR_LABEL": "Atributos personalizados do contato",
-      "CONVERSATION_CUSTOM_ATTR_LABEL": "Atributos personalizados da conversa"
+      "CONVERSATION_CUSTOM_ATTR_LABEL": "Atributos personalizados da conversa",
+      "OPPORTUNITY_CUSTOM_ATTR_LABEL": "Atributos personalizados da oportunidade"
     },
     "ACTION": {
       "DELETE_MESSAGE": "Você precisa ter pelo menos uma ação para salvar",
@@ -100,6 +101,7 @@
       "TEAM_DROPDOWN_PLACEHOLDER": "Selecione times",
       "EMAIL_INPUT_PLACEHOLDER": "Insira o e-mail",
       "URL_INPUT_PLACEHOLDER": "Insira a URL",
+      "TEXT_INPUT_PLACEHOLDER": "Insira o valor",
       "CREATE_OPPORTUNITY_STAGE_PLACEHOLDER": "Selecione um estágio do pipeline",
       "CREATE_OPPORTUNITY_ASSIGNEE_PLACEHOLDER": "Selecione um responsável (opcional)"
     },
@@ -134,17 +136,28 @@
     "NONE_OPTION": "Nenhuma",
     "LAST_RESPONDING_AGENT": "Último Agente que Respondeu",
     "CREATE_OPPORTUNITY_SAME_AS_CONVERSATION": "Mesmo da conversa",
+    "STATUS": {
+      "OPEN": "Aberta",
+      "WON": "Ganha",
+      "LOST": "Perdida"
+    },
     "EVENTS": {
       "CONVERSATION_CREATED": "Conversa Criada",
       "CONVERSATION_UPDATED": "Conversa Atualizada",
       "MESSAGE_CREATED": "Mensagem Criada",
       "CONVERSATION_RESOLVED": "Conversa Resolvida",
-      "CONVERSATION_OPENED": "Conversa Aberta"
+      "CONVERSATION_OPENED": "Conversa Aberta",
+      "OPPORTUNITY_CREATED": "Oportunidade Criada",
+      "OPPORTUNITY_UPDATED": "Oportunidade Atualizada",
+      "OPPORTUNITY_STAGE_CHANGED": "Estágio da Oportunidade Alterado",
+      "OPPORTUNITY_WON": "Oportunidade Ganha",
+      "OPPORTUNITY_LOST": "Oportunidade Perdida",
+      "OPPORTUNITY_REOPENED": "Oportunidade Reaberta"
     },
     "ACTIONS": {
       "ASSIGN_AGENT": "Atribuir ao Agente",
       "ASSIGN_TEAM": "Atribuir um Time",
-      "REMOVE_ASSIGNED_AGENT": "Remove Assigned Agent",
+      "REMOVE_ASSIGNED_AGENT": "Remover Agente Atribuído",
       "REMOVE_ASSIGNED_TEAM": "Remover Time Atribuído",
       "ADD_LABEL": "Adicionar uma Etiqueta",
       "REMOVE_LABEL": "Remover uma Etiqueta",
@@ -161,11 +174,15 @@
       "ADD_SLA": "Adicionar SLA",
       "OPEN_CONVERSATION": "Abrir conversa",
       "CREATE_OPPORTUNITY": "Criar Oportunidade",
-      "PENDING_CONVERSATION": "Marcar conversa como pendente"
+      "PENDING_CONVERSATION": "Marcar conversa como pendente",
+      "UPDATE_OPPORTUNITY_STAGE": "Alterar Estágio da Oportunidade",
+      "UPDATE_OPPORTUNITY_ASSIGNEE": "Alterar Responsável da Oportunidade",
+      "UPDATE_OPPORTUNITY_STATUS": "Alterar Status da Oportunidade",
+      "UPDATE_OPPORTUNITY_VALUE": "Alterar Valor da Oportunidade"
     },
     "MESSAGE_TYPES": {
       "INCOMING": "Mensagem Recebida",
-      "OUTGOING": "Mensagem de Saída"
+      "OUTGOING": "Outgoing Message"
     },
     "PRIORITY_TYPES": {
       "NONE": "Nenhuma",
@@ -192,7 +209,12 @@
       "ASSIGNEE_NAME": "Agente atribuído",
       "TEAM_NAME": "Time",
       "PRIORITY": "Prioridade",
-      "LABELS": "Etiquetas"
+      "LABELS": "Etiquetas",
+      "PIPELINE_STAGE": "Estágio do Pipeline",
+      "FROM_PIPELINE_STAGE": "Estágio Anterior do Pipeline",
+      "OPPORTUNITY_STATUS": "Status da Oportunidade",
+      "OPPORTUNITY_VALUE": "Valor da Oportunidade",
+      "LOSS_REASON": "Motivo de Perda"
     }
   }
 }

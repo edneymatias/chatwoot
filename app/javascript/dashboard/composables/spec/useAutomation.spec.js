@@ -203,6 +203,12 @@ describe('useAutomation', () => {
     automationTypes.conversation_updated = { conditions: [] };
     automationTypes.conversation_opened = { conditions: [] };
     automationTypes.conversation_resolved = { conditions: [] };
+    automationTypes.opportunity_created = { conditions: [] };
+    automationTypes.opportunity_updated = { conditions: [] };
+    automationTypes.opportunity_stage_changed = { conditions: [] };
+    automationTypes.opportunity_won = { conditions: [] };
+    automationTypes.opportunity_lost = { conditions: [] };
+    automationTypes.opportunity_reopened = { conditions: [] };
 
     automationHelper.generateCustomAttributeTypes.mockReturnValue([]);
     automationHelper.generateCustomAttributes.mockReturnValue([]);
@@ -210,7 +216,7 @@ describe('useAutomation', () => {
     manifestCustomAttributes();
 
     expect(automationHelper.generateCustomAttributeTypes).toHaveBeenCalledTimes(
-      2
+      3
     );
     expect(automationHelper.generateCustomAttributes).toHaveBeenCalledTimes(1);
     Object.values(automationTypes).forEach(type => {
