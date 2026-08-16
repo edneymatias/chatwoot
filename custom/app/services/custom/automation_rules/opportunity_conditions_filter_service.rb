@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Custom::AutomationRules::OpportunityConditionsFilterService
   def initialize(rule, opportunity, options = {})
     @rule = rule
@@ -64,43 +66,55 @@ class Custom::AutomationRules::OpportunityConditionsFilterService
   end
 
   def extract_attribute_value(key)
+    extract_opportunity_attr(key) ||
+      extract_contact_attr(key) ||
+      extract_conversation_attr(key) ||
+      extract_custom_attribute_value(key)
+  end
+
+  def extract_opportunity_attr(key)
+    extract_pipeline_attr(key) || extract_deal_attr(key)
+  end
+
+  def extract_pipeline_attr(key)
     case key
-    when 'pipeline_id'
-      @opportunity.pipeline_stage&.pipeline_id&.to_s
-    when 'pipeline_stage_id'
-      @opportunity.pipeline_stage_id&.to_s
-    when 'from_pipeline_stage_id'
-      extract_from_stage_id
-    when 'status'
-      @opportunity.status.to_s
-    when 'value'
-      @opportunity.value
-    when 'assignee_id'
-      @opportunity.assignee_id&.to_s
+    when 'pipeline_id' then @opportunity.pipeline_stage&.pipeline_id&.to_s
+    when 'pipeline_stage_id' then @opportunity.pipeline_stage_id&.to_s
+    when 'from_pipeline_stage_id' then extract_from_stage_id
+    end
+  end
+
+  def extract_deal_attr(key)
+    case key
+    when 'status' then @opportunity.status.to_s
+    when 'value' then @opportunity.value
+    when 'assignee_id' then @opportunity.assignee_id&.to_s
     when 'loss_reason'
       @opportunity.custom_attributes&.dig('loss_reason') || @opportunity.try(:loss_reason)
-    when 'name', 'contact_name'
-      @contact&.name
-    when 'email', 'contact_email'
-      @contact&.email
-    when 'phone_number', 'contact_phone_number'
-      @contact&.phone_number
-    when 'company_name', 'contact_company_name'
-      @contact&.additional_attributes&.dig('company_name')
-    when 'country_code', 'contact_country_code'
-      @contact&.additional_attributes&.dig('country_code')
-    when 'city', 'contact_city'
-      @contact&.additional_attributes&.dig('city')
-    when 'inbox_id'
-      @conversation&.inbox_id&.to_s
-    when 'conversation_status'
-      @conversation&.status.to_s
-    when 'priority', 'conversation_priority'
-      @conversation&.priority.to_s
-    when 'labels'
-      @conversation.present? ? @conversation.tag_list : []
-    else
-      extract_custom_attribute_value(key)
+    end
+  end
+
+  def extract_contact_attr(key)
+    return nil unless @contact
+
+    case key
+    when 'name', 'contact_name' then @contact.name
+    when 'email', 'contact_email' then @contact.email
+    when 'phone_number', 'contact_phone_number' then @contact.phone_number
+    when 'company_name', 'contact_company_name' then @contact.additional_attributes&.dig('company_name')
+    when 'country_code', 'contact_country_code' then @contact.additional_attributes&.dig('country_code')
+    when 'city', 'contact_city' then @contact.additional_attributes&.dig('city')
+    end
+  end
+
+  def extract_conversation_attr(key)
+    return nil unless @conversation
+
+    case key
+    when 'inbox_id' then @conversation.inbox_id&.to_s
+    when 'conversation_status' then @conversation.status.to_s
+    when 'priority', 'conversation_priority' then @conversation.priority.to_s
+    when 'labels' then @conversation.tag_list
     end
   end
 
@@ -123,25 +137,37 @@ class Custom::AutomationRules::OpportunityConditionsFilterService
     targets = Array(target_values).map(&:to_s)
     str_val = value.is_a?(Array) ? value.map(&:to_s) : value.to_s
 
+    match_equality_ops(value, str_val, operator, targets) ||
+      match_text_ops(str_val, operator, targets) ||
+      match_numeric_ops(value, operator, targets)
+  end
+
+  def match_equality_ops(value, str_val, operator, targets)
     case operator
-    when 'equal_to'
-      match_equality(str_val, targets)
-    when 'not_equal_to'
-      !match_equality(str_val, targets)
+    when 'equal_to' then match_equality(str_val, targets)
+    when 'not_equal_to' then !match_equality(str_val, targets)
+    when 'is_present' then value.present?
+    when 'is_not_present' then value.blank?
+    end
+  end
+
+  def match_text_ops(str_val, operator, targets)
+    case operator
     when 'contains'
       str_val.to_s.downcase.include?(targets.first.to_s.downcase)
     when 'does_not_contain'
       str_val.to_s.downcase.exclude?(targets.first.to_s.downcase)
-    when 'is_present'
-      value.present?
-    when 'is_not_present'
-      value.blank?
+    when 'starts_with'
+      str_val.to_s.downcase.start_with?(targets.first.to_s.downcase)
+    end
+  end
+
+  def match_numeric_ops(value, operator, targets)
+    case operator
     when 'greater_than'
       value.to_f > targets.first.to_f
     when 'less_than'
       value.to_f < targets.first.to_f
-    when 'starts_with'
-      str_val.to_s.downcase.start_with?(targets.first.to_s.downcase)
     else
       false
     end

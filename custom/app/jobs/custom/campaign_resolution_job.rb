@@ -1,59 +1,90 @@
+# frozen_string_literal: true
+
 class Custom::CampaignResolutionJob < ApplicationJob
   queue_as :low
 
   def perform(opportunity_id, force: false)
     opportunity = Opportunity.find_by(id: opportunity_id)
-    return unless opportunity
-    return if opportunity.campaign_source_id.blank?
-    return unless opportunity.campaign_resolution_status == 'pending' || force
+    return unless opportunity_eligible?(opportunity, force: force)
 
     setting = opportunity.account.campaign_attribution_setting
-    unless setting&.enabled? && setting.provider_config['access_token'].present?
-      update_status(opportunity, 'failed')
-      return
-    end
+    return update_status(opportunity, 'failed') unless setting_active?(setting)
+    return retry_job(wait: 1.minute) unless rate_limit_available?(opportunity.account)
 
-    limiter = Meta::RateLimiter.new(opportunity.account)
-    unless limiter.within_limit?
-      retry_job wait: 1.minute
-      return
-    end
+    resolve_opportunity(opportunity, setting, force: force)
+  end
+
+  private
+
+  def opportunity_eligible?(opportunity, force:)
+    return false if opportunity&.campaign_source_id.blank?
+
+    opportunity.campaign_resolution_status == 'pending' || force
+  end
+
+  def setting_active?(setting)
+    setting&.enabled? && setting.provider_config['access_token'].present?
+  end
+
+  def rate_limit_available?(account)
+    limiter = Meta::RateLimiter.new(account)
+    return false unless limiter.within_limit?
 
     limiter.track_request
+    true
+  end
 
+  def resolve_opportunity(opportunity, setting, force:)
     cached = Meta::CampaignResolutionCache.read(opportunity.campaign_source_id)
     if cached && (!force || cached[:thumbnail_url].present? || cached['thumbnail_url'].present?)
       apply_resolution(opportunity, cached)
       return
     end
 
-    client = Meta::GraphApiClient.new(setting.provider_config['access_token'])
-    begin
-      response = client.fetch_ad_details(opportunity.campaign_source_id)
-      if response
-        parsed = parse_meta_response(response)
-        Meta::CampaignResolutionCache.write(opportunity.campaign_source_id, parsed)
-        apply_resolution(opportunity, parsed)
-      else
-        update_status(opportunity, 'failed')
-      end
-    rescue Meta::AuthenticationError => e
-      Rails.logger.warn("[Meta::CampaignResolutionJob] Token revoked for Account #{opportunity.account_id}: #{e.message}")
-      update_status(opportunity, 'failed')
-      disconnect_setting(opportunity.account.campaign_attribution_setting)
-    rescue Meta::RateLimitError => e
-      Rails.logger.warn("[Meta::CampaignResolutionJob] Rate limit hit for Account #{opportunity.account_id}: #{e.message}")
-      retry_job wait: 2.minutes
-    rescue Meta::NodeNotFoundError => e
-      Rails.logger.info("[Meta::CampaignResolutionJob] Node not found for Opportunity #{opportunity.id} (#{opportunity.campaign_source_id}): #{e.message}")
-      update_status(opportunity, 'failed')
-    rescue Meta::ApiError, StandardError => e
-      Rails.logger.error("[Meta::CampaignResolutionJob] Error resolving Opportunity #{opportunity.id}: #{e.message}")
-      update_status(opportunity, 'failed')
-    end
+    fetch_and_apply_remote(opportunity, setting)
   end
 
-  private
+  def fetch_and_apply_remote(opportunity, setting)
+    client = Meta::GraphApiClient.new(setting.provider_config['access_token'])
+    response = client.fetch_ad_details(opportunity.campaign_source_id)
+
+    if response
+      parsed = parse_meta_response(response)
+      Meta::CampaignResolutionCache.write(opportunity.campaign_source_id, parsed)
+      apply_resolution(opportunity, parsed)
+    else
+      update_status(opportunity, 'failed')
+    end
+  rescue Meta::AuthenticationError => e
+    handle_auth_error(opportunity, e)
+  rescue Meta::RateLimitError => e
+    handle_rate_limit_error(opportunity, e)
+  rescue Meta::NodeNotFoundError => e
+    handle_node_not_found(opportunity, e)
+  rescue Meta::ApiError, StandardError => e
+    handle_generic_error(opportunity, e)
+  end
+
+  def handle_auth_error(opportunity, error)
+    Rails.logger.warn("[Meta::CampaignResolutionJob] Token revoked for Account #{opportunity.account_id}: #{error.message}")
+    update_status(opportunity, 'failed')
+    disconnect_setting(opportunity.account.campaign_attribution_setting)
+  end
+
+  def handle_rate_limit_error(opportunity, error)
+    Rails.logger.warn("[Meta::CampaignResolutionJob] Rate limit hit for Account #{opportunity.account_id}: #{error.message}")
+    retry_job wait: 2.minutes
+  end
+
+  def handle_node_not_found(opportunity, error)
+    Rails.logger.info("[Meta::CampaignResolutionJob] Node not found for Opportunity #{opportunity.id}: #{error.message}")
+    update_status(opportunity, 'failed')
+  end
+
+  def handle_generic_error(opportunity, error)
+    Rails.logger.error("[Meta::CampaignResolutionJob] Error resolving Opportunity #{opportunity.id}: #{error.message}")
+    update_status(opportunity, 'failed')
+  end
 
   def parse_meta_response(response)
     creative = response['creative'] || {}

@@ -31,23 +31,21 @@ class Api::V1::Accounts::CampaignAttributionSettingsController < Api::V1::Accoun
 
   def reprocess_pending
     unless connected? && setting.enabled?
-      render json: { error: I18n.t('campaign_attribution.not_connected_error', default: 'Campaign attribution cannot be reprocessed without an active Meta connection.') },
-             status: :unprocessable_entity
+      error_msg = I18n.t('campaign_attribution.not_connected_error',
+                         default: 'Campaign attribution cannot be reprocessed without an active Meta connection.')
+      render json: { error: error_msg }, status: :unprocessable_entity
       return
     end
 
     count = current_account.opportunities.where(campaign_resolution_status: 'pending').where.not(campaign_source_id: [nil, '']).count
     if count.positive?
       Meta::DrainPendingAttributionsJob.perform_later(current_account.id)
-      render json: {
-        message: I18n.t('campaign_attribution.reprocess_enqueued', count: count, default: "#{count} pending opportunities queued for resolution."),
-        count: count
-      }
+      msg = I18n.t('campaign_attribution.reprocess_enqueued', count: count,
+                                                              default: "#{count} pending opportunities queued for resolution.")
+      render json: { message: msg, count: count }
     else
-      render json: {
-        message: I18n.t('campaign_attribution.no_pending_or_disabled', default: 'No pending opportunities or campaign attribution is disabled.'),
-        count: 0
-      }
+      msg = I18n.t('campaign_attribution.no_pending', default: 'No pending opportunities to resolve.')
+      render json: { message: msg, count: 0 }
     end
   end
 

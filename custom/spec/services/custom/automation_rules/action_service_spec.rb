@@ -60,7 +60,7 @@ RSpec.describe Custom::AutomationRules::ActionService do
                               })
       end
 
-      context 'and account attribution is disabled' do
+      context 'when account attribution is disabled' do
         before do
           CampaignAttributionSetting.create!(account: account, enabled: false)
         end
@@ -77,7 +77,7 @@ RSpec.describe Custom::AutomationRules::ActionService do
         end
       end
 
-      context 'and account attribution is enabled' do
+      context 'when account attribution is enabled' do
         before do
           CampaignAttributionSetting.create!(account: account, enabled: true)
         end

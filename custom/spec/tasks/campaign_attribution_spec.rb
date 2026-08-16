@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe 'meta_marketing rake tasks', type: :task do
   include ActiveJob::TestHelper
 
-  before :all do
+  before do
     Rails.application.load_tasks
   end
 

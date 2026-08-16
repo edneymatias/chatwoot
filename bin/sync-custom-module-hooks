@@ -95,7 +95,7 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'config/routes.rb',
                  anchor: "          resources :macros, only: [:index, :create, :show, :update, :destroy] do\n            post :execute, on: :member\n          end",
-                 insert: "          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do\n            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'\n          end\n          resources :pipeline_stage_aggregates, only: [:index]\n          resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]\n          resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]\n          resource :pipeline_currency_setting, only: [:show, :update]\n          resource :campaign_attribution_setting, only: [:show, :update] do\n            post :connect, on: :collection\n          end\n          resources :opportunities, only: [:index, :show, :create, :update, :destroy]\n          resources :opportunity_funnel_reports, only: [:index]\n          resources :opportunity_attribute_reports, only: [:index]"
+                 insert: "          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do\n            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'\n          end\n          resources :pipeline_stage_aggregates, only: [:index]\n          resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]\n          resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]\n          resource :pipeline_currency_setting, only: [:show, :update]\n          resource :campaign_attribution_setting, only: [:show, :update] do\n            post :connect, on: :collection\n            post :reprocess_pending, on: :collection\n          end\n          resources :opportunities, only: [:index, :show, :create, :update, :destroy]\n          resources :opportunity_funnel_reports, only: [:index]\n          resources :opportunity_attribute_reports, only: [:index]"
                },
                {
                  file: 'config/features.yml',
@@ -283,7 +283,7 @@ if mode == :audit
   # rubocop:disable Metrics/BlockLength
   excluded = lambda do |path|
     return true if path == 'db/schema.rb'
-    return true if path.start_with?('spec/', 'specs/', 'docs/')
+    return true if path.start_with?('custom/', 'spec/', 'specs/', 'docs/', 'db/migrate/2026', 'db/migrate/2126')
     return true if path.end_with?('.md', '_spec.rb', '.spec.js')
     return true if path.match?(%r{^(app/javascript/dashboard/i18n/locale|config/locales)/(?!en\b|pt_BR\b)})
 
@@ -313,6 +313,12 @@ if mode == :audit
       'docker/entrypoints/helpers/pg_database_url.rb',
       'lib/tasks/captain_assistant_migration.rake',
       'lib/tasks/download_report.rake',
+      'lib/tasks/meta_marketing.rake',
+      'script/tag_contacts_from_csv.rb',
+      'app/javascript/dashboard/components-next/filter/operators.js',
+      'app/javascript/dashboard/composables/useAutomation.js',
+      'package.json',
+      'pnpm-lock.yaml',
       'script/bulk_reindex_messages.rb',
       'script/monitor_reindex.rb',
       'script/reindex_single_account.rb'

@@ -1,3 +1,4 @@
+# rubocop:disable Metrics/BlockLength
 namespace :meta_marketing do
   desc 'Backfill referral attribution from Whatsapp referral messages to existing Opportunities (including previews & organic posts)'
   task :backfill_referral_attribution, [:account_id] => :environment do |_t, args|
@@ -145,3 +146,4 @@ namespace :meta_marketing do
          '(nenhum job de resolução enfileirado).'
   end
 end
+# rubocop:enable Metrics/BlockLength

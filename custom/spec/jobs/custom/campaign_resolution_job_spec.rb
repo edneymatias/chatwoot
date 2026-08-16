@@ -102,7 +102,8 @@ RSpec.describe Custom::CampaignResolutionJob, type: :job do
 
     context 'when resolution is rate limited via internal limiter' do
       it 'retries the job' do
-        allow_any_instance_of(Meta::RateLimiter).to receive(:within_limit?).and_return(false)
+        limiter = instance_double(Meta::RateLimiter, within_limit?: false)
+        allow(Meta::RateLimiter).to receive(:new).with(account).and_return(limiter)
 
         expect do
           described_class.perform_now(opportunity.id)

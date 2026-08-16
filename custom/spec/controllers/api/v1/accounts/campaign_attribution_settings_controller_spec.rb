@@ -9,9 +9,9 @@ RSpec.describe 'Api::V1::Accounts::CampaignAttributionSettings', type: :request 
 
   describe 'GET /api/v1/accounts/{account.id}/campaign_attribution_setting' do
     let!(:contact) { create(:contact, account: account) }
-    let!(:setting) { CampaignAttributionSetting.create!(account: account, enabled: true, provider_config: { 'access_token' => 'token_123' }) }
 
     before do
+      CampaignAttributionSetting.create!(account: account, enabled: true, provider_config: { 'access_token' => 'token_123' })
       Opportunity.create!(
         account: account,
         contact: contact,

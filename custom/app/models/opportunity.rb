@@ -156,26 +156,33 @@ class Opportunity < ApplicationRecord
     }
 
     if previously_new_record?
-      Rails.configuration.dispatcher.dispatch('opportunity_created', Time.zone.now, event_data)
+      dispatch_event('opportunity_created', event_data)
     else
-      Rails.configuration.dispatcher.dispatch('opportunity_updated', Time.zone.now, event_data)
+      dispatch_event('opportunity_updated', event_data)
       dispatch_status_and_stage_events(event_data)
     end
   end
 
   def dispatch_status_and_stage_events(event_data)
-    Rails.configuration.dispatcher.dispatch('opportunity_stage_changed', Time.zone.now, event_data) if saved_change_to_pipeline_stage_id?
-
+    dispatch_event('opportunity_stage_changed', event_data) if saved_change_to_pipeline_stage_id?
     return unless saved_change_to_status?
 
+    dispatch_status_transition_event(event_data)
+  end
+
+  def dispatch_status_transition_event(event_data)
     case status.to_s
     when 'won'
-      Rails.configuration.dispatcher.dispatch('opportunity_won', Time.zone.now, event_data)
+      dispatch_event('opportunity_won', event_data)
     when 'lost'
-      Rails.configuration.dispatcher.dispatch('opportunity_lost', Time.zone.now, event_data)
+      dispatch_event('opportunity_lost', event_data)
     when 'open'
-      Rails.configuration.dispatcher.dispatch('opportunity_reopened', Time.zone.now, event_data) if status_before_last_save.in?(%w[won lost])
+      dispatch_event('opportunity_reopened', event_data) if status_before_last_save.in?(%w[won lost])
     end
+  end
+
+  def dispatch_event(name, event_data)
+    Rails.configuration.dispatcher.dispatch(name, Time.zone.now, event_data)
   end
 
   def contact_json

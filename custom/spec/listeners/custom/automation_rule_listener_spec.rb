@@ -1,11 +1,13 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe AutomationRuleListener do
-  let!(:account) { create(:account) }
-  let!(:stage1) { PipelineStage.create!(account: account, name: 'Lead', position: 1) }
-  let!(:stage2) { PipelineStage.create!(account: account, name: 'Won Stage', position: 2) }
-  let!(:contact) { create(:contact, account: account, name: 'Charlie', email: 'charlie@example.com') }
-  let!(:opportunity) do
+  let(:account) { create(:account) }
+  let(:stage1) { PipelineStage.create!(account: account, name: 'Lead', position: 1) }
+  let(:stage2) { PipelineStage.create!(account: account, name: 'Won Stage', position: 2) }
+  let(:contact) { create(:contact, account: account, name: 'Charlie', email: 'charlie@example.com') }
+  let(:opportunity) do
     Opportunity.create!(
       account: account,
       contact: contact,
@@ -19,16 +21,20 @@ RSpec.describe AutomationRuleListener do
     let(:listener) { described_class.instance }
 
     context 'when opportunity_won event is received' do
+      let(:action_payload) do
+        [{ 'action_name' => 'update_contact_custom_attribute',
+           'action_params' => [{ 'attribute_key' => 'won_customer', 'attribute_value' => 'yes' }] }]
+      end
       let!(:rule) do
         create(:automation_rule, account: account, event_name: 'opportunity_won',
-                                 conditions: [],
-                                 actions: [
-                                   { 'action_name' => 'update_contact_custom_attribute', 'action_params' => [{ 'attribute_key' => 'won_customer', 'attribute_value' => 'yes' }] }
-                                 ])
+                                 conditions: [], actions: action_payload)
       end
 
       it 'processes matching automation rules and executes actions' do
-        event = Events::Base.new('opportunity_won', Time.zone.now, { opportunity: opportunity, changed_attributes: { 'status' => %w[open won] } })
+        event = Events::Base.new('opportunity_won', Time.zone.now, {
+                                   opportunity: opportunity,
+                                   changed_attributes: { 'status' => %w[open won] }
+                                 })
         listener.opportunity_won(event)
 
         contact.reload
@@ -45,10 +51,13 @@ RSpec.describe AutomationRuleListener do
     end
 
     context 'when opportunity_stage_changed event is received' do
-      let!(:rule) do
+      before do
         create(:automation_rule, account: account, event_name: 'opportunity_stage_changed',
                                  conditions: [
-                                   { 'attribute_key' => 'from_pipeline_stage_id', 'filter_operator' => 'equal_to', 'values' => [stage1.id.to_s], 'query_operator' => 'and' }
+                                   { 'attribute_key' => 'from_pipeline_stage_id',
+                                     'filter_operator' => 'equal_to',
+                                     'values' => [stage1.id.to_s],
+                                     'query_operator' => 'and' }
                                  ],
                                  actions: [
                                    { 'action_name' => 'update_opportunity_value', 'action_params' => [7777] }

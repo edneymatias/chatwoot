@@ -1,12 +1,17 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe Meta::PendingAttributionsSweeperJob, type: :job do
   include ActiveJob::TestHelper
 
-  let!(:account) { create(:account) }
-  let!(:contact) { create(:contact, account: account) }
-  let!(:stage) { PipelineStage.create!(account: account, name: 'Lead', position: 1) }
-  let!(:setting) { CampaignAttributionSetting.create!(account: account, enabled: true, provider_config: { 'access_token' => 'test_token' }) }
+  let(:account) { create(:account) }
+  let(:contact) { create(:contact, account: account) }
+  let(:stage) { PipelineStage.create!(account: account, name: 'Lead', position: 1) }
+
+  before do
+    CampaignAttributionSetting.create!(account: account, enabled: true, provider_config: { 'access_token' => 'test_token' })
+  end
 
   describe '#perform' do
     it 'enqueues DrainPendingAttributionsJob when account has pending opportunities older than 15 minutes' do
