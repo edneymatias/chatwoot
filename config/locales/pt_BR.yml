@@ -625,3 +625,8 @@ pt_BR:
       no_subscriptions_to_test: 'Selecione pelo menos uma assinatura para teste.'
       no_subscriptions_to_delete: 'Selecione pelo menos uma assinatura para excluir.'
       subscriptions_deleted: "Excluída(s) %{count} inscrição(ões). O(s) dispositivo(s) do usuário será(ão) registrado(s) novamente na próxima inicialização do aplicativo."
+    campaign_attribution:
+      reprocess_enqueued: '%{count} oportunidades pendentes enviadas para resolução.'
+      no_pending_or_disabled: 'Nenhuma oportunidade pendente ou a atribuição de campanhas está desativada.'
+      not_connected_error: 'A atribuição de campanhas não pode ser reprocessada sem uma conexão ativa com a Meta.'
+

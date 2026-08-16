@@ -159,14 +159,19 @@ export function useOpportunityCardFields(opportunityRef) {
   const campaignAttribution = computed(() => {
     const {
       campaign_source_id,
+      campaign_source_url,
       campaign_platform,
       campaign_name,
       campaign_adset_name,
       campaign_ad_name,
+      campaign_headline,
+      campaign_body,
+      campaign_thumbnail_url,
       campaign_resolution_status,
     } = opportunityRef.value;
 
-    if (!campaign_source_id) return null;
+    if (!campaign_source_id && !campaign_source_url && !campaign_headline)
+      return null;
 
     let icon = 'i-lucide-megaphone';
     if (['ig', 'instagram'].includes(campaign_platform))
@@ -174,18 +179,47 @@ export function useOpportunityCardFields(opportunityRef) {
     else if (['fb', 'facebook'].includes(campaign_platform))
       icon = 'i-lucide-facebook';
 
+    const isOrganic = campaign_resolution_status === 'organic_post';
+    const isResolved = campaign_resolution_status === 'resolved';
+    const isFailed = campaign_resolution_status === 'failed';
+    const isPending = campaign_resolution_status === 'pending';
+
     let label = '';
-    if (campaign_resolution_status === 'resolved') {
+    if (isOrganic) {
+      label = t('OPPORTUNITIES.CAMPAIGN.ORGANIC_POST', 'Organic Post');
+      if (campaign_headline) label += `: ${campaign_headline}`;
+    } else if (isResolved) {
       label = [campaign_name, campaign_adset_name, campaign_ad_name]
         .filter(Boolean)
         .join('\n');
-    } else if (campaign_resolution_status === 'failed') {
-      label = campaign_source_id;
+    } else if (isFailed) {
+      label = t(
+        'OPPORTUNITIES.CAMPAIGN.FAILED_TOOLTIP',
+        { id: campaign_source_id },
+        `Unable to identify ad or post details (ID: ${campaign_source_id})`
+      );
     } else {
       label = t('OPPORTUNITIES.CAMPAIGN.PENDING', 'Resolving attribution...');
     }
 
-    return { icon, label };
+    return {
+      icon,
+      label,
+      status: campaign_resolution_status,
+      platform: campaign_platform,
+      isOrganic,
+      isResolved,
+      isFailed,
+      isPending,
+      campaignName: campaign_name,
+      adsetName: campaign_adset_name,
+      adName: campaign_ad_name,
+      headline: campaign_headline,
+      body: campaign_body,
+      thumbnailUrl: campaign_thumbnail_url,
+      sourceUrl: campaign_source_url,
+      sourceId: campaign_source_id,
+    };
   });
 
   return {

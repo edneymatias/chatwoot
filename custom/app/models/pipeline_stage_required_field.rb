@@ -20,6 +20,8 @@ class PipelineStageRequiredField < ApplicationRecord
   belongs_to :pipeline_stage
   belongs_to :custom_attribute_definition
 
+  before_validation :set_account_from_stage
+
   validates :account, presence: true
   validates :pipeline_stage, presence: true
   validates :custom_attribute_definition, presence: true
@@ -28,6 +30,10 @@ class PipelineStageRequiredField < ApplicationRecord
   validate :definition_must_be_opportunity_attribute
 
   private
+
+  def set_account_from_stage
+    self.account_id ||= pipeline_stage&.account_id
+  end
 
   def definition_must_be_opportunity_attribute
     return unless custom_attribute_definition

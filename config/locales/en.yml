@@ -659,3 +659,8 @@ en:
       no_subscriptions_to_test: 'Select at least one subscription to test.'
       no_subscriptions_to_delete: 'Select at least one subscription to delete.'
       subscriptions_deleted: "Deleted %{count} subscription(s). The user's device(s) will re-register on next app launch."
+    campaign_attribution:
+      reprocess_enqueued: '%{count} pending opportunities queued for resolution.'
+      no_pending_or_disabled: 'No pending opportunities or campaign attribution is disabled.'
+      not_connected_error: 'Campaign attribution cannot be reprocessed without an active Meta connection.'
+

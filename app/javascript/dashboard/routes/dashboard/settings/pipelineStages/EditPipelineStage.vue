@@ -32,15 +32,18 @@ const opportunityAttributes = computed(() =>
 );
 
 onMounted(() => {
-  name.value = props.stage.name || '';
-  description.value = props.stage.description || '';
-  requiresDealValue.value = props.stage.requires_deal_value || false;
-  accentColor.value = props.stage.accent_color || '';
-  totalDisplayMode.value = props.stage.total_display_mode || 'value_sum';
-  staleAfterDays.value = props.stage.stale_after_days || '';
+  const currentStage =
+    store.getters['pipelineStages/stageById'](props.stage.id) || props.stage;
+
+  name.value = currentStage.name || '';
+  description.value = currentStage.description || '';
+  requiresDealValue.value = currentStage.requires_deal_value || false;
+  accentColor.value = currentStage.accent_color || '';
+  totalDisplayMode.value = currentStage.total_display_mode || 'value_sum';
+  staleAfterDays.value = currentStage.stale_after_days ?? '';
 
   store.dispatch('attributes/get');
-  const requiredDefs = props.stage.required_custom_attribute_definitions || [];
+  const requiredDefs = currentStage.required_custom_attribute_definitions || [];
   selectedAttributeIds.value = requiredDefs.map(def => def.id);
 });
 
@@ -50,16 +53,6 @@ const submit = async () => {
   if (!canSubmit.value) return;
   isSubmitting.value = true;
   try {
-    const originalIds = (
-      props.stage.required_custom_attribute_definitions || []
-    ).map(d => d.id);
-    const toAdd = selectedAttributeIds.value.filter(
-      id => !originalIds.includes(id)
-    );
-    const toRemove = originalIds.filter(
-      id => !selectedAttributeIds.value.includes(id)
-    );
-
     await store.dispatch('pipelineStages/update', {
       id: props.stage.id,
       name: name.value.trim(),
@@ -69,34 +62,13 @@ const submit = async () => {
       total_display_mode: totalDisplayMode.value,
       stale_after_days:
         staleAfterDays.value === '' ? null : Number(staleAfterDays.value),
+      required_custom_attribute_definition_ids: selectedAttributeIds.value,
     });
-
-    const promises = [];
-    toAdd.forEach(id => {
-      promises.push(
-        store.dispatch('pipelineStages/addRequiredField', {
-          stageId: props.stage.id,
-          customAttributeDefinitionId: id,
-        })
-      );
-    });
-    toRemove.forEach(id => {
-      promises.push(
-        store.dispatch('pipelineStages/removeRequiredField', {
-          stageId: props.stage.id,
-          customAttributeDefinitionId: id,
-        })
-      );
-    });
-
-    if (promises.length > 0) {
-      await Promise.all(promises);
-      await store.dispatch('pipelineStages/fetch');
-    }
 
     onClose();
   } catch (error) {
     const errorMessage =
+      error?.response?.data?.error ||
       error?.response?.data?.message ||
       error?.message ||
       t('PIPELINE_STAGES_MGMT.EDIT.API.ERROR_MESSAGE') ||

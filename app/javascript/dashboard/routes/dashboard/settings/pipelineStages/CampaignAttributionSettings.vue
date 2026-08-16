@@ -12,10 +12,12 @@ const { t } = useI18n();
 const isLoading = ref(true);
 const isConnecting = ref(false);
 const isUpdating = ref(false);
+const isReprocessing = ref(false);
 
 const setting = ref({
   enabled: false,
   connected: false,
+  pending_count: 0,
   meta_app_id: '',
   meta_api_version: 'v22.0',
 });
@@ -78,10 +80,29 @@ const onToggleEnable = async value => {
     await campaignAttributionSettingsAPI.update({ enabled: value });
     setting.value.enabled = value;
     useAlert(t('PIPELINE_STAGES_MGMT.CAMPAIGN_ATTRIBUTION.UPDATE_SUCCESS'));
+    await fetchSetting();
   } catch (error) {
     useAlert(t('PIPELINE_STAGES_MGMT.CAMPAIGN_ATTRIBUTION.UPDATE_ERROR'));
   } finally {
     isUpdating.value = false;
+  }
+};
+
+const onReprocessPending = async () => {
+  isReprocessing.value = true;
+  try {
+    const response = await campaignAttributionSettingsAPI.reprocessPending();
+    useAlert(
+      response.data.message ||
+        t('PIPELINE_STAGES_MGMT.CAMPAIGN_ATTRIBUTION.REPROCESS_SUCCESS', {
+          count: response.data.count,
+        })
+    );
+    await fetchSetting();
+  } catch (error) {
+    useAlert(t('PIPELINE_STAGES_MGMT.CAMPAIGN_ATTRIBUTION.REPROCESS_ERROR'));
+  } finally {
+    isReprocessing.value = false;
   }
 };
 </script>
@@ -129,7 +150,9 @@ const onToggleEnable = async value => {
         </div>
       </div>
 
-      <div class="flex items-center justify-between">
+      <div
+        class="flex items-center justify-between border-b border-n-weak pb-4"
+      >
         <div class="flex flex-col gap-1">
           <h3 class="text-sm font-medium text-n-slate-12">
             {{
@@ -149,6 +172,53 @@ const onToggleEnable = async value => {
           :disabled="!setting.connected || isUpdating"
           @change="onToggleEnable"
         />
+      </div>
+
+      <!-- Reprocess Pending Section -->
+      <div
+        v-if="setting.connected && setting.enabled"
+        class="flex items-center justify-between"
+      >
+        <div class="flex flex-col gap-1">
+          <h3 class="text-sm font-medium text-n-slate-12">
+            {{
+              $t('PIPELINE_STAGES_MGMT.CAMPAIGN_ATTRIBUTION.REPROCESS_BUTTON')
+            }}
+          </h3>
+          <p class="text-xs text-n-slate-11">
+            <span v-if="setting.pending_count > 0">
+              {{
+                $t(
+                  'PIPELINE_STAGES_MGMT.CAMPAIGN_ATTRIBUTION.PENDING_COUNT',
+                  { count: setting.pending_count },
+                  `${setting.pending_count} pending attributions`
+                )
+              }}
+            </span>
+            <span v-else>
+              {{
+                $t(
+                  'PIPELINE_STAGES_MGMT.CAMPAIGN_ATTRIBUTION.NO_PENDING',
+                  'No pending attributions'
+                )
+              }}
+            </span>
+          </p>
+        </div>
+        <Button
+          :is-loading="isReprocessing"
+          icon="i-lucide-refresh-cw"
+          size="sm"
+          variant="faded"
+          color="slate"
+          @click="onReprocessPending"
+        >
+          {{
+            isReprocessing
+              ? $t('PIPELINE_STAGES_MGMT.CAMPAIGN_ATTRIBUTION.REPROCESSING')
+              : $t('PIPELINE_STAGES_MGMT.CAMPAIGN_ATTRIBUTION.REPROCESS_BUTTON')
+          }}
+        </Button>
       </div>
     </div>
   </div>

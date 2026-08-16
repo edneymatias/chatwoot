@@ -6,6 +6,7 @@ import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import { useOpportunityCardFields } from 'dashboard/composables/useOpportunityCardFields';
 import StartOpportunityConversationButton from 'dashboard/routes/dashboard/opportunities/components/StartOpportunityConversationButton.vue';
+import OpportunityAttributionPopover from 'dashboard/components-next/Opportunities/OpportunityAttributionPopover.vue';
 
 const props = defineProps({
   opportunity: {
@@ -108,11 +109,9 @@ const hasActions = computed(() => {
         class="text-n-slate-12 text-sm font-medium leading-5 truncate flex items-center gap-1.5"
         :title="opportunity.title"
       >
-        <span
+        <OpportunityAttributionPopover
           v-if="campaignAttribution"
-          class="size-4 shrink-0 text-n-slate-11"
-          :class="[campaignAttribution.icon]"
-          :title="campaignAttribution.label"
+          :attribution="campaignAttribution"
         />
         <span class="truncate">{{ opportunity.title }}</span>
       </h3>

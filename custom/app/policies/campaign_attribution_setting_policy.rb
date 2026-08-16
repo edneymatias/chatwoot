@@ -10,4 +10,8 @@ class CampaignAttributionSettingPolicy < ApplicationPolicy
   def connect?
     @user.administrator?
   end
+
+  def reprocess_pending?
+    @user.administrator?
+  end
 end

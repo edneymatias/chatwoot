@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_14_132145) do
+ActiveRecord::Schema[7.1].define(version: 2126_08_15_000000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1038,6 +1038,9 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_14_132145) do
     t.string "campaign_adset_name"
     t.string "campaign_ad_name"
     t.string "campaign_resolution_status"
+    t.string "campaign_headline"
+    t.text "campaign_body"
+    t.text "campaign_thumbnail_url"
     t.index ["account_id", "closed_at"], name: "index_ichatr_opportunities_on_account_id_and_closed_at"
     t.index ["account_id"], name: "index_ichatr_opportunities_on_account_id"
     t.index ["assignee_id"], name: "index_ichatr_opportunities_on_assignee_id"
@@ -1703,28 +1706,5 @@ $function$
   SQL
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$ begin perform pg_notify('n8n_channel_717c52d1_52d2_406d_bc05_250afa7cfc2f', row_to_json(NEW)::text); return null; end; $function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614e45cdea', row_to_json(OLD)::text); return null; end; $function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER conversations_before_insert_row_tr BEFORE INSERT ON \"conversations\" FOR EACH ROW EXECUTE FUNCTION conversations_before_insert_row_tr()")
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER n8n_trigger_717c52d1_52d2_406d_bc05_250afa7cfc2f AFTER INSERT ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()")
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
-
 end

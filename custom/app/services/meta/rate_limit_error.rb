@@ -1,4 +1,4 @@
-module Meta
-  class RateLimitError < StandardError
-  end
+# frozen_string_literal: true
+
+class Meta::RateLimitError < Meta::Error
 end

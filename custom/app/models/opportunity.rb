@@ -7,6 +7,7 @@ class Opportunity < ApplicationRecord
   belongs_to :origin_conversation, class_name: 'Conversation', optional: true
   belongs_to :assignee, class_name: 'User', optional: true
   has_many :stage_changes, class_name: 'OpportunityStageChange', dependent: :destroy
+  has_one_attached :campaign_thumbnail
 
   enum status: { open: 0, won: 1, lost: 2 }
 
@@ -24,6 +25,14 @@ class Opportunity < ApplicationRecord
   after_update :record_subsequent_stage_change, if: :saved_change_to_pipeline_stage_id?
   after_commit :broadcast_opportunity_updated, on: %i[create update]
 
+  def thumbnail_url
+    if campaign_thumbnail.attached?
+      Rails.application.routes.url_helpers.rails_blob_url(campaign_thumbnail, only_path: true)
+    else
+      campaign_thumbnail_url
+    end
+  end
+
   def as_json(options = {})
     super(options).merge(
       'origin_conversation_display_id' => origin_conversation&.display_id,
@@ -35,6 +44,9 @@ class Opportunity < ApplicationRecord
       'campaign_name' => campaign_name,
       'campaign_adset_name' => campaign_adset_name,
       'campaign_ad_name' => campaign_ad_name,
+      'campaign_headline' => campaign_headline,
+      'campaign_body' => campaign_body,
+      'campaign_thumbnail_url' => thumbnail_url,
       'campaign_resolution_status' => campaign_resolution_status,
       'contact' => contact_json,
       'assignee' => assignee_json

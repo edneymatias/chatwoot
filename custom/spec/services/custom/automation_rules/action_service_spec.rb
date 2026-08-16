@@ -94,5 +94,35 @@ RSpec.describe Custom::AutomationRules::ActionService do
         end
       end
     end
+
+    context 'when referral data is from an organic post' do
+      before do
+        first_message.update!(content_attributes: {
+                                'referral' => {
+                                  'source_type' => 'post',
+                                  'source_id' => '17892348912',
+                                  'source_url' => 'https://instagram.com/p/Cxyz123',
+                                  'headline' => 'Organic Post Title',
+                                  'body' => 'Organic Post Body Content',
+                                  'thumbnail_url' => 'https://example.com/thumb.jpg'
+                                }
+                              })
+        CampaignAttributionSetting.create!(account: account, enabled: true)
+      end
+
+      it 'sets organic_post status, extracts metadata, and does NOT enqueue CampaignResolutionJob' do
+        expect do
+          described_class.process_campaign_attribution(opportunity, first_message)
+        end.not_to have_enqueued_job(Custom::CampaignResolutionJob)
+
+        opportunity.reload
+        expect(opportunity.campaign_platform).to eq('instagram')
+        expect(opportunity.campaign_source_id).to eq('17892348912')
+        expect(opportunity.campaign_headline).to eq('Organic Post Title')
+        expect(opportunity.campaign_body).to eq('Organic Post Body Content')
+        expect(opportunity.campaign_thumbnail_url).to eq('https://example.com/thumb.jpg')
+        expect(opportunity.campaign_resolution_status).to eq('organic_post')
+      end
+    end
   end
 end

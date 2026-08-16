@@ -74,7 +74,19 @@
     },
     "DEAL_VALUE": "Deal Value",
     "CAMPAIGN": {
-      "PENDING": "Resolving attribution..."
+      "PENDING": "Resolving attribution...",
+      "ORGANIC_POST": "Organic Post",
+      "PAID_AD": "{platform} Ads",
+      "FAILED_TOOLTIP": "Unable to identify ad or post details (ID: {id})",
+      "POPUP_TITLE_PAID": "Ad Attribution",
+      "POPUP_TITLE_ORGANIC": "Organic Publication",
+      "POPUP_TITLE_FAILED": "Attribution Details",
+      "VIEW_ORIGIN": "View on {platform}",
+      "CAMPAIGN_LABEL": "Campaign",
+      "ADSET_LABEL": "Ad Set",
+      "AD_LABEL": "Ad",
+      "POST_LABEL": "Post",
+      "PLATFORM_LABEL": "Platform"
     }
   },
   "PIPELINE_STAGES_MGMT": {
@@ -164,7 +176,13 @@
       "ENABLE_ATTRIBUTION_DESC": "Automatically track ad attributions on new opportunities.",
       "NEED_CONNECTION": "You must connect Meta first.",
       "UPDATE_SUCCESS": "Settings updated.",
-      "UPDATE_ERROR": "Failed to update settings."
+      "UPDATE_ERROR": "Failed to update settings.",
+      "REPROCESS_BUTTON": "Reprocess Pending",
+      "REPROCESSING": "Reprocessing...",
+      "PENDING_COUNT": "{count} pending attributions",
+      "NO_PENDING": "No pending attributions",
+      "REPROCESS_SUCCESS": "{count} pending opportunities queued for resolution.",
+      "REPROCESS_ERROR": "Failed to reprocess pending opportunities."
     }
   }
 }

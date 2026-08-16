@@ -14,6 +14,10 @@ class CampaignAttributionSettingsAPI extends ApiClient {
   connect(access_token) {
     return axios.post(`${this.url}/connect`, { access_token });
   }
+
+  reprocessPending() {
+    return axios.post(`${this.url}/reprocess_pending`);
+  }
 }
 
 export default new CampaignAttributionSettingsAPI();

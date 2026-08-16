@@ -139,6 +139,7 @@ Rails.application.routes.draw do
           resource :pipeline_currency_setting, only: [:show, :update]
           resource :campaign_attribution_setting, only: [:show, :update] do
             post :connect, on: :collection
+            post :reprocess_pending, on: :collection
           end
           resources :opportunities, only: [:index, :show, :create, :update, :destroy]
           resources :opportunity_funnel_reports, only: [:index]

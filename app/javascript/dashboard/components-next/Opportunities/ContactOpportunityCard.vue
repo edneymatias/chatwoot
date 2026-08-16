@@ -2,6 +2,7 @@
 import { computed, toRef } from 'vue';
 import { useStore } from 'vuex';
 import { useOpportunityCardFields } from 'dashboard/composables/useOpportunityCardFields';
+import OpportunityAttributionPopover from 'dashboard/components-next/Opportunities/OpportunityAttributionPopover.vue';
 
 const props = defineProps({
   opportunity: {
@@ -43,11 +44,9 @@ const currentStage = computed(() =>
         class="text-n-slate-12 text-sm font-medium leading-5 truncate flex items-center gap-1.5"
         :title="opportunity.title"
       >
-        <span
+        <OpportunityAttributionPopover
           v-if="campaignAttribution"
-          class="size-4 shrink-0 text-n-slate-11"
-          :class="[campaignAttribution.icon]"
-          :title="campaignAttribution.label"
+          :attribution="campaignAttribution"
         />
         <span class="truncate">{{ opportunity.title }}</span>
       </h3>

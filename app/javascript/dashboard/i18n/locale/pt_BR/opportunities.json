@@ -73,7 +73,19 @@
     },
     "DEAL_VALUE": "Valor do Negócio",
     "CAMPAIGN": {
-      "PENDING": "Resolvendo atribuição..."
+      "PENDING": "Resolvendo atribuição...",
+      "ORGANIC_POST": "Publicação Orgânica",
+      "PAID_AD": "Anúncio {platform}",
+      "FAILED_TOOLTIP": "Não foi possível identificar os detalhes do anúncio ou publicação (ID: {id})",
+      "POPUP_TITLE_PAID": "Atribuição de Anúncio",
+      "POPUP_TITLE_ORGANIC": "Publicação Orgânica",
+      "POPUP_TITLE_FAILED": "Detalhes da Atribuição",
+      "VIEW_ORIGIN": "Ver no {platform}",
+      "CAMPAIGN_LABEL": "Campanha",
+      "ADSET_LABEL": "Conjunto",
+      "AD_LABEL": "Anúncio",
+      "POST_LABEL": "Publicação",
+      "PLATFORM_LABEL": "Plataforma"
     }
   },
   "PIPELINE_STAGES_MGMT": {
@@ -163,7 +175,13 @@
       "ENABLE_ATTRIBUTION_DESC": "Rastrear automaticamente as atribuições de anúncios em novas oportunidades.",
       "NEED_CONNECTION": "Você deve conectar a Meta primeiro.",
       "UPDATE_SUCCESS": "Configurações atualizadas.",
-      "UPDATE_ERROR": "Falha ao atualizar configurações."
+      "UPDATE_ERROR": "Falha ao atualizar configurações.",
+      "REPROCESS_BUTTON": "Reprocessar Pendentes",
+      "REPROCESSING": "Reprocessando...",
+      "PENDING_COUNT": "{count} atribuições pendentes",
+      "NO_PENDING": "Nenhuma atribuição pendente",
+      "REPROCESS_SUCCESS": "{count} oportunidades pendentes enviadas para resolução.",
+      "REPROCESS_ERROR": "Falha ao reprocessar oportunidades pendentes."
     }
   }
 }

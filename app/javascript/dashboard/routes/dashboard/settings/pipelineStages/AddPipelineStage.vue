@@ -34,26 +34,12 @@ const submit = async () => {
   if (!canSubmit.value) return;
   isSubmitting.value = true;
   try {
-    const newStage = await store.dispatch('pipelineStages/create', {
+    await store.dispatch('pipelineStages/create', {
       name: name.value.trim(),
       description: description.value.trim(),
       requires_deal_value: requiresDealValue.value,
+      required_custom_attribute_definition_ids: selectedAttributeIds.value,
     });
-
-    const promises = [];
-    selectedAttributeIds.value.forEach(id => {
-      promises.push(
-        store.dispatch('pipelineStages/addRequiredField', {
-          stageId: newStage.id,
-          customAttributeDefinitionId: id,
-        })
-      );
-    });
-
-    if (promises.length > 0) {
-      await Promise.all(promises);
-      await store.dispatch('pipelineStages/fetch');
-    }
 
     onClose();
   } catch (error) {

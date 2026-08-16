@@ -11,7 +11,10 @@ class Api::V1::Accounts::CampaignAttributionSettingsController < Api::V1::Accoun
       return
     end
 
-    setting.update!(enabled: params[:enabled]) if params.key?(:enabled)
+    if params.key?(:enabled)
+      setting.update!(enabled: params[:enabled])
+      Meta::DrainPendingAttributionsJob.perform_later(current_account.id) if params[:enabled]
+    end
     render json: response_data
   end
 
@@ -19,9 +22,32 @@ class Api::V1::Accounts::CampaignAttributionSettingsController < Api::V1::Accoun
     token_data = Meta::MarketingAuthorizationService.new.exchange_for_long_lived(params[:access_token])
     if token_data
       setting.update!(provider_config: token_data)
+      Meta::DrainPendingAttributionsJob.perform_later(current_account.id) if setting.enabled?
       render json: response_data
     else
       render json: { error: 'Meta authorization failed.' }, status: :unprocessable_entity
+    end
+  end
+
+  def reprocess_pending
+    unless connected? && setting.enabled?
+      render json: { error: I18n.t('campaign_attribution.not_connected_error', default: 'Campaign attribution cannot be reprocessed without an active Meta connection.') },
+             status: :unprocessable_entity
+      return
+    end
+
+    count = current_account.opportunities.where(campaign_resolution_status: 'pending').where.not(campaign_source_id: [nil, '']).count
+    if count.positive?
+      Meta::DrainPendingAttributionsJob.perform_later(current_account.id)
+      render json: {
+        message: I18n.t('campaign_attribution.reprocess_enqueued', count: count, default: "#{count} pending opportunities queued for resolution."),
+        count: count
+      }
+    else
+      render json: {
+        message: I18n.t('campaign_attribution.no_pending_or_disabled', default: 'No pending opportunities or campaign attribution is disabled.'),
+        count: 0
+      }
     end
   end
 
@@ -43,6 +69,7 @@ class Api::V1::Accounts::CampaignAttributionSettingsController < Api::V1::Accoun
     {
       enabled: setting.enabled,
       connected: connected?,
+      pending_count: current_account.opportunities.where(campaign_resolution_status: 'pending').where.not(campaign_source_id: [nil, '']).count,
       meta_app_id: GlobalConfigService.load('META_MARKETING_APP_ID', ''),
       meta_api_version: GlobalConfigService.load('META_MARKETING_API_VERSION', 'v22.0')
     }

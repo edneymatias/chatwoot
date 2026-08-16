@@ -85,6 +85,17 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
       expect(json_response['name']).to eq('New Stage')
       expect(json_response['position']).to eq(2)
     end
+
+    it 'creates a new pipeline stage with required custom attribute definition ids' do
+      cad = create(:custom_attribute_definition, account: account, attribute_model: 'opportunity_attribute', attribute_key: 'prop_id')
+      payload = { pipeline_stage: { name: 'Stage with req', required_custom_attribute_definition_ids: [cad.id] } }.to_json
+
+      post "/api/v1/accounts/#{account.id}/pipeline_stages", headers: headers_admin, params: payload
+      expect(response).to have_http_status(:ok)
+
+      json_response = response.parsed_body
+      expect(json_response['required_custom_attribute_definitions'].map { |d| d['id'] }).to eq([cad.id])
+    end
   end
 
   describe 'PATCH /api/v1/accounts/{account.id}/pipeline_stages/{id}' do
@@ -107,6 +118,20 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
       expect(json_response).to be_a(Hash)
       expect(json_response['name']).to eq('Updated Stage')
       expect(stage2.reload.position).to eq(2)
+    end
+
+    it 'updates required custom attribute definitions atomically' do
+      cad1 = create(:custom_attribute_definition, account: account, attribute_model: 'opportunity_attribute', attribute_key: 'attr_one')
+      cad2 = create(:custom_attribute_definition, account: account, attribute_model: 'opportunity_attribute', attribute_key: 'attr_two')
+      stage2.pipeline_stage_required_fields.create!(account: account, custom_attribute_definition: cad1)
+
+      payload = { pipeline_stage: { name: 'Stage 2 Updated', required_custom_attribute_definition_ids: [cad2.id] } }.to_json
+      patch "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage2.id}", headers: headers_admin, params: payload
+      expect(response).to have_http_status(:ok)
+
+      json_response = response.parsed_body
+      expect(json_response['required_custom_attribute_definitions'].map { |d| d['id'] }).to eq([cad2.id])
+      expect(stage2.reload.required_custom_attribute_definitions).to contain_exactly(cad2)
     end
 
     it 'reorders stages and returns an array when position is changed' do

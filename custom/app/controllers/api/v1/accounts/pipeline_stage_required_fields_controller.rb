@@ -20,8 +20,8 @@ class Api::V1::Accounts::PipelineStageRequiredFieldsController < Api::V1::Accoun
   end
 
   def destroy
-    @required_field = @pipeline_stage.pipeline_stage_required_fields.find_by!(custom_attribute_definition_id: params[:id])
-    if @required_field.destroy
+    @required_field = @pipeline_stage.pipeline_stage_required_fields.find_by(custom_attribute_definition_id: params[:id])
+    if @required_field.nil? || @required_field.destroy
       head :ok
     else
       render json: { error: @required_field.errors.full_messages.join(', ') }, status: :unprocessable_entity

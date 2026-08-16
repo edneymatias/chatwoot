@@ -28,7 +28,7 @@ class PipelineStage < ApplicationRecord
 
   def reorder_to!(target_position)
     PipelineStage.transaction do
-      stages = account.pipeline_stages.order(:position).lock!.to_a
+      stages = account.pipeline_stages.includes(:required_custom_attribute_definitions).order(:position).lock!.to_a
       stages.delete(self)
 
       insert_index = [(target_position || 1).to_i - 1, stages.size].min
@@ -41,7 +41,7 @@ class PipelineStage < ApplicationRecord
         stage.update!(position: new_position) if stage.position != new_position
       end
 
-      stages
+      account.pipeline_stages.includes(:required_custom_attribute_definitions).order(:position).to_a
     end
   end
 
