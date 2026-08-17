@@ -1,3 +1,25 @@
+## [4.16.2-ichatr.3] - 2026-08-17
+
+### 🚀 Features
+
+- *(opportunities)* Add rich-text stage description editor and kanban info panel
+- *(kanban)* Add date filter comparisons and drag-to-pan navigation
+- *(automations)* Add opportunity-triggered automation rules and actions
+- *(attribution)* Add organic post attribution, robust oauth error handling, and thumbnail previews
+
+### 🐛 Bug Fixes
+
+- *(lint)* Resolve rubocop offenses across backend services and specs
+- *(broadcasts)* Broadcast opportunity_updated over action cable on opportunity_created
+- *(pipeline_stages)* Wrap create/update payloads so required custom attributes persist
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Update changelog for 4.16.2-ichatr.2 [skip ci]
+- *(release)* Update changelog for 4.16.2-ichatr.3 [skip ci]
+- *(release)* Update changelog for 4.16.2-ichatr.3 [skip ci]
+- *(release)* Update changelog for 4.16.2-ichatr.3 [skip ci]
+
 ## [4.16.2-ichatr.3] - 2026-08-16
 
 ### 🚀 Features
