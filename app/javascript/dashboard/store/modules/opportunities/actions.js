@@ -345,4 +345,20 @@ export const actions = {
       );
     }
   },
+  linkConversation: async (
+    { commit },
+    { id, conversationId, forceTransfer = false }
+  ) => {
+    const response = await opportunitiesAPI.linkConversation(
+      id,
+      conversationId,
+      forceTransfer
+    );
+    const payload = response.data.payload || response.data;
+    commit('UPDATE_OPPORTUNITY', {
+      id,
+      updates: payload,
+    });
+    return payload;
+  },
 };

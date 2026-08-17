@@ -1,8 +1,10 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
 import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
+import { dynamicTime } from 'shared/helpers/timeHelper';
 import OpportunityRequiredFieldsForm from './OpportunityRequiredFieldsForm.vue';
 
 const props = defineProps({
@@ -15,6 +17,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'updated']);
 
 const store = useStore();
+const router = useRouter();
 const { t } = useI18n();
 
 const isSubmitting = ref(false);
@@ -27,6 +30,50 @@ const status = ref('open');
 const missingCustomAttributeKeys = ref([]);
 const missingDealValue = ref(false);
 
+const inboxes = computed(() => store.getters['inboxes/getInboxes'] || []);
+
+const getInbox = inboxId => {
+  return inboxes.value.find(i => i.id === inboxId);
+};
+
+const getInboxIcon = channelType => {
+  switch (channelType) {
+    case 'Channel::Whatsapp':
+      return 'i-ri-whatsapp-line';
+    case 'Channel::FacebookPage':
+      return 'i-ri-messenger-line';
+    case 'Channel::Instagram':
+      return 'i-ri-instagram-line';
+    case 'Channel::Telegram':
+      return 'i-ri-telegram-line';
+    case 'Channel::Email':
+      return 'i-ri-mail-line';
+    default:
+      return 'i-ri-chat-1-line';
+  }
+};
+
+const formatTime = timestamp => {
+  if (!timestamp) return '';
+  const num = Number(timestamp);
+  if (!Number.isNaN(num)) {
+    const seconds = num > 1e11 ? Math.floor(num / 1000) : num;
+    return dynamicTime(seconds);
+  }
+  const date = new Date(timestamp);
+  return dynamicTime(Math.floor(date.getTime() / 1000));
+};
+
+const openConversation = conv => {
+  emit('close');
+  router.push({
+    name: 'opportunities_conversation',
+    params: {
+      conversationId: conv.display_id || conv.id,
+    },
+  });
+};
+
 const statusOptions = computed(() =>
   ['open', 'won', 'lost'].map(value => ({
     value,
@@ -38,6 +85,10 @@ const agents = computed(() => store.getters['agents/getVerifiedAgents']);
 
 const opportunity = computed(
   () => store.state.opportunities.byId[props.opportunityId]
+);
+
+const associatedConversations = computed(
+  () => opportunity.value?.associated_conversations || []
 );
 
 const isClosed = computed(
@@ -342,6 +393,88 @@ const onClose = () => emit('close');
         <p class="text-xs text-n-slate-11 -mt-2">
           {{ $t('OPPORTUNITIES.BACKFILL_MODAL.DEAL_VALUE_ALWAYS_EDITABLE') }}
         </p>
+
+        <!-- Associated Conversations History -->
+        <div class="flex flex-col gap-2 mt-2 pt-3 border-t border-n-slate-3">
+          <label class="text-sm font-medium text-n-slate-12">
+            {{ $t('OPPORTUNITIES.BACKFILL_MODAL.CONVERSATIONS_HISTORY_LABEL') }}
+          </label>
+          <div
+            v-if="associatedConversations.length === 0"
+            class="text-xs text-n-slate-11 py-1"
+          >
+            {{ $t('OPPORTUNITIES.BACKFILL_MODAL.NO_CONVERSATIONS') }}
+          </div>
+          <div v-else class="flex flex-col gap-2 max-h-48 overflow-y-auto">
+            <div
+              v-for="conv in associatedConversations"
+              :key="conv.id"
+              class="flex items-center justify-between p-2.5 bg-n-surface-1 border border-n-slate-3 rounded-md hover:bg-n-surface-2 cursor-pointer transition-colors"
+              @click="openConversation(conv)"
+            >
+              <div class="flex items-center gap-2.5 min-w-0">
+                <Icon
+                  :icon="
+                    getInboxIcon(
+                      conv.channel_type || getInbox(conv.inbox_id)?.channel_type
+                    )
+                  "
+                  class="size-4 text-n-slate-11 shrink-0"
+                />
+                <div class="flex flex-col min-w-0">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-medium text-n-slate-12 truncate">
+                      {{
+                        conv.inbox_name ||
+                        getInbox(conv.inbox_id)?.name ||
+                        'Inbox'
+                      }}
+                    </span>
+                    <span class="text-xxs text-n-slate-10">
+                      {{ `#${conv.display_id || conv.id}` }}
+                    </span>
+                  </div>
+                  <span class="text-xxs text-n-slate-10">
+                    {{ formatTime(conv.created_at) }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span
+                  v-if="conv.is_active"
+                  class="text-[10px] px-1.5 py-0.5 rounded-full bg-n-brand/10 text-n-brand font-medium border border-n-brand/20"
+                >
+                  {{
+                    $t('OPPORTUNITIES.BACKFILL_MODAL.ACTIVE_CONVERSATION_TAG')
+                  }}
+                </span>
+                <span
+                  v-if="conv.is_origin"
+                  class="text-[10px] px-1.5 py-0.5 rounded-full bg-n-slate-3 text-n-slate-11 font-medium"
+                >
+                  {{
+                    $t('OPPORTUNITIES.BACKFILL_MODAL.ORIGIN_CONVERSATION_TAG')
+                  }}
+                </span>
+                <span
+                  class="text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize"
+                  :class="
+                    conv.status === 'open' || conv.status === 0
+                      ? 'bg-n-teal-3 text-n-teal-11'
+                      : 'bg-n-slate-3 text-n-slate-11'
+                  "
+                >
+                  {{
+                    conv.status === 'open' || conv.status === 0
+                      ? $t('OPPORTUNITIES.BOARD.STATUS.OPEN')
+                      : $t('OPPORTUNITIES.BACKFILL_MODAL.RESOLVED_STATUS')
+                  }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div
         class="flex justify-end gap-2 px-6 py-4 border-t border-n-slate-3 shrink-0"

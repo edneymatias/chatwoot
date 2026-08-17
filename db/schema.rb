@@ -10,8 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_17_100000) do
-  create_schema "metabase_cache_0b4bd_2"
+ActiveRecord::Schema[7.1].define(version: 2126_08_17_120000) do
 
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
@@ -1043,13 +1042,27 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_17_100000) do
     t.string "campaign_headline"
     t.text "campaign_body"
     t.text "campaign_thumbnail_url"
+    t.bigint "active_conversation_id"
     t.index ["account_id", "closed_at"], name: "index_ichatr_opportunities_on_account_id_and_closed_at"
     t.index ["account_id"], name: "index_ichatr_opportunities_on_account_id"
+    t.index ["active_conversation_id"], name: "index_ichatr_opportunities_on_active_conversation_id", unique: true, where: "(active_conversation_id IS NOT NULL)"
     t.index ["assignee_id"], name: "index_ichatr_opportunities_on_assignee_id"
     t.index ["campaign_resolution_status"], name: "index_ichatr_opportunities_on_campaign_resolution_status", where: "((campaign_resolution_status IS NULL) OR ((campaign_resolution_status)::text <> 'not_applicable'::text))"
     t.index ["contact_id"], name: "index_ichatr_opportunities_on_contact_id"
     t.index ["origin_conversation_id"], name: "index_ichatr_opportunities_on_origin_conversation_id", unique: true, where: "(origin_conversation_id IS NOT NULL)"
     t.index ["pipeline_stage_id"], name: "index_ichatr_opportunities_on_pipeline_stage_id"
+  end
+
+  create_table "ichatr_opportunity_conversations", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "opportunity_id", null: false
+    t.bigint "conversation_id", null: false
+    t.boolean "is_origin", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "conversation_id"], name: "index_ichatr_opp_convs_on_account_and_conv"
+    t.index ["conversation_id"], name: "index_ichatr_opp_convs_on_conv"
+    t.index ["opportunity_id", "conversation_id"], name: "index_ichatr_opp_convs_on_opp_and_conv", unique: true
   end
 
   create_table "ichatr_opportunity_stage_changes", force: :cascade do |t|
@@ -1624,9 +1637,13 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_17_100000) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "ichatr_opportunities", "accounts"
   add_foreign_key "ichatr_opportunities", "contacts"
+  add_foreign_key "ichatr_opportunities", "conversations", column: "active_conversation_id", on_delete: :nullify
   add_foreign_key "ichatr_opportunities", "conversations", column: "origin_conversation_id"
   add_foreign_key "ichatr_opportunities", "ichatr_pipeline_stages", column: "pipeline_stage_id"
   add_foreign_key "ichatr_opportunities", "users", column: "assignee_id"
+  add_foreign_key "ichatr_opportunity_conversations", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_opportunity_conversations", "conversations", on_delete: :cascade
+  add_foreign_key "ichatr_opportunity_conversations", "ichatr_opportunities", column: "opportunity_id", on_delete: :cascade
   add_foreign_key "ichatr_opportunity_stage_changes", "accounts"
   add_foreign_key "ichatr_opportunity_stage_changes", "ichatr_opportunities", column: "opportunity_id"
   add_foreign_key "ichatr_opportunity_stage_changes", "ichatr_pipeline_stages", column: "from_stage_id"
@@ -1648,11 +1665,11 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_17_100000) do
 CREATE OR REPLACE FUNCTION public.accounts_after_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
 $function$
   SQL
 
@@ -1665,11 +1682,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.camp_dpid_before_insert()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
 $function$
   SQL
 
@@ -1682,11 +1699,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.campaigns_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
+AS $function$
+BEGIN
+    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
 $function$
   SQL
 
@@ -1699,15 +1716,14 @@ $function$
 CREATE OR REPLACE FUNCTION public.conversations_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
+AS $function$
+BEGIN
+    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
 $function$
   SQL
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER conversations_before_insert_row_tr BEFORE INSERT ON \"conversations\" FOR EACH ROW EXECUTE FUNCTION conversations_before_insert_row_tr()")
-
 end

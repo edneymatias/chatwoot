@@ -226,7 +226,7 @@ const OpportunityCardRow = defineComponent({
               layout="row"
               class="transition-colors"
               :class="[
-                card.origin_conversation_id
+                card.active_conversation_id
                   ? 'cursor-pointer hover:bg-n-alpha-1 hover:border-n-slate-4'
                   : 'cursor-default grayscale border-dashed bg-n-surface-1/50',
               ]"
@@ -235,7 +235,7 @@ const OpportunityCardRow = defineComponent({
               <OpportunityCardRow :opportunity="card" />
             </CardLayout>
             <div
-              v-if="!card.origin_conversation_id"
+              v-if="!card.active_conversation_id"
               class="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-n-surface-1 rounded-md shadow-sm"
             >
               <StartOpportunityConversationButton :opportunity="card" />

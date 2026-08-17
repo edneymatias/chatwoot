@@ -64,13 +64,13 @@ watch(viewMode, newVal => {
 });
 
 const handleRowClick = opportunity => {
-  if (!opportunity.origin_conversation_id) return;
+  if (!opportunity.active_conversation_id) return;
   router.push({
     name: 'opportunities_conversation',
     params: {
       conversationId:
-        opportunity.origin_conversation_display_id ||
-        opportunity.origin_conversation_id,
+        opportunity.active_conversation_display_id ||
+        opportunity.active_conversation_id,
     },
   });
 };

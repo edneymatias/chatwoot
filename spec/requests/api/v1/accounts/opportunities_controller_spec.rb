@@ -259,6 +259,54 @@ RSpec.describe 'Api::V1::Accounts::Opportunities', type: :request do
     end
   end
 
+  describe 'POST /api/v1/accounts/{account.id}/opportunities/{id}/link_conversation' do
+    let(:opportunity) { Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'My Opp') }
+    let(:conversation) { create(:conversation, account: account, contact: contact) }
+
+    it 'links conversation as active and creates opportunity_conversation record' do
+      post "/api/v1/accounts/#{account.id}/opportunities/#{opportunity.id}/link_conversation",
+           headers: agent.create_new_auth_token,
+           params: { conversation_id: conversation.display_id },
+           as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(opportunity.reload.active_conversation_id).to eq(conversation.id)
+      expect(opportunity.opportunity_conversations.where(conversation_id: conversation.id)).to exist
+    end
+
+    it 'returns conflict if conversation is active on another opportunity and force_transfer is not set' do
+      other_opp = Opportunity.create!(
+        account: account, contact: contact, pipeline_stage: stage, title: 'Other Opp',
+        active_conversation_id: conversation.id
+      )
+
+      post "/api/v1/accounts/#{account.id}/opportunities/#{opportunity.id}/link_conversation",
+           headers: agent.create_new_auth_token,
+           params: { conversation_id: conversation.display_id },
+           as: :json
+
+      expect(response).to have_http_status(:conflict)
+      expect(response.parsed_body['active_on_opportunity']['id']).to eq(other_opp.id)
+      expect(opportunity.reload.active_conversation_id).to be_nil
+    end
+
+    it 'transfers active conversation when force_transfer is true' do
+      other_opp = Opportunity.create!(
+        account: account, contact: contact, pipeline_stage: stage, title: 'Other Opp',
+        active_conversation_id: conversation.id
+      )
+
+      post "/api/v1/accounts/#{account.id}/opportunities/#{opportunity.id}/link_conversation",
+           headers: agent.create_new_auth_token,
+           params: { conversation_id: conversation.display_id, force_transfer: true },
+           as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(other_opp.reload.active_conversation_id).to be_nil
+      expect(opportunity.reload.active_conversation_id).to eq(conversation.id)
+    end
+  end
+
   describe 'DELETE /api/v1/accounts/{account.id}/opportunities/{id}' do
     it 'deletes the opportunity' do
       opp = Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'My Opp')

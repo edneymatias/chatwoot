@@ -1,6 +1,7 @@
 {
   "OPPORTUNITIES": {
     "HEADER": "Oportunidades",
+    "START_CONVERSATION": "Iniciar conversa",
     "LEAD_COUNT": "{count} Oportunidades",
     "BOARD": {
       "LOADING": "Carregando...",
@@ -65,11 +66,27 @@
       "SAVE": "Salvar Alterações",
       "SAVE_SUCCESS": "Salvo com sucesso"
     },
+    "LINK_CONVERSATION_MODAL": {
+      "TITLE": "Associar Conversa",
+      "DESCRIPTION": "Selecione uma conversa aberta deste contato para associar a esta oportunidade, ou inicie uma nova conversa.",
+      "OPEN_CHATS_LABEL": "Conversas Abertas",
+      "TRANSFER_WARNING_TITLE": "Conversa ativa em outra oportunidade",
+      "TRANSFER_WARNING_MESSAGE": "Esta conversa já está vinculada ativamente à oportunidade \"{opportunity}\". Associá-la aqui desconectará a conversa daquela oportunidade.",
+      "CONFIRM_TRANSFER": "Transferir e Associar",
+      "CANCEL": "Cancelar",
+      "LINK_BUTTON": "Associar Conversa",
+      "START_NEW_BUTTON": "Iniciar Nova Conversa"
+    },
     "BACKFILL_MODAL": {
       "ASSIGNEE_LABEL": "Responsável",
       "ASSIGNEE_UNASSIGNED": "Sem dono",
       "CANCEL": "Cancelar",
-      "SUBMIT": "Salvar"
+      "SUBMIT": "Salvar",
+      "CONVERSATIONS_HISTORY_LABEL": "Conversas Associadas",
+      "NO_CONVERSATIONS": "Nenhuma conversa associada a esta oportunidade.",
+      "ACTIVE_CONVERSATION_TAG": "Ativa",
+      "ORIGIN_CONVERSATION_TAG": "Origem",
+      "RESOLVED_STATUS": "Resolvida"
     },
     "DEAL_VALUE": "Valor do Negócio",
     "CAMPAIGN": {

@@ -1,106 +1,99 @@
+# frozen_string_literal: true
+
 class Opportunity < ApplicationRecord
   self.table_name = 'ichatr_opportunities'
+
+  include Custom::Concerns::OpportunityValidations
+  include Custom::Concerns::OpportunityCampaignAttribution
 
   belongs_to :account
   belongs_to :contact
   belongs_to :pipeline_stage
   belongs_to :origin_conversation, class_name: 'Conversation', optional: true
+  belongs_to :active_conversation, class_name: 'Conversation', optional: true
   belongs_to :assignee, class_name: 'User', optional: true
   has_many :stage_changes, class_name: 'OpportunityStageChange', dependent: :destroy
-  has_one_attached :campaign_thumbnail
+  has_many :opportunity_conversations, class_name: 'OpportunityConversation', dependent: :destroy
+  has_many :conversations, through: :opportunity_conversations
 
   enum status: { open: 0, won: 1, lost: 2 }
-
-  validates :title, :contact_id, :pipeline_stage_id, :account_id, presence: true
-  validate :pipeline_stage_belongs_to_account
-  validate :validate_forward_stage_move_requirements, on: :update, if: :pipeline_stage_id_changed?
-  validate :validate_closing_requirements, on: :update, if: :status_changed?
-  validate :validate_origin_conversation_id_immutability, on: :update, if: :origin_conversation_id_changed?
 
   attr_accessor :missing_required_fields
 
   before_save :set_or_clear_closed_at, if: :status_changed?
   before_save :reset_closing_required_attributes, if: :status_changed?
+  before_create :set_default_active_conversation
   after_create :record_initial_stage_change
+  after_create :record_origin_conversation_link
   after_update :record_subsequent_stage_change, if: :saved_change_to_pipeline_stage_id?
   after_commit :broadcast_opportunity_updated, on: %i[create update]
 
-  def thumbnail_url
-    if campaign_thumbnail.attached?
-      Rails.application.routes.url_helpers.rails_blob_url(campaign_thumbnail, only_path: true)
-    else
-      campaign_thumbnail_url
+  def attach_conversation!(conversation, set_active: true)
+    transaction do
+      opportunity_conversations.find_or_create_by!(
+        account_id: account_id,
+        conversation_id: conversation.id
+      ) do |oc|
+        oc.is_origin = (conversation.id == origin_conversation_id)
+      end
+      update!(active_conversation: conversation) if set_active && conversation.open?
+    end
+  end
+
+  def detach_active_conversation!
+    update!(active_conversation: nil) if active_conversation_id.present?
+  end
+
+  def associated_conversations_json
+    opportunity_conversations.includes(conversation: :inbox).order(created_at: :desc).filter_map do |oc|
+      conv = oc.conversation
+      next unless conv
+
+      {
+        'id' => conv.id,
+        'display_id' => conv.display_id,
+        'status' => conv.status,
+        'inbox_id' => conv.inbox_id,
+        'inbox_name' => conv.inbox&.name,
+        'channel_type' => conv.inbox&.channel_type,
+        'created_at' => conv.created_at.to_i,
+        'is_active' => (conv.id == active_conversation_id),
+        'is_origin' => oc.is_origin
+      }
     end
   end
 
   def as_json(options = {})
     super(options).merge(
+      'active_conversation_id' => active_conversation_id,
+      'active_conversation_display_id' => active_conversation&.display_id,
       'origin_conversation_display_id' => origin_conversation&.display_id,
+      'associated_conversations' => associated_conversations_json,
       'created_at' => created_at.to_i,
       'current_stage_entered_at' => stage_changes.order(changed_at: :desc).first&.changed_at&.to_i,
-      'campaign_source_id' => campaign_source_id,
-      'campaign_source_url' => campaign_source_url,
-      'campaign_platform' => campaign_platform,
-      'campaign_name' => campaign_name,
-      'campaign_adset_name' => campaign_adset_name,
-      'campaign_ad_name' => campaign_ad_name,
-      'campaign_headline' => campaign_headline,
-      'campaign_body' => campaign_body,
-      'campaign_thumbnail_url' => thumbnail_url,
-      'campaign_resolution_status' => campaign_resolution_status,
       'contact' => contact_json,
       'assignee' => assignee_json
-    )
+    ).merge(campaign_json)
   end
 
   private
 
-  def pipeline_stage_belongs_to_account
-    return unless account_id && pipeline_stage_id
+  def set_default_active_conversation
+    return if active_conversation_id.present? || origin_conversation_id.blank?
+    return unless origin_conversation&.open?
 
-    return unless pipeline_stage&.account_id != account_id
-
-    errors.add(:pipeline_stage, 'must belong to the same account')
+    self.active_conversation_id = origin_conversation_id
   end
 
-  def validate_forward_stage_move_requirements
-    return if Current.executed_by.is_a?(AutomationRule)
-    return unless pipeline_stage_id_was
+  def record_origin_conversation_link
+    return if origin_conversation_id.blank?
 
-    old_stage = account.pipeline_stages.find_by(id: pipeline_stage_id_was)
-    return unless old_stage && pipeline_stage
-
-    return if pipeline_stage.position <= old_stage.position
-
-    missing_keys = missing_required_keys(pipeline_stage)
-
-    value_missing = pipeline_stage.requires_deal_value? && value.nil?
-
-    return unless missing_keys.any? || value_missing
-
-    self.missing_required_fields = {
-      custom_attribute_keys: missing_keys,
-      requires_value: value_missing
-    }
-    errors.add(:base, 'Missing required fields for this stage')
-  end
-
-  def validate_closing_requirements
-    return if Current.executed_by.is_a?(AutomationRule)
-    return unless status.to_s.in?(%w[won lost])
-
-    missing_keys = []
-    attrs = custom_attributes || {}
-
-    PipelineClosingRequiredField.where(account_id: account_id, outcome: status).each do |req|
-      definition = req.custom_attribute_definition
-      missing_keys << definition.attribute_key unless attrs.key?(definition.attribute_key)
+    opportunity_conversations.find_or_create_by!(
+      account_id: account_id,
+      conversation_id: origin_conversation_id
+    ) do |oc|
+      oc.is_origin = true
     end
-
-    return unless missing_keys.any?
-
-    self.missing_required_fields = { custom_attribute_keys: missing_keys }
-    errors.add(:base, 'Missing required fields to close this opportunity')
   end
 
   def reset_closing_required_attributes
@@ -124,7 +117,6 @@ class Opportunity < ApplicationRecord
     elsif status.to_s == 'open' && status_was.to_s.in?(%w[won lost])
       self.closed_at = nil
     end
-    # won↔lost direct switch: no-op — closed_at left as-is
   end
 
   def record_initial_stage_change
@@ -195,22 +187,5 @@ class Opportunity < ApplicationRecord
     return nil unless assignee
 
     { 'id' => assignee.id, 'name' => assignee.name, 'avatar_url' => assignee.avatar_url }
-  end
-
-  def missing_required_keys(stage)
-    missing_keys = []
-    attrs = custom_attributes || {}
-
-    stage.required_custom_attribute_definitions.each do |definition|
-      missing_keys << definition.attribute_key unless attrs.key?(definition.attribute_key)
-    end
-
-    missing_keys
-  end
-
-  def validate_origin_conversation_id_immutability
-    return if origin_conversation_id_was.nil?
-
-    errors.add(:origin_conversation_id, 'cannot be changed once set')
   end
 end

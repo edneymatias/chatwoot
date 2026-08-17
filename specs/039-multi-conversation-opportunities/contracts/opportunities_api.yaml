@@ -1,0 +1,172 @@
+openapi: 3.0.0
+info:
+  title: Multi-Conversation Opportunity API Contract
+  version: 1.0.0
+paths:
+  /api/v1/accounts/{account_id}/opportunities/{id}:
+    get:
+      summary: Get opportunity details with active and historical conversations
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Opportunity object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Opportunity'
+
+    patch:
+      summary: Update opportunity or link active conversation
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                opportunity:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    active_conversation_id:
+                      type: integer
+                      description: Display ID or Primary Key of the conversation to link as active
+                    pipeline_stage_id:
+                      type: integer
+                    status:
+                      type: string
+                      enum: [open, won, lost]
+      responses:
+        '200':
+          description: Updated opportunity object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Opportunity'
+
+  /api/v1/accounts/{account_id}/opportunities/{id}/link_conversation:
+    post:
+      summary: Explicitly attach and set an active conversation on an opportunity
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - conversation_id
+              properties:
+                conversation_id:
+                  type: integer
+                  description: Display ID or ID of the conversation
+                force_transfer:
+                  type: boolean
+                  default: false
+                  description: Set to true if transferring active link from another opportunity
+      responses:
+        '200':
+          description: Successfully linked conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Opportunity'
+
+components:
+  schemas:
+    AssociatedConversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        display_id:
+          type: integer
+        status:
+          type: string
+          enum: [open, snoozed, resolved]
+        inbox_id:
+          type: integer
+        inbox_name:
+          type: string
+        channel_type:
+          type: string
+        created_at:
+          type: integer
+        is_active:
+          type: boolean
+        is_origin:
+          type: boolean
+
+    Opportunity:
+      type: object
+      properties:
+        id:
+          type: integer
+        account_id:
+          type: integer
+        title:
+          type: string
+        status:
+          type: string
+          enum: [open, won, lost]
+        pipeline_stage_id:
+          type: integer
+        active_conversation_id:
+          type: integer
+          nullable: true
+        active_conversation_display_id:
+          type: integer
+          nullable: true
+        origin_conversation_id:
+          type: integer
+          nullable: true
+        origin_conversation_display_id:
+          type: integer
+          nullable: true
+        associated_conversations:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssociatedConversation'
+        contact:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+            avatar_url:
+              type: string

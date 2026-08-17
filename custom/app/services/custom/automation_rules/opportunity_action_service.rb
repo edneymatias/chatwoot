@@ -3,7 +3,7 @@ class Custom::AutomationRules::OpportunityActionService
     @rule = rule
     @account = account
     @opportunity = opportunity
-    @conversation = opportunity.origin_conversation
+    @conversation = opportunity.active_conversation || opportunity.origin_conversation
     @contact = opportunity.contact
     Current.executed_by = rule
   end

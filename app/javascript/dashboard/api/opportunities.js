@@ -12,6 +12,13 @@ class OpportunitiesAPI extends ApiClient {
     }
     return super.get();
   }
+
+  linkConversation(opportunityId, conversationId, forceTransfer = false) {
+    return axios.post(`${this.url}/${opportunityId}/link_conversation`, {
+      conversation_id: conversationId,
+      force_transfer: forceTransfer,
+    });
+  }
 }
 
 export default new OpportunitiesAPI();

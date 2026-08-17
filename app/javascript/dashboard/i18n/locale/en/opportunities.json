@@ -1,6 +1,7 @@
 {
   "OPPORTUNITIES": {
     "HEADER": "Opportunities",
+    "START_CONVERSATION": "Start conversation",
     "LEAD_COUNT": "{count} Leads",
     "BOARD": {
       "LOADING": "Loading...",
@@ -63,6 +64,17 @@
       "SAVE": "Save Changes",
       "SAVE_SUCCESS": "Saved successfully"
     },
+    "LINK_CONVERSATION_MODAL": {
+      "TITLE": "Associate Conversation",
+      "DESCRIPTION": "Select an open conversation for this contact to associate with this opportunity, or start a new one.",
+      "OPEN_CHATS_LABEL": "Open Conversations",
+      "TRANSFER_WARNING_TITLE": "Conversation currently active elsewhere",
+      "TRANSFER_WARNING_MESSAGE": "This conversation is already actively linked to \"{opportunity}\". Linking it here will disconnect it from that opportunity.",
+      "CONFIRM_TRANSFER": "Transfer & Link",
+      "CANCEL": "Cancel",
+      "LINK_BUTTON": "Link Conversation",
+      "START_NEW_BUTTON": "Start New Conversation"
+    },
     "BACKFILL_MODAL": {
       "CANCEL": "Cancel",
       "SUBMIT": "Save",
@@ -70,7 +82,12 @@
       "ASSIGNEE_UNASSIGNED": "Unassigned",
       "STATUS_LABEL": "Status",
       "STAGE_LABEL": "Pipeline Stage",
-      "DEAL_VALUE_ALWAYS_EDITABLE": "Deal value can be set at any stage."
+      "DEAL_VALUE_ALWAYS_EDITABLE": "Deal value can be set at any stage.",
+      "CONVERSATIONS_HISTORY_LABEL": "Associated Conversations",
+      "NO_CONVERSATIONS": "No conversations associated with this opportunity.",
+      "ACTIVE_CONVERSATION_TAG": "Active",
+      "ORIGIN_CONVERSATION_TAG": "Origin",
+      "RESOLVED_STATUS": "Resolved"
     },
     "DEAL_VALUE": "Deal Value",
     "CAMPAIGN": {

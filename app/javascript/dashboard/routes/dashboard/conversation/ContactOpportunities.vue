@@ -35,12 +35,16 @@ const opportunities = computed(() => {
   if (!currentChatId) return baseOpportunities.value;
 
   const currentMatch = baseOpportunities.value.find(
-    o => o.origin_conversation_display_id === currentChatId
+    o =>
+      o.active_conversation_display_id === currentChatId ||
+      o.active_conversation_id === currentChatId
   );
   if (!currentMatch) return baseOpportunities.value;
 
   const others = baseOpportunities.value.filter(
-    o => o.origin_conversation_display_id !== currentChatId
+    o =>
+      o.active_conversation_display_id !== currentChatId &&
+      o.active_conversation_id !== currentChatId
   );
   return [currentMatch, ...others];
 });
@@ -49,7 +53,10 @@ const isAddDisabled = computed(() => {
   const currentChatId = currentChat.value?.id;
   if (!currentChatId) return false;
   return baseOpportunities.value.some(
-    o => o.origin_conversation_display_id === currentChatId
+    o =>
+      (o.active_conversation_display_id === currentChatId ||
+        o.active_conversation_id === currentChatId) &&
+      o.status === 'open'
   );
 });
 
@@ -122,7 +129,8 @@ onMounted(() => {
         :opportunity="opportunity"
         :is-current-conversation="
           currentChat &&
-          opportunity.origin_conversation_display_id === currentChat.id
+          (opportunity.active_conversation_display_id === currentChat.id ||
+            opportunity.active_conversation_id === currentChat.id)
         "
         @click="openBackfillModal"
       />

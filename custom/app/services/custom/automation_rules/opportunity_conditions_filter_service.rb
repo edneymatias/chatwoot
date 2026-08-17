@@ -6,7 +6,7 @@ class Custom::AutomationRules::OpportunityConditionsFilterService
     @opportunity = opportunity
     @account = opportunity.account
     @options = options
-    @conversation = opportunity.origin_conversation
+    @conversation = opportunity.active_conversation || opportunity.origin_conversation
     @contact = opportunity.contact
   end
 

@@ -141,7 +141,9 @@ Rails.application.routes.draw do
             post :connect, on: :collection
             post :reprocess_pending, on: :collection
           end
-          resources :opportunities, only: [:index, :show, :create, :update, :destroy]
+          resources :opportunities, only: [:index, :show, :create, :update, :destroy] do
+            post :link_conversation, on: :member
+          end
           resources :opportunity_funnel_reports, only: [:index]
           resources :opportunity_attribute_reports, only: [:index]
           resources :sla_policies, only: [:index, :create, :show, :update, :destroy]

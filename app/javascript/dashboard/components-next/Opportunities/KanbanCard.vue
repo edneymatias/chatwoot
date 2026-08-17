@@ -29,20 +29,20 @@ const {
 } = useOpportunityCardFields(toRef(props, 'opportunity'));
 
 const handleCardClick = () => {
-  if (!props.opportunity.origin_conversation_id) return;
+  if (!props.opportunity.active_conversation_id) return;
   router.push({
     name: 'opportunities_conversation',
     params: {
       conversationId:
-        props.opportunity.origin_conversation_display_id ||
-        props.opportunity.origin_conversation_id,
+        props.opportunity.active_conversation_display_id ||
+        props.opportunity.active_conversation_id,
     },
   });
 };
 
 const cardClass = computed(() => {
   let classes = '';
-  if (props.opportunity.origin_conversation_id) {
+  if (props.opportunity.active_conversation_id) {
     classes = 'cursor-pointer hover:bg-n-surface-2 group';
   } else {
     classes = 'cursor-default grayscale border-dashed bg-n-surface-2 group';
@@ -91,7 +91,7 @@ const hasUnmetRequirements = computed(() => {
 
 const hasActions = computed(() => {
   return (
-    !props.opportunity.origin_conversation_id ||
+    !props.opportunity.active_conversation_id ||
     (props.opportunity.status && props.opportunity.status !== 'open') ||
     props.opportunity.status === 'open'
   );
@@ -183,7 +183,7 @@ const hasActions = computed(() => {
     >
       <div class="flex items-center gap-1">
         <StartOpportunityConversationButton
-          v-if="!opportunity.origin_conversation_id"
+          v-if="!opportunity.active_conversation_id"
           :opportunity="opportunity"
         />
         <Button

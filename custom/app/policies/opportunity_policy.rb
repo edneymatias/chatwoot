@@ -19,6 +19,10 @@ class OpportunityPolicy < ApplicationPolicy
     @account_user.present?
   end
 
+  def link_conversation?
+    @account_user.present?
+  end
+
   class Scope < Scope
     def resolve
       scope.where(account_id: account.id)

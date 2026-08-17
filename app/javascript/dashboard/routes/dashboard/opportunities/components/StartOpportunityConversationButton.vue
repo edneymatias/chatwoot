@@ -3,6 +3,7 @@ import { ref, watch, computed } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter, useRoute } from 'vue-router';
 import ComposeConversation from 'dashboard/components-next/NewConversation/ComposeConversation.vue';
+import OpportunityConversationLinkModal from 'dashboard/components-next/Opportunities/OpportunityConversationLinkModal.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 
 const props = defineProps({
@@ -16,8 +17,11 @@ const store = useStore();
 const router = useRouter();
 const route = useRoute();
 
+const isFetching = ref(false);
 const isTracking = ref(false);
-let initialConversationsLength = 0;
+const showLinkModal = ref(false);
+const composeButtonRef = ref(null);
+const knownConversationIds = ref(new Set());
 
 const contactConversations = computed(() => {
   return (
@@ -27,51 +31,97 @@ const contactConversations = computed(() => {
   );
 });
 
-const snapshotConversations = () => {
-  initialConversationsLength = contactConversations.value.length;
-  isTracking.value = true;
-  // ComposeConversation only reads contact details and inboxes already
-  // present on the store's contact record, and the kanban card only carries
-  // a lightweight embedded contact, so both must be fetched before the
-  // popover opens.
-  store.dispatch('contacts/show', { id: props.opportunity.contact_id });
-  store.dispatch(
-    'contacts/fetchContactableInbox',
-    props.opportunity.contact_id
+const openConversations = computed(() => {
+  return contactConversations.value.filter(
+    c => c.status === 'open' || c.status === 0
   );
+});
+
+const triggerCompose = () => {
+  const btn = composeButtonRef.value;
+  if (btn) {
+    btn.click();
+  }
 };
 
-const handleClose = () => {
+const onTriggerClick = async () => {
+  if (isFetching.value) return;
+  isFetching.value = true;
+  isTracking.value = false;
+
+  try {
+    await Promise.all([
+      store.dispatch('contacts/show', { id: props.opportunity.contact_id }),
+      store.dispatch(
+        'contacts/fetchContactableInbox',
+        props.opportunity.contact_id
+      ),
+      store.dispatch('contactConversations/get', props.opportunity.contact_id),
+    ]);
+  } catch (error) {
+    // Continue anyway
+  } finally {
+    isFetching.value = false;
+  }
+
+  // Snapshot current conversation IDs to only detect newly created ones
+  knownConversationIds.value = new Set(
+    contactConversations.value.map(c => c.id)
+  );
+
+  if (openConversations.value.length > 0) {
+    showLinkModal.value = true;
+  } else {
+    isTracking.value = true;
+    triggerCompose();
+  }
+};
+
+const handleStartNew = () => {
+  showLinkModal.value = false;
+  knownConversationIds.value = new Set(
+    contactConversations.value.map(c => c.id)
+  );
+  isTracking.value = true;
+  setTimeout(() => {
+    triggerCompose();
+  }, 100);
+};
+
+const handleCloseCompose = () => {
   isTracking.value = false;
 };
 
 watch(
   contactConversations,
   async newConversations => {
-    if (
-      isTracking.value &&
-      newConversations.length > initialConversationsLength
-    ) {
-      const newConversation = newConversations[newConversations.length - 1];
+    if (!isTracking.value) return;
 
-      // Stop tracking immediately to prevent duplicate triggers
+    const newlyCreated = newConversations.find(
+      c =>
+        !knownConversationIds.value.has(c.id) &&
+        (c.status === 'open' || c.status === 0)
+    );
+
+    if (newlyCreated) {
       isTracking.value = false;
+      knownConversationIds.value.add(newlyCreated.id);
 
       try {
-        await store.dispatch('opportunities/updateOpportunity', {
+        await store.dispatch('opportunities/linkConversation', {
           id: props.opportunity.id,
-          origin_conversation_id: newConversation.id,
+          conversationId: newlyCreated.id,
         });
 
         router.push({
           name: 'opportunities_conversation',
           params: {
             accountId: route.params.accountId,
-            conversationId: newConversation.display_id || newConversation.id,
+            conversationId: newlyCreated.display_id || newlyCreated.id,
           },
         });
       } catch (error) {
-        // Handle error if needed
+        // Continue
       }
     }
   },
@@ -80,24 +130,46 @@ watch(
 </script>
 
 <template>
-  <div @click.stop>
-    <ComposeConversation
-      :contact-id="String(opportunity.contact_id)"
-      align="end"
-      @close="handleClose"
+  <div class="relative" @click.stop>
+    <!-- Visible Trigger Button -->
+    <Button
+      v-tooltip.bottom="
+        $t('OPPORTUNITIES.START_CONVERSATION', 'Start conversation')
+      "
+      variant="ghost"
+      color="slate"
+      size="sm"
+      :is-loading="isFetching"
+      icon="i-lucide-message-square-plus"
+      @click="onTriggerClick"
+    />
+
+    <!-- Compose Popover Anchor -->
+    <div
+      class="absolute inset-0 pointer-events-none opacity-0 w-0 h-0 overflow-hidden"
     >
-      <template #trigger>
-        <Button
-          v-tooltip.bottom="
-            $t('OPPORTUNITIES.START_CONVERSATION', 'Start conversation')
-          "
-          variant="ghost"
-          color="slate"
-          size="sm"
-          icon="i-lucide-message-square-plus"
-          @click="snapshotConversations"
-        />
-      </template>
-    </ComposeConversation>
+      <ComposeConversation
+        :contact-id="String(opportunity.contact_id)"
+        align="end"
+        @close="handleCloseCompose"
+      >
+        <template #trigger>
+          <button
+            ref="composeButtonRef"
+            type="button"
+            class="pointer-events-auto"
+          />
+        </template>
+      </ComposeConversation>
+    </div>
+
+    <!-- Link Modal -->
+    <OpportunityConversationLinkModal
+      v-if="showLinkModal"
+      :opportunity="opportunity"
+      :open-conversations="openConversations"
+      @close="showLinkModal = false"
+      @start-new="handleStartNew"
+    />
   </div>
 </template>
