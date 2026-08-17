@@ -50,6 +50,42 @@ RSpec.describe 'Api::V1::Accounts::PipelineStageRequiredFields', type: :request 
         expect(response).to have_http_status(:success)
         expect(JSON.parse(response.body)['custom_attribute_definition_id']).to eq(custom_attribute.id)
       end
+
+      it 'allows requiring the same attribute across multiple stages without removing from existing stage' do
+        stage2 = PipelineStage.create!(account: account, name: 'Stage 2')
+        PipelineStageRequiredField.create!(
+          account: account,
+          pipeline_stage: pipeline_stage,
+          custom_attribute_definition: custom_attribute
+        )
+
+        expect do
+          post api_v1_account_pipeline_stage_required_fields_url(account_id: account.id, pipeline_stage_id: stage2.id),
+               headers: user.create_new_auth_token,
+               params: { pipeline_stage_required_field: { custom_attribute_definition_id: custom_attribute.id } },
+               as: :json
+        end.to change(PipelineStageRequiredField, :count).by(1)
+
+        expect(response).to have_http_status(:success)
+        expect(pipeline_stage.reload.required_custom_attribute_definitions).to include(custom_attribute)
+        expect(stage2.reload.required_custom_attribute_definitions).to include(custom_attribute)
+      end
+
+      it 'returns unprocessable entity when requiring the same attribute twice on the same stage' do
+        PipelineStageRequiredField.create!(
+          account: account,
+          pipeline_stage: pipeline_stage,
+          custom_attribute_definition: custom_attribute
+        )
+
+        post api_v1_account_pipeline_stage_required_fields_url(account_id: account.id, pipeline_stage_id: pipeline_stage.id),
+             headers: user.create_new_auth_token,
+             params: { pipeline_stage_required_field: { custom_attribute_definition_id: custom_attribute.id } },
+             as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)['error']).to include(I18n.t('errors.pipeline_stage_required_field.already_required'))
+      end
     end
   end
 

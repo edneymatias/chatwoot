@@ -26,7 +26,7 @@ class PipelineStageRequiredField < ApplicationRecord
   validates :pipeline_stage, presence: true
   validates :custom_attribute_definition, presence: true
   validates :custom_attribute_definition_id,
-            uniqueness: { scope: :account_id, message: I18n.t('errors.pipeline_stage_required_field.already_required') }
+            uniqueness: { scope: %i[account_id pipeline_stage_id], message: I18n.t('errors.pipeline_stage_required_field.already_required') }
   validate :definition_must_be_opportunity_attribute
 
   private

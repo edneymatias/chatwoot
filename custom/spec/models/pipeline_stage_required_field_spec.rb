@@ -23,8 +23,16 @@ RSpec.describe PipelineStageRequiredField, type: :model do
 
     it do
       expect(subject).to validate_uniqueness_of(:custom_attribute_definition_id)
-        .scoped_to(:account_id)
+        .scoped_to(%i[account_id pipeline_stage_id])
         .with_message(I18n.t('errors.pipeline_stage_required_field.already_required'))
+    end
+
+    it 'allows the same custom attribute to be required on different pipeline stages' do
+      stage2 = PipelineStage.create!(account: account, name: 'Stage 2')
+      described_class.create!(account: account, pipeline_stage: pipeline_stage, custom_attribute_definition: custom_attribute_definition)
+      record_stage2 = described_class.new(account: account, pipeline_stage: stage2, custom_attribute_definition: custom_attribute_definition)
+
+      expect(record_stage2).to be_valid
     end
   end
 end

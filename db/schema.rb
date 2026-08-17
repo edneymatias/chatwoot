@@ -10,7 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_15_000000) do
+ActiveRecord::Schema[7.1].define(version: 2126_08_17_100000) do
+  create_schema "metabase_cache_0b4bd_2"
+
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1103,7 +1105,7 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_15_000000) do
     t.bigint "custom_attribute_definition_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["account_id", "custom_attribute_definition_id"], name: "idx_ichatr_pipeline_stage_req_fields_on_acc_and_attr_def", unique: true
+    t.index ["account_id", "pipeline_stage_id", "custom_attribute_definition_id"], name: "idx_ichatr_pipeline_stage_req_fields_on_acc_stage_attr", unique: true
     t.index ["account_id"], name: "index_ichatr_pipeline_stage_required_fields_on_account_id"
     t.index ["custom_attribute_definition_id"], name: "idx_on_custom_attribute_definition_id_58716274af"
     t.index ["pipeline_stage_id"], name: "idx_on_pipeline_stage_id_7411855f3b"
@@ -1646,11 +1648,11 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_15_000000) do
 CREATE OR REPLACE FUNCTION public.accounts_after_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
 $function$
   SQL
 
@@ -1663,11 +1665,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.camp_dpid_before_insert()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
 $function$
   SQL
 
@@ -1680,11 +1682,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.campaigns_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
+AS $function$
+BEGIN
+    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
 $function$
   SQL
 
@@ -1697,14 +1699,15 @@ $function$
 CREATE OR REPLACE FUNCTION public.conversations_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
+AS $function$
+BEGIN
+    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
 $function$
   SQL
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER conversations_before_insert_row_tr BEFORE INSERT ON \"conversations\" FOR EACH ROW EXECUTE FUNCTION conversations_before_insert_row_tr()")
+
 end

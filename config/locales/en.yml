@@ -75,7 +75,7 @@ en:
 
   errors:
     pipeline_stage_required_field:
-      already_required: 'is already required in another pipeline stage'
+      already_required: 'is already required in this pipeline stage'
       must_be_opportunity_attribute: 'must be an opportunity attribute'
     pipeline_closing_required_field:
       already_required: 'is already required for this outcome'

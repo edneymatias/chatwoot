@@ -5,11 +5,6 @@ class Api::V1::Accounts::PipelineStageRequiredFieldsController < Api::V1::Accoun
   before_action :check_authorization
 
   def create
-    PipelineStageRequiredField.where(
-      account_id: Current.account.id,
-      custom_attribute_definition_id: required_field_params[:custom_attribute_definition_id]
-    ).destroy_all
-
     @required_field = @pipeline_stage.pipeline_stage_required_fields.build(required_field_params)
     @required_field.account = Current.account
     if @required_field.save

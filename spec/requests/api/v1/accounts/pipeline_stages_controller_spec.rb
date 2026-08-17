@@ -134,6 +134,18 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
       expect(stage2.reload.required_custom_attribute_definitions).to contain_exactly(cad2)
     end
 
+    it 'allows requiring the same custom attribute across multiple stages without clearing other stages' do
+      cad1 = create(:custom_attribute_definition, account: account, attribute_model: 'opportunity_attribute', attribute_key: 'shared_attr')
+      stage1.pipeline_stage_required_fields.create!(account: account, custom_attribute_definition: cad1)
+
+      payload = { pipeline_stage: { name: 'Stage 2 With Shared Attr', required_custom_attribute_definition_ids: [cad1.id] } }.to_json
+      patch "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage2.id}", headers: headers_admin, params: payload
+      expect(response).to have_http_status(:ok)
+
+      expect(stage1.reload.required_custom_attribute_definitions).to contain_exactly(cad1)
+      expect(stage2.reload.required_custom_attribute_definitions).to contain_exactly(cad1)
+    end
+
     it 'reorders stages and returns an array when position is changed' do
       patch "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage3.id}", headers: headers_admin, params: { pipeline_stage: { position: 1 } }.to_json
       expect(response).to have_http_status(:ok)

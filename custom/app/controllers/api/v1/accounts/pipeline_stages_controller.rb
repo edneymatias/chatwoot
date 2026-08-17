@@ -77,9 +77,6 @@ class Api::V1::Accounts::PipelineStagesController < Api::V1::Accounts::BaseContr
 
   def sync_required_attributes(stage, attr_ids)
     attr_ids = Array(attr_ids).map(&:to_i).compact_blank
-    PipelineStageRequiredField.where(account_id: Current.account.id, custom_attribute_definition_id: attr_ids)
-                              .where.not(pipeline_stage_id: stage.id)
-                              .destroy_all
     stage.pipeline_stage_required_fields.where.not(custom_attribute_definition_id: attr_ids).destroy_all
     existing_ids = stage.pipeline_stage_required_fields.pluck(:custom_attribute_definition_id)
     (attr_ids - existing_ids).each do |cad_id|

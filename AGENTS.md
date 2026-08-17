@@ -41,9 +41,11 @@ commands with `docker compose exec <service>`.
   - UI path: Super Admin → Accounts → Seed (enqueues `Internal::SeedAccountJob`).
   - CLI path: `docker compose exec rails bundle exec rails runner "Internal::SeedAccountJob.perform_now(Account.find(<id>))"` (or call `Seeders::AccountSeeder.new(account: Account.find(<id>)).perform!` directly).
 - **Lint JS/Vue**: `docker compose exec vite pnpm eslint` / `docker compose exec vite pnpm eslint:fix`
-- **Lint Ruby**: `docker compose exec rails bundle exec rubocop -a`
-- **Test JS**: `docker compose exec vite pnpm test` or `docker compose exec vite pnpm test:watch`
-- **Test Ruby**: `docker compose exec rails env -u FRONTEND_URL RAILS_ENV=test bundle exec rspec spec/path/to/file_spec.rb`
+- **Lint Ruby (Full Global Check)**: `docker compose exec rails bundle exec rubocop` (must pass 100% clean across all 2,800+ files to match CI)
+- **Lint Ruby (Auto-fix)**: `docker compose exec rails bundle exec rubocop -a`
+- **Test JS (Full Suite)**: `docker compose exec vite pnpm test` or `docker compose exec vite pnpm test:watch`
+- **Test Ruby (Full Suite)**: `docker compose exec rails env -u FRONTEND_URL RAILS_ENV=test bundle exec rspec`
+- **Test Ruby (Targeted Custom/Kanban & Modified Modules)**: `docker compose exec rails env -u FRONTEND_URL RAILS_ENV=test bundle exec rspec custom/spec/ spec/models/opportunity_spec.rb spec/services/automation_rules/conditions_filter_service_spec.rb spec/requests/api/v1/accounts/pipeline_stages_controller_spec.rb`
 - **Single Test**: `docker compose exec rails env -u FRONTEND_URL RAILS_ENV=test bundle exec rspec spec/path/to/file_spec.rb:LINE_NUMBER`
 - **Test env caveat**: the compose services inject `.env` plus `RAILS_ENV=development` into every
   `docker compose exec` process. Running rspec without the `env -u FRONTEND_URL RAILS_ENV=test`
@@ -132,8 +134,14 @@ commands with `docker compose exec <service>`.
 
 ## Release Process
 
-- Prerequisites: working tree clean on `ichatr-main`, test suites green (`bundle exec rspec`,
-  `pnpm test`).
+- **Mandatory Pre-Release Verification Checklist** (must run and pass locally before cutting/tagging any release):
+  1. **Working tree clean** on `ichatr-main`.
+  2. **Full Frontend Lint**: `docker compose exec vite pnpm eslint` (0 errors).
+  3. **Full Frontend Test Suite**: `docker compose exec vite pnpm test` (all tests passing).
+  4. **Full Backend Lint (RuboCop Global)**: `docker compose exec rails bundle exec rubocop` (must pass with 0 offenses across the entire repository, exactly matching the `lint-backend` CI job).
+  5. **Full / Comprehensive Backend Test Suite**: Run `docker compose exec rails env -u FRONTEND_URL RAILS_ENV=test bundle exec rspec` (or at minimum the full suite of custom and modified core models/controllers: `custom/spec/ spec/models/opportunity_spec.rb spec/services/automation_rules/conditions_filter_service_spec.rb spec/requests/api/v1/accounts/pipeline_stages_controller_spec.rb`).
+  6. **Sync Hooks Audit**: `docker compose exec rails ruby bin/sync-custom-module-hooks --check && docker compose exec rails ruby bin/sync-custom-module-hooks --audit` (all wiring points present, 0 gaps).
+  7. **Explicit User Approval**: Ask and obtain explicit user validation before executing release commands.
 - Run `bin/ichatr-release`; it computes the next `<upstream-base-version>-ichatr.<N>` tag (see
   Fork Versioning Scheme above) and the changelog range for it, and asks for confirmation before
   creating and pushing the tag.

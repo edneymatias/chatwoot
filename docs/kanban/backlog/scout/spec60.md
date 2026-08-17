@@ -1,15 +1,17 @@
-# Especificação Técnica: Motor de Agentes IA (Bot Comercial & Multiuso)
+# Especificação Técnica: Scout — Motor de Agentes IA (Qualificação Comercial & Multiuso)
 
-**Status**: Backlog / Especificação Consolidada  
-**Data**: 2026-08-16  
-**Contexto**: Implementação nativa de um motor de Inteligência Artificial / Agente autônomo para o Chatwoot, com suporte a múltiplos cenários, focado primariamente na qualificação comercial integrada ao funil de Oportunidades (Kanban), suporte a Tool Calling nativo, preservação de atribuição de anúncios (Meta CTWA / Referral), chamadas de APIs REST / Webhooks para máxima flexibilidade e convivência elegante com atendentes humanos.
+**Status**: Backlog / Especificação Consolidada — **revisada** contra o código real do fork  
+**Data**: 2026-08-16 (revisão técnica em 2026-08-17)  
+**Contexto**: Implementação nativa de um motor de Inteligência Artificial / Agente autônomo para o Chatwoot, batizado **Scout** ("o batedor que vai na frente qualificando os potenciais clientes"), com suporte a múltiplos cenários, focado primariamente na qualificação comercial integrada ao funil de Oportunidades (Kanban), suporte a Tool Calling nativo, preservação de atribuição de anúncios (Meta CTWA / Referral), chamadas de APIs REST / Webhooks para máxima flexibilidade e convivência elegante com atendentes humanos.
+
+> **Nota de revisão**: este documento foi confrontado linha a linha com o código atual do fork. Pontos corrigidos ou reavaliados estão marcados com `> ⚠️ Revisão:`. A premissa de arquitetura que rege todas as correções é **minimizar a superfície de acoplamento com o upstream** — o fork não pode se desacoplar 100%, mas cada decisão de design deve reduzir os pontos de contato com `enterprise/` e evitar modificar arquivos core quando uma extensão em `custom/` resolve o mesmo problema.
 
 ---
 
 ## 1. Visão Geral e Propósito
 
 O objetivo é criar uma alternativa nativa e robusta inspirada no conceito do Captain/Agentes do Chatwoot, porém:
-1. **Focada no Funil Comercial**: Alinhamento direto com o módulo de Oportunidades (`Opportunity`, `Pipeline`, `PipelineStage`), capaz de realizar triagem de qualificação (dor, orçamento, autoridade, timing, interesse, origem de campanha) e avançar/desqualificar leads no Kanban.
+1. **Focada no Funil Comercial**: Alinhamento direto com o módulo de Oportunidades (`Opportunity`, `PipelineStage` — não existe model `Pipeline` separado neste fork, o funil é modelado apenas pelas etapas posicionais de `PipelineStage`), capaz de realizar triagem de qualificação (dor, orçamento, autoridade, timing, interesse, origem de campanha) e avançar/desqualificar leads no Kanban.
 2. **Preservação de Atribuição de Campanha & Anúncios (Meta CTWA / Referral)**: Garantia de que a origem do anúncio (criativo, thumbnail, headline, ID do anúncio) seja mantida intacta e vinculada à oportunidade no Kanban, mesmo após dezenas de mensagens trocadas com o bot.
 3. **Não Limitada ao Comercial**: Arquitetura desacoplada e extensível para suportar múltiplos assistentes e cenários (suporte N1, triagem, agendamento de reuniões, onboarding).
 4. **Orientada a Metas e Ferramentas (Goal-Driven + Tool Calling)**: Conversação fluida e natural, com capacidade de invocar ferramentas nativas em Ruby e APIs REST / Webhooks externas configuráveis de forma simples e rápida (com suporte futuro/opcional ao protocolo MCP).
@@ -20,6 +22,8 @@ O objetivo é criar uma alternativa nativa e robusta inspirada no conceito do Ca
 ---
 
 ## 2. Preservação de Atribuição Meta/WhatsApp (CTWA, Criativos e Campanhas)
+
+> ⚠️ **Revisão**: esta seção descreve um pipeline que **já está implementado e em produção** neste fork — `Custom::ReferralAttributionService` (`custom/app/services/custom/referral_attribution_service.rb`) e `Custom::AutomationRules::ActionService#find_referral_message` / `#create_opportunity` (`custom/app/services/custom/automation_rules/action_service.rb:10-42`) já extraem plataforma, `campaign_source_id`, `ad_id`, headline, body e thumbnail do referral, distinguem tráfego orgânico de pago (`organic_referral?`) e persistem tudo na `Opportunity`, com idempotência por `origin_conversation_id`. **O Scout não deve reimplementar esta lógica.** A ferramenta nativa `manage_opportunity` (seção 10) deve chamar esses serviços existentes, não recriar a query SQL abaixo.
 
 Quando um lead entra via anúncio de WhatsApp (Click to WhatsApp - CTWA) ou post orgânico do Instagram/Facebook, a primeira mensagem recebida carrega o payload `referral` nos `content_attributes`.
 
@@ -60,6 +64,12 @@ Lead clica no Anúncio ──► Msg 1 com Referral (Criativo/Headline) ──�
 - **Licença do Chatwoot Core (MIT Expat)**: Todo o código do Chatwoot fora da pasta `enterprise/` é licenciado sob a licença **MIT** (veja [`LICENSE`](file:///home/matias/dev/chatwoot/LICENSE)). A licença MIT garante total liberdade para modificar, criar novos recursos, comercializar e distribuir sem restrições.
 - **Isolamento em `custom/`**: Todo o motor de IA e as ferramentas comerciais residem no diretório `custom/`, consumindo apenas interfaces e models abertos.
 
+> ⚠️ **Revisão — Minimização de acoplamento com upstream**: além de não copiar código de `enterprise/`, o Scout deve minimizar a superfície de contato com o core sempre que uma alternativa em `custom/` resolver o mesmo problema, mesmo sabendo que o desacoplamento total não é possível:
+> - **Não adicionar colunas em tabelas core** (`inboxes`, `conversations`, `accounts`) para necessidades do Scout — usar tabelas próprias (`ichatr_scouts`, `ichatr_scout_inboxes`) com FKs para as tabelas core, como já é o padrão de `Opportunity`/`PipelineStage`.
+> - **Consumir apenas interfaces públicas e estáveis do core**, como `conversation.bot_handoff!` (`app/models/conversation.rb:175-180`, método genérico e não específico do Captain) e o dispatcher de eventos — nunca herdar de/depender de classes de `enterprise/` (`HookExecutionService`, `Llm::BaseAiService`, `Captain::Tools::*`), que são referência de leitura, não base de código.
+> - **Preferir dependências já vendorizadas e públicas** (ex: gem `ruby_llm`, ver seção 6) a reimplementar integrações que o core/Gemfile já resolve.
+> - Isso reduz o risco de quebra em cada sync com o upstream (`git merge --no-ff <tag>`) e mantém o Scout auditável/removível de forma isolada.
+
 ### 3.2. 🚫 Diretrizes Estritas: O que NÃO Fazer
 1. **NÃO copiar código da pasta `enterprise/`**: Todo o motor de IA é escrito do zero de forma limpa na pasta `custom/`.
 2. **NÃO tentar burlar verificações de licença da pasta `enterprise/`**: Não criar patches para burlar limites do Enterprise oficial da Chatwoot Cloud.
@@ -74,10 +84,12 @@ Lead clica no Anúncio ──► Msg 1 com Referral (Criativo/Headline) ──�
 Conforme mapeado no código oficial do Chatwoot (`HookExecutionService`, `Inbox`, `PlanUsageAndLimits`):
 - **Unidade de Medida**: Controlado por `captain_responses` (respostas geradas pelo bot) e `captain_documents` (limite de itens no RAG).
 - **Validação em Tempo Real**: O Chatwoot verifica `inbox.captain_active?` (`account.usage_limits[:captain][:responses][:current_available].positive?`).
-- **Ao esgotar o saldo (`current_available <= 0`)**: O Chatwoot dispara `perform_handoff`:
+- **Ao esgotar o saldo (`current_available <= 0`)**: O Chatwoot dispara `perform_handoff` (`enterprise/app/services/enterprise/message_templates/hook_execution_service.rb:56-68`):
   1. Envia mensagem ao cliente: *"Transferring to another agent for further assistance."*
-  2. Executa `conversation.bot_handoff!`, alterando o status de `pending` para **`open`** e abrindo a conversa na fila humana.
+  2. Executa `conversation.bot_handoff!`, abrindo a conversa na fila humana.
   3. Se fora do expediente, envia mensagem de ausência (`OutOfOffice`).
+
+> ⚠️ **Revisão**: `bot_handoff!` (`app/models/conversation.rb:175-180`) é um método **genérico do core**, sem guarda de status `pending` embutida — ele apenas seta `waiting_since` se vazio, limpa `assignee_agent_bot`, chama `open!` e dispara o evento `CONVERSATION_BOT_HANDOFF`. A checagem de `conversation.pending?` acontece em `perform_handoff` (código Enterprise), antes de chamar o método. O Scout deve replicar essa checagem no seu próprio fluxo (seção 4.2), não assumir que `bot_handoff!` a faz.
 
 ### 4.2. Nossa Abordagem de Fail-Safe Handoff (Ichatr Bot)
 Garantimos que **nenhuma conversa jamais fique presa em `pending` ou seja perdida**:
@@ -106,8 +118,9 @@ Garantimos que **nenhuma conversa jamais fique presa em `pending` ou seja perdid
 │ ⏰ Horário Comercial          │ Concern `OutOfOffisable`          │ Consulta `inbox.out_of_office?` e │
 │    (Business Hours)           │ (`Inbox#working_hours_enabled?`)  │ instrui o prompt automaticamente. │
 ├───────────────────────────────┼───────────────────────────────────┼───────────────────────────────────┤
-│ 🪃 Follow-up de Resgate       │ Jobs Agendados do Sidekiq         │ `FollowUpSchedulerJob` detecta    │
-│    (Leads parados na triagem) │                                   │ oportunidades paradas e re-engaja.│
+│ 🪃 Follow-up de Resgate       │ Sidekiq (infra genérica de jobs   │ Novo job `Scout::FollowUpJob`     │
+│    (Leads parados na triagem) │ agendados, sem job pronto p/ isso)│ (a criar do zero) detecta         │
+│                               │                                   │ oportunidades paradas e re-engaja.│
 ├───────────────────────────────┼───────────────────────────────────┼───────────────────────────────────┤
 │ 🛡️ Fail-Safe sem Saldo        │ `conversation.bot_handoff!`       │ Força status para `open` e cria   │
 │                               │                                   │ Nota Privada amarela de alerta.   │
@@ -120,6 +133,8 @@ Garantimos que **nenhuma conversa jamais fique presa em `pending` ou seja perdid
 ---
 
 ## 6. Estratégia de Chaves & Modelo de Consumo (BYOK vs. Sistema)
+
+> ⚠️ **Revisão — Gateway LLM**: o `Gemfile` já declara `gem 'ruby_llm', '>= 1.14.1'` (resolvido em `1.15.0`, `Gemfile.lock:855`) e `ruby_llm-schema`, uma gem **pública/MIT multi-provider** (OpenAI, Anthropic, Gemini, Ollama, OpenRouter) com tool-calling nativo e suporte a anexos multimodais já unificado. **Isso elimina a necessidade de construir um "LLM Gateway All-in-One" do zero** (como planejado originalmente na Fase 1 do roadmap, seção 11) — o Scout deve consumir `ruby_llm` diretamente para chamadas de provedor, e reservar código próprio apenas para orquestração (Context Builder, Tool Executor, debounce, fail-safe), que é onde está o valor real deste motor. Isso também reduz a superfície de acoplamento com o upstream: menos código próprio para manter, mais uma dependência pública já auditada pelo ecossistema Rails.
 
 Para evitar que o cliente final precise contratar múltiplos serviços separados (transcrição, visão, texto):
 
@@ -147,7 +162,7 @@ A interface do Assistente na Dashboard (Vue 3 + Tailwind) é projetada especific
 - **FAQ Comercial & Tratamento de Objeções**: Perguntas e respostas focadas em objeções comuns (*"por que é mais caro que o concorrente X?"*, *"qual o prazo de entrega/implantação?"*).
 
 ### 7.3. Configuração do Funil & Critérios de Qualificação
-- **Funil Vinculado**: Seleção do Pipeline de Vendas e da Etapa de Triagem inicial.
+- **Etapas Vinculadas**: Seleção da Etapa de Triagem inicial, Etapa de Qualificado e Etapa de Descarte (não há seleção de "Pipeline" separado — este fork modela o funil apenas via `PipelineStage`).
 - **Campos de Qualificação Obrigatórios**: Seleção dos atributos a extrair (ex: Dor principal, Orçamento estimado, Prazo de decisão, Decisor final).
 - **Regras de Descarte / Sucesso**: Para qual etapa mover quando qualificado vs. qual etapa mover quando sem fit (com motivo de perda).
 
@@ -160,18 +175,18 @@ flowchart TD
     subgraph Chatwoot_Core["Chatwoot Core / Events"]
         Msg[Incoming Message com Referral] --> Event[Event Dispatcher / Hook]
         Event --> RedisDebounce[Redis Debounce Buffer: 5s]
-        RedisDebounce --> Job[AI::ProcessMessageJob]
+        RedisDebounce --> Job[Scout::ProcessMessageJob]
     end
 
-    subgraph AI_Engine["Ichatr AI Engine (Rails custom/)"]
-        Job --> AgentRunner[AI::AgentRunner]
-        AgentRunner --> BalanceCheck{Saldo OK / Chave Válida?}
+    subgraph Scout_Engine["Scout Engine (Rails custom/)"]
+        Job --> AgentRunner[Scout::AgentRunner]
+        AgentRunner --> BalanceCheck{Cota/Saldo OK / Chave Válida?}
         BalanceCheck -- NÃO --> FailSafe[Fail-Safe: Status OPEN + Nota de Alerta]
         BalanceCheck -- SIM --> Attachments[Verifica Attachments: Áudio / Imagem]
         Attachments --> HoursCheck[Verifica Inbox.out_of_office?]
         HoursCheck --> ContextBuilder[Context Builder: Persona + Produtos + RAG]
-        ContextBuilder --> LLMClient[Multi-Provider LLM Gateway: Gemini / OpenAI / Claude]
-        LLMClient --> ToolExec[AI::ToolExecutor]
+        ContextBuilder --> LLMClient[ruby_llm: Gemini / OpenAI / Claude / Ollama]
+        LLMClient --> ToolExec[Scout::ToolExecutor]
     end
 
     subgraph Tool_System["Tool System: Nativas + REST APIs"]
@@ -191,16 +206,17 @@ flowchart TD
 
 ## 9. Modelagem de Dados Proposta
 
-### 9.1. `Ai::Assistant` (`ichatr_ai_assistants`)
+> ⚠️ **Revisão**: namespace `Ai::` trocado por classes flat (`Scout`, `ScoutInbox`, `ScoutTool`), alinhado à branding do produto e à convenção já usada por `Opportunity`/`PipelineStage` (sem módulo aninhado). `pipeline_id` removido — **não existe model `Pipeline`** neste fork; o funil é modelado apenas por `PipelineStage` (posicional, sem conceito de "funil" separado) e `Opportunity.status` (`open/won/lost`). Campos de cota/crédito adicionados (ver seção 4.3, nova). Migrations seguem o padrão do fork: timestamp `21260...`, tabelas prefixadas `ichatr_`.
+
+### 9.1. `Scout` (`ichatr_scouts`)
 - `account_id` (integer, indexed)
 - `name` (string): Ex: "SDR Qualificador Comercial"
 - `description` (text)
 - `system_prompt` (text): Instruções da persona, regras de qualificação.
 - `provider` (string): `gemini`, `openai`, `anthropic`, `openrouter`, `ollama`
 - `model_name` (string): `gemini-2.0-flash`, `gpt-4o-mini`, `claude-3-5-sonnet`, etc.
-- `api_key_override` (string, encrypted): Suporte a BYOK por assistente/conta.
+- `api_key_override` (string, **`encrypts`, obrigatório** — ver seção 4.3): Suporte a BYOK por assistente/conta.
 - `temperature` (float, default: 0.2)
-- `pipeline_id` (bigint, optional): Funil comercial vinculado.
 - `default_pipeline_stage_id` (bigint, optional): Etapa inicial de triagem.
 - `qualified_stage_id` (bigint, optional): Etapa para onde mover lead qualificado.
 - `unqualified_stage_id` (bigint, optional): Etapa de descarte (Perdido).
@@ -212,19 +228,34 @@ flowchart TD
 - `follow_up_delay_hours` (integer, default: 24): Horas para disparo de re-engajamento.
 - `auto_pause_on_human_message` (boolean, default: true)
 - `active` (boolean, default: true)
+- `responses_quota` (integer, default: `-1`): Cota de respostas geradas. `-1` = ilimitado (override para testes/planos sem billing). Ver seção 4.3.
+- `responses_consumed` (integer, default: `0`): Contador incremental de respostas geradas pelo Scout.
 
-### 9.2. `Ai::AssistantInbox` (`ichatr_ai_assistant_inboxes`)
-- Tabela pivô associando `ai_assistant_id` com `inbox_id`.
+### 9.2. `ScoutInbox` (`ichatr_scout_inboxes`)
+- Tabela pivô associando `scout_id` com `inbox_id`. Evita adicionar coluna em `inboxes` (core) — ver princípio de minimização de acoplamento, seção 3.2.
 
-### 9.3. `Ai::CustomApiTool` (`ichatr_ai_custom_api_tools`)
+### 9.3. `ScoutTool` (`ichatr_scout_tools`)
 - `account_id` (integer)
 - `name` (string): Ex: "Consultar Estoque / ERP"
 - `description` (text): Descrição para o LLM saber quando chamar a ferramenta.
 - `endpoint_url` (string): URL da API REST.
 - `http_method` (string, default: `'POST'`): `GET`, `POST`, `PUT`.
-- `auth_headers` (jsonb, encrypted): Headers HTTP de autenticação.
+- `auth_headers` (jsonb, **`encrypts`, obrigatório** — ver seção 4.3): Headers HTTP de autenticação.
 - `parameters_schema` (jsonb): Schema JSON dos parâmetros extraídos pelo LLM.
 - `enabled` (boolean, default: true)
+
+### 9.4. Migration adicional em `Opportunity` (core do Kanban, tabela custom já existente)
+- `lost_reason` (string, optional): necessário para a ferramenta nativa `move_opportunity_stage` (seção 10) registrar o motivo de descarte. Não existe hoje em `custom/app/models/opportunity.rb` — nova migration `ichatr_` sob `custom/`, sem tocar em tabelas core.
+
+## 4.3. Cota de Respostas (Groundwork para Billing Futuro)
+
+> Estrutura rudimentar e deliberadamente simples — **sem validação de assinatura/cobrança nesta fase**. O objetivo é ter o campo de dados e o ponto de checagem prontos para quando uma fase de billing for introduzida, sem bloquear o lançamento do Scout.
+
+- `Scout#quota_available?` — `responses_quota == -1 || responses_consumed < responses_quota`.
+- Checado no `BalanceCheck` do fluxo Fail-Safe (seção 4.2, diagrama seção 8) junto com a validação de chave de API.
+- `responses_consumed` incrementado a cada resposta gerada pelo `Scout::AgentRunner` (uma unidade por turno de resposta do LLM, análogo a `captain_responses` do Captain oficial — ver seção 4.1).
+- `-1` é o valor usado para desbloquear cota ilimitada em ambientes de teste/desenvolvimento e para contas sem controle de billing ativo.
+- Fase futura de billing (fora de escopo aqui) consome os mesmos campos: validação de plano/assinatura passa a decidir o valor de `responses_quota`, sem mudança de schema.
 
 ---
 
@@ -247,10 +278,12 @@ flowchart TD
 
 ## 11. Roadmap de Implementação
 
-- [ ] **Fase 1**: Backend Core, Migrations sob `custom/` & LLM Gateway All-in-One com Tool Calling (Gemini, OpenAI, Claude, Ollama).
-- [ ] **Fase 2**: Debounce no Redis (`ProcessMessageJob`), suporte a áudio/visão, Business Hours e Fail-Safe Handoff.
-- [ ] **Fase 3**: Implementação das Ferramentas Nativas Ruby para Oportunidades (`Opportunity`) com garantia de Atribuição Meta/Referral, Contatos e Notas Privadas.
-- [ ] **Fase 4**: Executor de Ferramentas Externas REST / Webhooks.
-- [ ] **Fase 5**: Interface Web (Vue 3 + Tailwind) para gestão de Assistentes, catálogo de produtos/ofertas, RAG comercial, configuração do Funil e Playground de teste.
-- [ ] **Fase 6**: Componentes de UI na Conversa (Badge de Status da IA, botão Pausar/Retomar e link para o card no Kanban).
-- [ ] **Fase 7**: Job de Follow-up / Re-engajamento, telemetria de tokens e testes ponta a ponta.
+> ⚠️ **Revisão**: fases reordenadas e escopo ajustado após a revisão técnica desta seção. A Fase 1 não inclui mais um "LLM Gateway All-in-One" (a gem `ruby_llm` já resolve isso — seção 6), e uma nova Fase 3 de Hardening de Produção foi inserida antes de qualquer fase que grave campos criptografados (`api_key_override`, `auth_headers`) em produção, por depender do item de backlog [`11-production-secrets-encryption-hardening`](../11-production-secrets-encryption-hardening/spec61.md) (chaves de `ActiveRecord::Encryption` ausentes no Swarm de produção).
+
+- [ ] **[Fase 1 — Core & Modelo de Dados](01-core-and-data-model/spec62.md)**: Migrations sob `custom/` (`Scout`, `ScoutInbox`, `ScoutTool`, `lost_reason` em `Opportunity`), integração com `ruby_llm` para chamadas multi-provider e tool-calling (Gemini, OpenAI, Claude, Ollama), campos de cota (`responses_quota`/`responses_consumed`, seção 4.3).
+- [ ] **[Fase 2 — Ferramentas Nativas & Pipeline](02-native-tools-and-pipeline/spec63.md)**: Implementação das ferramentas Ruby para Oportunidades (`manage_opportunity`, `move_opportunity_stage`, `update_contact`, `create_private_note`, `handover_to_human`), reutilizando `Custom::ReferralAttributionService` para atribuição Meta/Referral (seção 2) e o Fail-Safe Handoff (seção 4.2/4.3).
+- [ ] **[Fase 3 — Hardening de Produção](03-production-hardening/spec64.md)** *(bloqueante para dados sensíveis)*: Resolver `ActiveRecord::Encryption` em produção (Docker Swarm secrets ou `environment:`) antes de habilitar `api_key_override`/`auth_headers` em ambiente real — depende do backlog [`11-production-secrets-encryption-hardening`](../11-production-secrets-encryption-hardening/spec61.md).
+- [ ] **[Fase 4 — Tool REST/Webhook Externa](04-external-rest-webhook-tool/spec65.md)**: Executor de Ferramentas Externas REST / Webhooks (`call_custom_api`, `ScoutTool`).
+- [ ] **[Fase 5 — UI Comercial](05-commercial-ui/spec66.md)**: Interface Web (Vue 3 + Tailwind) para gestão de Scouts, catálogo de produtos/ofertas, RAG comercial, configuração do Funil e Playground de teste.
+- [ ] **[Fase 6 — UI na Conversa](06-in-conversation-ui/spec67.md)**: Componentes de UI na Conversa (Badge de Status do Scout, botão Pausar/Retomar e link para o card no Kanban).
+- [ ] **[Fase 7 — Follow-up, Telemetria & E2E](07-follow-up-telemetry-e2e/spec68.md)**: Job de Follow-up / Re-engajamento (`Scout::FollowUpJob`, a criar do zero — seção 5), telemetria de tokens/cota e testes ponta a ponta.

@@ -95,4 +95,79 @@ RSpec.describe Opportunity, type: :model do
       opp.update!(pipeline_stage: new_stage, status: 'won')
     end
   end
+
+  describe 'validate_forward_stage_move_requirements' do
+    let(:account) { create(:account) }
+    let(:contact) { create(:contact, account: account) }
+    let(:stage1) { account.pipeline_stages.create!(name: 'Stage 1', position: 1) }
+    let(:stage2) { account.pipeline_stages.create!(name: 'Stage 2', position: 2) }
+    let(:stage3) { account.pipeline_stages.create!(name: 'Stage 3', position: 3) }
+    let(:custom_attr) do
+      create(:custom_attribute_definition,
+             account: account,
+             attribute_model: 'opportunity_attribute',
+             attribute_key: 'budget_confirmed',
+             attribute_display_type: 'checkbox')
+    end
+
+    before do
+      stage2.pipeline_stage_required_fields.create!(account: account, custom_attribute_definition: custom_attr)
+      stage3.pipeline_stage_required_fields.create!(account: account, custom_attribute_definition: custom_attr)
+    end
+
+    it 'blocks forward move to stage2 when the required attribute is missing' do
+      opp = described_class.create!(account: account, contact: contact, pipeline_stage: stage1, title: 'Opp 1')
+
+      opp.pipeline_stage = stage2
+      expect(opp).not_to be_valid
+      expect(opp.errors[:base]).to include('Missing required fields for this stage')
+      expect(opp.missing_required_fields[:custom_attribute_keys]).to include('budget_confirmed')
+    end
+
+    it 'allows forward move to stage2 when the required attribute is provided' do
+      opp = described_class.create!(account: account, contact: contact, pipeline_stage: stage1, title: 'Opp 1')
+
+      opp.update!(pipeline_stage: stage2, custom_attributes: { 'budget_confirmed' => true })
+      expect(opp.reload.pipeline_stage_id).to eq(stage2.id)
+    end
+
+    it 'allows subsequent forward move to stage3 without re-blocking when the attribute was already populated' do
+      opp = described_class.create!(
+        account: account,
+        contact: contact,
+        pipeline_stage: stage1,
+        title: 'Opp 1',
+        custom_attributes: { 'budget_confirmed' => true }
+      )
+
+      opp.update!(pipeline_stage: stage2)
+      expect(opp.reload.pipeline_stage_id).to eq(stage2.id)
+
+      opp.update!(pipeline_stage: stage3)
+      expect(opp.reload.pipeline_stage_id).to eq(stage3.id)
+    end
+
+    it 'skips forward move validation when moving backward' do
+      opp = described_class.create!(
+        account: account,
+        contact: contact,
+        pipeline_stage: stage3,
+        title: 'Opp 1',
+        custom_attributes: { 'budget_confirmed' => true }
+      )
+
+      opp.update!(pipeline_stage: stage1, custom_attributes: {})
+      expect(opp.reload.pipeline_stage_id).to eq(stage1.id)
+    end
+
+    it 'bypasses validation when executed by an automation rule' do
+      opp = described_class.create!(account: account, contact: contact, pipeline_stage: stage1, title: 'Opp 1')
+      rule = create(:automation_rule, account: account)
+
+      allow(Current).to receive(:executed_by).and_return(rule)
+
+      expect(opp.update(pipeline_stage: stage2)).to be(true)
+      expect(opp.reload.pipeline_stage_id).to eq(stage2.id)
+    end
+  end
 end
