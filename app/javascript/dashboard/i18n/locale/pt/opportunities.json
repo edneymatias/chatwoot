@@ -1,5 +1,8 @@
 {
   "OPPORTUNITIES": {
+    "HEADER": "Oportunidades",
+    "START_CONVERSATION": "Iniciar conversa",
+    "LEAD_COUNT": "{count} Oportunidades",
     "BOARD": {
       "LOADING": "Carregando...",
       "STATUS": {
@@ -15,7 +18,12 @@
         "EDIT": "Editar"
       },
       "TIME_IN_STAGE": "Tempo neste estágio",
-      "TIME_SINCE_CREATED": "Tempo desde a criação"
+      "CREATED_TOOLTIP": "Criado em {date}",
+      "CREATED_LABEL": "Criado",
+      "STAGE_INFO": {
+        "INFO_TOOLTIP": "Descrição do estágio",
+        "EMPTY_STATE": "Adicione uma descrição na configuração dos estágios do funil para visualizá-la aqui."
+      }
     },
     "CREATE_MODAL": {
       "TITLE": "Criar Oportunidade",
@@ -27,8 +35,14 @@
       "NO_RESULTS": "Nenhum contato encontrado.",
       "STAGE_LABEL": "Estágio do Pipeline",
       "STAGE_PLACEHOLDER": "Selecione um estágio...",
+      "ASSIGNEE_LABEL": "Responsável",
+      "ASSIGNEE_UNASSIGNED": "Sem dono",
       "CANCEL": "Cancelar",
       "SUBMIT": "Criar"
+    },
+    "LIST": {
+      "EMPTY_STATE": "Nenhuma oportunidade encontrada.",
+      "RETRY": "Tentar novamente"
     },
     "SETTINGS": {},
     "DETAIL": {
@@ -44,34 +58,138 @@
       "REQUIRED_SECTION": "Obrigatório para este estágio",
       "OPTIONAL_SECTION": "Opcional (de estágios anteriores)",
       "CANCEL": "Cancelar",
-      "SUBMIT": "Enviar"
+      "SUBMIT": "Enviar",
+      "CLOSING_REQUIREMENTS_TITLE": "Requisitos de Fechamento",
+      "CLOSING_REQUIREMENTS_DESC": "Configure atributos obrigatórios ao fechar uma oportunidade",
+      "REQUIRED_FOR_WON": "Obrigatório para Ganho",
+      "REQUIRED_FOR_LOST": "Obrigatório para Perdido",
+      "SAVE": "Salvar Alterações",
+      "SAVE_SUCCESS": "Salvo com sucesso"
+    },
+    "LINK_CONVERSATION_MODAL": {
+      "TITLE": "Associar Conversa",
+      "DESCRIPTION": "Selecione uma conversa aberta deste contato para associar a esta oportunidade, ou inicie uma nova conversa.",
+      "OPEN_CHATS_LABEL": "Conversas Abertas",
+      "TRANSFER_WARNING_TITLE": "Conversa ativa em outra oportunidade",
+      "TRANSFER_WARNING_MESSAGE": "Esta conversa já está vinculada ativamente à oportunidade \"{opportunity}\". Associá-la aqui desconectará a conversa daquela oportunidade.",
+      "CONFIRM_TRANSFER": "Transferir e Associar",
+      "CANCEL": "Cancelar",
+      "LINK_BUTTON": "Associar Conversa",
+      "START_NEW_BUTTON": "Iniciar Nova Conversa"
     },
     "BACKFILL_MODAL": {
+      "ASSIGNEE_LABEL": "Responsável",
+      "ASSIGNEE_UNASSIGNED": "Sem dono",
       "CANCEL": "Cancelar",
-      "SUBMIT": "Salvar"
+      "SUBMIT": "Salvar",
+      "CONVERSATIONS_HISTORY_LABEL": "Conversas Associadas",
+      "NO_CONVERSATIONS": "Nenhuma conversa associada a esta oportunidade.",
+      "ACTIVE_CONVERSATION_TAG": "Ativa",
+      "ORIGIN_CONVERSATION_TAG": "Origem",
+      "RESOLVED_STATUS": "Resolvida"
     },
-    "DEAL_VALUE": "Valor do Negócio"
+    "DEAL_VALUE": "Valor do Negócio",
+    "CAMPAIGN": {
+      "PENDING": "Resolvendo atribuição...",
+      "ORGANIC_POST": "Publicação Orgânica",
+      "PAID_AD": "Anúncio {platform}",
+      "FAILED_TOOLTIP": "Não foi possível identificar os detalhes do anúncio ou publicação (ID: {id})",
+      "POPUP_TITLE_PAID": "Atribuição de Anúncio",
+      "POPUP_TITLE_ORGANIC": "Publicação Orgânica",
+      "POPUP_TITLE_FAILED": "Detalhes da Atribuição",
+      "VIEW_ORIGIN": "Ver no {platform}",
+      "CAMPAIGN_LABEL": "Campanha",
+      "ADSET_LABEL": "Conjunto",
+      "AD_LABEL": "Anúncio",
+      "POST_LABEL": "Publicação",
+      "PLATFORM_LABEL": "Plataforma"
+    },
+    "ACTIVITY_LOG": {
+      "TITLE": "Histórico da Oportunidade",
+      "VIEW_ACTIVITIES": "Ver Histórico de Atividades",
+      "VIEW_CONVERSATION": "Ver Conversa",
+      "EXPAND_DRAWER": "Expandir painel",
+      "COLLAPSE_DRAWER": "Recolher painel",
+      "DRAG_TO_MOVE": "Arrastar para mover",
+      "EMPTY_STATE": "Nenhuma atividade registrada para esta oportunidade.",
+      "FETCH_ERROR": "Não foi possível carregar o histórico de atividades.",
+      "BY_ACTOR": "por {name}",
+      "SYSTEM_ACTOR": "Sistema",
+      "APPROXIMATE_BADGE": "aproximado",
+      "APPROXIMATE_TOOLTIP": "Esta data é estimada com base na última atualização do registro antes do rastreamento de atividades.",
+      "EVENTS": {
+        "OPPORTUNITY_CREATED": "Oportunidade criada",
+        "OPPORTUNITY_STAGE_CHANGED": "Estágio movido de {from} para {to}",
+        "OPPORTUNITY_STAGE_CHANGED_INITIAL": "Movido para {to}",
+        "OPPORTUNITY_WON": "Oportunidade ganha",
+        "OPPORTUNITY_LOST": "Oportunidade perdida",
+        "OPPORTUNITY_LOST_WITH_REASON": "Oportunidade perdida ({reason})",
+        "OPPORTUNITY_REOPENED": "Oportunidade reaberta",
+        "CONVERSATION_OPENED": "Conversa #{displayId} aberta",
+        "CONVERSATION_LINKED": "Conversa #{displayId} vinculada",
+        "CONVERSATION_TRANSFERRED_OUT": "Conversa #{displayId} transferida para \"{targetTitle}\"",
+        "CONVERSATION_TRANSFERRED_IN": "Conversa #{displayId} transferida de \"{sourceTitle}\"",
+        "CONVERSATION_DETACHED": "Conversa #{displayId} desvinculada"
+      },
+      "TABLE_HEADER": {
+        "ACTIVITY": "Atividade",
+        "ACTOR": "Autor",
+        "TIME": "Data / Hora"
+      }
+    },
+    "UNDO": {
+      "MOVED_TO_STAGE": "Movido para {stage}",
+      "MARKED_AS_WON": "Marcado como Ganha",
+      "MARKED_AS_LOST": "Marcado como Perdida",
+      "ACTION": "Desfazer"
+    }
   },
   "PIPELINE_STAGES_MGMT": {
-    "HEADER": "Estágios do Pipeline",
-    "DESCRIPTION": "Gerencie os estágios do seu pipeline.",
+    "HEADER": "Configuração do Funil",
+    "DESCRIPTION": "Configure as definições do seu pipeline de negócios: personalize quais campos aparecem nos seus cartões Kanban, defina e reordene os estágios do seu pipeline, e defina campos obrigatórios para negócios ganhos ou perdidos.",
+    "TABS": {
+      "STAGES": "Fases do Funil"
+    },
     "LIST": {
       "EMPTY_STATE": "Nenhum estágio de pipeline encontrado."
     },
     "ADD": {
-      "TITLE": "Adicionar Estágio do Pipeline"
+      "TITLE": "Adicionar Estágio do Pipeline",
+      "API": {
+        "SUCCESS_MESSAGE": "Estágio do pipeline adicionado com sucesso.",
+        "ERROR_MESSAGE": "Falha ao adicionar estágio do pipeline. Tente novamente."
+      }
     },
     "EDIT": {
-      "TITLE": "Editar Estágio do Pipeline"
+      "TITLE": "Editar Estágio do Pipeline",
+      "API": {
+        "SUCCESS_MESSAGE": "Estágio do pipeline atualizado com sucesso.",
+        "ERROR_MESSAGE": "Falha ao atualizar estágio do pipeline. Tente novamente."
+      }
     },
     "FORM": {
       "NAME_LABEL": "Nome",
       "NAME_PLACEHOLDER": "Insira o nome do estágio",
       "DESC_LABEL": "Descrição",
       "DESC_PLACEHOLDER": "Insira a descrição do estágio",
+      "DISPLAY_MODE_LABEL": "Exibição do Total da Coluna",
+      "DISPLAY_MODE_VALUE": "Valor total",
+      "DISPLAY_MODE_COUNT": "Contagem",
+      "ACCENT_COLOR_LABEL": "Cor de Destaque",
+      "CLEAR_COLOR": "Limpar Cor",
+      "STALE_AFTER_DAYS_LABEL": "Fica inativo após (dias)",
+      "STALE_AFTER_DAYS_HELP": "Tempo nesta etapa antes de exibir o alerta visual",
       "CANCEL": "Cancelar",
       "SUBMIT_CREATE": "Criar",
-      "SUBMIT_EDIT": "Salvar alterações"
+      "SUBMIT_EDIT": "Salvar alterações",
+      "DESCRIPTION_EDITOR": {
+        "BOLD": "Negrito",
+        "ITALIC": "Itálico",
+        "STRIKE": "Tachado",
+        "UNDERLINE": "Sublinhado",
+        "ORDERED_LIST": "Lista numerada",
+        "BULLET_LIST": "Lista com marcadores"
+      }
     },
     "DELETE": {
       "CONFIRM": "Tem certeza que deseja excluir este estágio do pipeline?",
@@ -79,12 +197,47 @@
       "ERROR": "Falha ao excluir o estágio do pipeline.",
       "ERROR_OCCUPIED": "Não é possível excluir o estágio pois ele contém oportunidades."
     },
+    "REORDER": {
+      "ERROR": "Não foi possível reordenar os estágios do pipeline. Tente novamente."
+    },
     "REQUIREMENTS": {
       "TITLE": "Requisitos do Estágio",
       "DEAL_VALUE_LABEL": "Valor do Negócio",
       "DEAL_VALUE_HELP": "Exigir Valor do Negócio para este estágio",
       "ATTRIBUTES_LABEL": "Atributos Personalizados Obrigatórios",
       "NO_ATTRIBUTES": "Nenhum atributo personalizado de oportunidade disponível."
+    },
+    "CARD_FIELDS": {
+      "TITLE": "Campos do Cartão",
+      "FIELDS_LABEL": "Campos Configurados",
+      "SELECTED": "selecionado(s)",
+      "DEAL_VALUE": "Valor do Negócio",
+      "DEAL_VALUE_DESC": "Valor monetário do negócio",
+      "CURRENCY_LABEL": "Moeda",
+      "SAVE": "Salvar Alterações",
+      "SAVE_SUCCESS": "Salvo com sucesso"
+    },
+    "CAMPAIGN_ATTRIBUTION": {
+      "TITLE": "Atribuição de Campanha",
+      "LOADING": "Carregando configurações...",
+      "FETCH_ERROR": "Não foi possível carregar as configurações.",
+      "META_CONNECTION": "Conexão Meta",
+      "META_CONNECTION_DESC": "Conecte sua conta Meta para buscar detalhes de anúncios e campanhas.",
+      "CONNECTED": "Conectado",
+      "CONNECT_BUTTON": "Conectar Meta",
+      "CONNECT_SUCCESS": "Conectado com sucesso.",
+      "CONNECT_ERROR": "Falha ao conectar Meta.",
+      "ENABLE_ATTRIBUTION": "Habilitar Atribuição",
+      "ENABLE_ATTRIBUTION_DESC": "Rastrear automaticamente as atribuições de anúncios em novas oportunidades.",
+      "NEED_CONNECTION": "Você deve conectar a Meta primeiro.",
+      "UPDATE_SUCCESS": "Configurações atualizadas.",
+      "UPDATE_ERROR": "Falha ao atualizar configurações.",
+      "REPROCESS_BUTTON": "Reprocessar Pendentes",
+      "REPROCESSING": "Reprocessando...",
+      "PENDING_COUNT": "{count} atribuições pendentes",
+      "NO_PENDING": "Nenhuma atribuição pendente",
+      "REPROCESS_SUCCESS": "{count} oportunidades pendentes enviadas para resolução.",
+      "REPROCESS_ERROR": "Falha ao reprocessar oportunidades pendentes."
     }
   }
 }

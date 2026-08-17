@@ -136,6 +136,12 @@
         "ACTOR": "Autor",
         "TIME": "Data / Hora"
       }
+    },
+    "UNDO": {
+      "MOVED_TO_STAGE": "Movido para {stage}",
+      "MARKED_AS_WON": "Marcado como Ganha",
+      "MARKED_AS_LOST": "Marcado como Perdida",
+      "ACTION": "Desfazer"
     }
   },
   "PIPELINE_STAGES_MGMT": {

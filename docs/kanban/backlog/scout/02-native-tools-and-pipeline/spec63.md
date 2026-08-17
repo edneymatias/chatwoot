@@ -23,8 +23,11 @@ stuck waiting on the bot.
      `ruby_llm` call (spec60.md §6 — single-key all-in-one providers).
   3. Checks `inbox.out_of_office?` (`OutOfOffisable` concern) and injects the result into the
      prompt context (does not block the response, per spec60.md §5).
-  4. Builds context (persona/system_prompt + `product_catalog` + `knowledge_sources`) and calls
-     `ruby_llm` with the enabled tools from Phase 02/04.
+  4. Builds context (persona/system_prompt + `product_catalog` + `knowledge_sources` +
+     `contact.to_llm_text` — the existing `LlmFormatter::ContactLlmFormatter`, already used
+     elsewhere in the codebase, whose "Contact Notes" section surfaces any notes Captain or a
+     previous Scout run already generated for this contact, at no extra cost) and calls `ruby_llm`
+     with the enabled tools from Phase 02/04.
   5. On successful response, increments `scout.responses_consumed`.
 - Fail-Safe Handoff (spec60.md §4.2/§4.3): on quota exhaustion or API key failure, explicitly check
   `conversation.pending?` (the guard lives in the caller, not in `bot_handoff!` — see spec60.md
@@ -42,6 +45,15 @@ stuck waiting on the bot.
   - `create_private_note(content)`.
   - `handover_to_human(assignee_id, team_id, reason)` — reuses the same `bot_handoff!` call path as
     the Fail-Safe flow.
+- Contact memory (spec60.md §9.1 `feature_memory`): when `scout.feature_memory` is true, generate
+  contact notes at the end of a qualification run, reusing Captain's exact mechanism rather than a
+  new implementation — `Captain::Llm::ContactNotesService` already takes any `(assistant,
+  conversation)` pair (it only calls `conversation.contact`/`conversation.account`, nothing
+  Captain-specific), so `Scout::AgentRunner` calls it directly (`Captain::Llm::ContactNotesService.new(scout,
+  conversation).generate_and_update_notes`) instead of duplicating the notes-generation prompt/flow.
+  Triggered from the same places `CaptainListener#conversation_resolved` triggers it for Captain:
+  on `handover_to_human` (successful human handoff) and on the Fail-Safe handoff path — not on
+  every turn, to avoid redundant LLM calls mid-conversation.
 
 ## Out of scope (deferred to later phases)
 
@@ -64,3 +76,7 @@ stuck waiting on the bot.
 - Forcing quota exhaustion (`responses_quota: 0`) or an invalid API key results in the conversation
   moving to `open` status with a yellow alert private note, and never stays `pending`.
 - `move_opportunity_stage` with a lost outcome persists `lost_reason`.
+- With `scout.feature_memory` true, a handoff (human or Fail-Safe) produces at least one
+  `contact.notes` row summarizing the qualification conversation, and a subsequent Scout run (or
+  Captain run) for the same contact sees that note in its `contact.to_llm_text` context. With
+  `feature_memory` false, no notes are generated.

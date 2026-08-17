@@ -230,6 +230,11 @@ flowchart TD
 - `active` (boolean, default: true)
 - `responses_quota` (integer, default: `-1`): Cota de respostas geradas. `-1` = ilimitado (override para testes/planos sem billing). Ver seção 4.3.
 - `responses_consumed` (integer, default: `0`): Contador incremental de respostas geradas pelo Scout.
+- `feature_memory` (boolean, default: `true`): Espelha `assistant.config['feature_memory']` do
+  Captain (`enterprise/app/listeners/captain_listener.rb`) — quando ativo, gera notas de contato ao
+  final de uma qualificação/handoff, reaproveitando o mesmo mecanismo de memória do Captain
+  (`Captain::Llm::ContactNotesService` → `contact.notes` → `LlmFormatter::ContactLlmFormatter`).
+  Ver Fase 02.
 
 ### 9.2. `ScoutInbox` (`ichatr_scout_inboxes`)
 - Tabela pivô associando `scout_id` com `inbox_id`. Evita adicionar coluna em `inboxes` (core) — ver princípio de minimização de acoplamento, seção 3.2.

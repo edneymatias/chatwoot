@@ -1,13 +1,16 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
+import { useI18n } from 'vue-i18n';
 import KanbanColumn from './KanbanColumn.vue';
 import KanbanStatusBar from './KanbanStatusBar.vue';
+import KanbanUndoToast from './KanbanUndoToast.vue';
 import OpportunityCreateModal from './OpportunityCreateModal.vue';
 import OpportunityBackfillModal from './OpportunityBackfillModal.vue';
 import StageTransitionRequirementsModal from './StageTransitionRequirementsModal.vue';
 import ClosingRequirementsModal from './ClosingRequirementsModal.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
+import { useKanbanUndoStack } from './composables/useKanbanUndoStack';
 
 defineProps({
   filters: {
@@ -17,6 +20,10 @@ defineProps({
 });
 
 const emit = defineEmits(['cardClick']);
+
+const { t } = useI18n();
+const store = useStore();
+const undoStack = useKanbanUndoStack();
 
 const isCardDragging = ref(false);
 const isStatusBarHovered = ref(false);
@@ -28,8 +35,6 @@ const onDragStart = id => {
   isCardDragging.value = true;
   draggedCardId.value = id;
 };
-
-const store = useStore();
 
 const isCreateModalOpen = ref(false);
 const modalDefaultStageId = ref(null);
@@ -82,8 +87,25 @@ const onStatusChanged = async ({ id, status }) => {
     const stageId = opp?.pipeline_stage_id;
     await store.dispatch('opportunities/setStatus', { id, status });
     if (stageId) {
-      store.dispatch('pipelineStages/fetchAggregates', { stageIds: [stageId] });
+      store.dispatch('pipelineStages/fetchAggregates', {
+        stageIds: [stageId],
+      });
     }
+    const statusMessage =
+      status === 'won'
+        ? t('OPPORTUNITIES.UNDO.MARKED_AS_WON')
+        : t('OPPORTUNITIES.UNDO.MARKED_AS_LOST');
+    undoStack.pushToast({
+      message: statusMessage,
+      onUndo: async () => {
+        await store.dispatch('opportunities/setStatus', { id, status: 'open' });
+        if (stageId) {
+          store.dispatch('pipelineStages/fetchAggregates', {
+            stageIds: [stageId],
+          });
+        }
+      },
+    });
   } catch (error) {
     if (
       error.response?.status === 422 &&
@@ -109,7 +131,7 @@ const closeRequirementsModal = () => {
 };
 
 const executeMoveCard = async (id, move) => {
-  const { fromStageId, toStageId, toIndex } = move;
+  const { fromStageId, toStageId, toIndex, fromIndex } = move;
   try {
     await store.dispatch('opportunities/moveCard', {
       id,
@@ -119,6 +141,24 @@ const executeMoveCard = async (id, move) => {
     });
     store.dispatch('pipelineStages/fetchAggregates', {
       stageIds: [fromStageId, toStageId],
+    });
+
+    const toStage = store.getters['pipelineStages/stageById'](toStageId);
+    undoStack.pushToast({
+      message: t('OPPORTUNITIES.UNDO.MOVED_TO_STAGE', {
+        stage: toStage?.name || '',
+      }),
+      onUndo: async () => {
+        await store.dispatch('opportunities/moveCard', {
+          id,
+          fromStageId: toStageId,
+          toStageId: fromStageId,
+          toIndex: fromIndex,
+        });
+        store.dispatch('pipelineStages/fetchAggregates', {
+          stageIds: [fromStageId, toStageId],
+        });
+      },
     });
   } catch (error) {
     if (
@@ -237,10 +277,11 @@ const dispatchMoveIfComplete = id => {
 // it. Committing here would apply a move the user never intended (e.g. when
 // they continue on to drop on the status bar instead). The real decision
 // happens once the drag actually ends, in onDragEnd.
-const onCardRemoved = ({ id, fromStageId }) => {
+const onCardRemoved = ({ id, fromStageId, fromIndex }) => {
   if (!pendingMove.value[id]) pendingMove.value[id] = {};
   if (pendingMove.value[id].fromStageId === undefined) {
     pendingMove.value[id].fromStageId = fromStageId;
+    pendingMove.value[id].fromIndex = fromIndex;
   }
 };
 
@@ -430,6 +471,14 @@ onUnmounted(() => {
         closingRequirementsModalData.initialMissingFields
       "
       @close="closeClosingRequirementsModal"
+    />
+
+    <KanbanUndoToast
+      :toasts="undoStack.toasts.value"
+      @undo="undoStack.undoToast"
+      @dismiss="undoStack.dismissToast"
+      @pause="undoStack.pauseAll"
+      @resume="undoStack.resumeAll"
     />
   </div>
 </template>

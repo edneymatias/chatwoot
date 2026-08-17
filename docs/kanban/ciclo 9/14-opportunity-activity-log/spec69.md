@@ -4,7 +4,10 @@
 **Depends on**: `custom/app/models/opportunity.rb` (existing Wisper event dispatch),
 `OpportunityConversation`/`OpportunityStageChange` (existing linkage/history models), the
 `opportunities` Super Admin feature flag (Phase 1), `AsyncDispatcher`'s unused
-`prepend_mod_with('AsyncDispatcher')` hook.
+`prepend_mod_with('AsyncDispatcher')` hook, the core `message_created` Wisper event and
+`Voice::CallMessageBuilder`'s `voice_call` message content type (existing Twilio/WhatsApp calling —
+no sip-ari dependency, see §4.4), the existing `VoiceCallButton.vue` component (already used in
+`ContactInfo.vue`).
 
 ## 1. Problem
 
@@ -54,6 +57,9 @@ Model: `OpportunityActivity < ApplicationRecord`, `belongs_to :account`, `belong
   Scout Phase 01's `lost_reason` migration lands (`docs/kanban/backlog/scout/01-core-and-data-model/spec62.md`),
   absent/nullable until then.
 - `conversation_opened`: `{ conversation_id, conversation_display_id, is_origin }`
+- `call_placed`: `{ conversation_id, message_id, direction, provider, status }` — `direction`/
+  `provider`/`status` copied verbatim from the `voice_call` message's
+  `content_attributes['data']` (`call_direction`, `call_source`, `status`), see §4.4.
 
 ## 4. Event capture
 
@@ -165,6 +171,52 @@ end
 automatically (e.g. CTWA referral attribution running in a background job with no request
 context).
 
+### 4.4 Call capture
+
+Every outbound/inbound call (Twilio or WhatsApp today; sip-ari transparently once it ships, since
+it's designed to reuse the same message-based call representation per
+`docs/kanban/backlog/sip-ari/spec48.md`) already creates a `Message` with
+`content_type: 'voice_call'` inside the call's conversation
+(`enterprise/app/services/voice/call_message_builder.rb`), which dispatches the existing core
+`message_created` Wisper event. No telephony code — core or `enterprise/` — needs to change for
+this; the event already fires today with the currently-live calling.
+
+`Custom::OpportunityActivityListener` (§4.1) gains a `message_created` handler:
+
+```ruby
+def message_created(event)
+  message = event.data[:message]
+  return unless message.content_type == 'voice_call'
+
+  conversation = message.conversation
+  opportunity = conversation.account.opportunities
+                            .joins(:opportunity_conversations)
+                            .find_by(ichatr_opportunity_conversations: { conversation_id: conversation.id })
+  return unless opportunity
+
+  data = message.content_attributes.dig('data') || {}
+  opportunity.activities.create!(
+    account_id: opportunity.account_id,
+    event_type: 'call_placed',
+    actor: message.sender.is_a?(User) ? message.sender : nil,
+    metadata: {
+      conversation_id: conversation.id,
+      message_id: message.id,
+      direction: data['call_direction'],
+      provider: data['call_source'],
+      status: data['status']
+    },
+    occurred_at: message.created_at
+  )
+end
+```
+
+Only fires when the call's conversation is already linked to an Opportunity via
+`OpportunityConversation` (the same linkage §4.3 maintains) — a call to a contact with no open
+opportunity produces no activity row. `actor` is the calling `User` for outbound calls
+(`message.sender`); inbound calls have the contact as `sender`, so `actor` is `nil` (system) for
+those, consistent with the rest of this spec's actor semantics.
+
 ## 5. Backend API
 
 New read-only route: `GET /api/v1/accounts/:account_id/opportunities/:opportunity_id/activities`.
@@ -242,17 +294,28 @@ panel — replacing, not stacking, matching the existing Close/Expand interactio
 - No actions, no edit affordances — strictly read-only.
 
 **i18n**: new keys in both `en.json` and `pt_BR.json`, synced together per project convention —
-panel title, one label template per `event_type`, "System"/"Sistema" actor fallback, the
-approximate-data caveat string.
+panel title, one label template per `event_type` (including `call_placed`), "System"/"Sistema"
+actor fallback, the approximate-data caveat string.
+
+**Dial button**: reuse the existing `VoiceCallButton.vue` component as-is (already used in
+`ContactInfo.vue`; provider-agnostic, handles the multi-inbox picker and both Twilio/WhatsApp
+today) — no new call-initiation logic. Added next to the existing activity-log toggle in
+`OpportunityConversationDrawer.vue`'s top-left `ButtonGroup`, passed `:phone="opportunity.contact.phone_number"`
+and `:contact-id="opportunity.contact_id"`. Same `isOpportunitiesFeatureEnabled` gate as the rest of
+this feature; additionally hidden when the contact has no phone number, matching
+`VoiceCallButton`'s own `shouldRender` guard.
 
 ## 8. Out of scope
 
-- Call records (sip-ari) and task-creation events — explicitly deferred; the event-type list and
-  `metadata` shape are designed to accept new event types later without a schema change, but no
-  sip-ari or task integration work is included here.
+- Task-creation events — explicitly deferred; the event-type list and `metadata` shape are designed
+  to accept new event types later without a schema change, but no task integration work is included
+  here.
 - Pagination/load-more UI for the activity timeline.
 - Any write/edit affordance on activity entries — the log is permanently read-only.
 - Bulk backfill tooling beyond the one-time migration in §6 (no ongoing reconciliation job).
+- Backfilling historical `call_placed` rows for calls made before this feature shipped — §6 only
+  covers the four backfillable event types already listed there; past voice-call messages are not
+  retroactively scanned.
 
 ## 9. Acceptance criteria
 
@@ -260,11 +323,17 @@ approximate-data caveat string.
   linking/opening conversations for it each produce exactly one `OpportunityActivity` row with the
   correct `event_type`, `actor`, and `occurred_at`, with zero edits to any file under `app/` or
   `enterprise/`.
+- Placing or receiving a call (Twilio or WhatsApp) on a conversation linked to an open Opportunity
+  produces one `call_placed` activity row with correct `direction`/`provider`/`status`; a call on a
+  conversation with no linked Opportunity produces no row.
+- The dial button on `OpportunityConversationDrawer.vue` starts a call to the opportunity's contact
+  using the existing `VoiceCallButton` flow, with no opportunity-specific call logic added.
 - The activity toggle in `OpportunityConversationDrawer.vue` is hidden when the Opportunities
   feature is disabled for the account, and visible when enabled — independent of the Captain
   feature flag.
 - The one-time backfill populates accurate `created`/`stage_changed`/`conversation_opened` rows for
   all pre-existing opportunities, and approximate `won`/`lost` rows (flagged `approximate: true`)
-  for opportunities currently in a terminal state, with no `reopened` rows backfilled.
+  for opportunities currently in a terminal state, with no `reopened` rows backfilled, and no
+  historical `call_placed` rows.
 - The activity panel is strictly read-only and renders correctly with no activities, one activity,
   and a long history.

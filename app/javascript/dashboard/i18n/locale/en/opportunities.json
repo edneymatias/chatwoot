@@ -137,6 +137,12 @@
         "ACTOR": "Actor",
         "TIME": "Time"
       }
+    },
+    "UNDO": {
+      "MOVED_TO_STAGE": "Moved to {stage}",
+      "MARKED_AS_WON": "Marked as Won",
+      "MARKED_AS_LOST": "Marked as Lost",
+      "ACTION": "Undo"
     }
   },
   "PIPELINE_STAGES_MGMT": {

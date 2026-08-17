@@ -82,6 +82,7 @@ const onChange = event => {
     emit('cardRemoved', {
       id: event.removed.element.id,
       fromStageId: props.stage.id,
+      fromIndex: event.removed.oldIndex,
     });
   }
   if (event.added) {

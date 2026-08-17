@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 import KanbanBoard from '../KanbanBoard.vue';
 import { createStore } from 'vuex';
 
@@ -157,5 +157,117 @@ describe('KanbanBoard', () => {
     const upEvent = new MouseEvent('mouseup');
     window.dispatchEvent(upEvent);
     expect(wrapper.vm.isPanning).toBe(false);
+  });
+
+  it('pushes an undo toast on completed stage move and restores stage and position on undo', async () => {
+    const moveCardSpy = vi.fn().mockResolvedValue({});
+    const store = createMockStore(moveCardSpy);
+
+    const wrapper = mount(KanbanBoard, {
+      global: {
+        plugins: [store],
+        stubs: {
+          KanbanColumn: true,
+          OpportunityCreateModal: true,
+          OpportunityBackfillModal: true,
+          StageTransitionRequirementsModal: true,
+          'router-view': true,
+        },
+        mocks: {
+          $t: msg => msg,
+          $route: { name: 'opportunities_index', params: {} },
+          $router: { push: vi.fn() },
+        },
+      },
+    });
+
+    wrapper.vm.onDragStart(1);
+    wrapper.vm.onCardRemoved({ id: 1, fromStageId: 2, fromIndex: 3 });
+    wrapper.vm.onCardAdded({ id: 1, toStageId: 1, toIndex: 0 });
+    wrapper.vm.onDragEnd();
+
+    await flushPromises();
+
+    expect(wrapper.vm.undoStack.toasts.value.length).toBe(1);
+    const toast = wrapper.vm.undoStack.toasts.value[0];
+
+    moveCardSpy.mockClear();
+    await toast.onUndo();
+
+    expect(moveCardSpy).toHaveBeenCalledWith(expect.anything(), {
+      id: 1,
+      fromStageId: 1,
+      toStageId: 2,
+      toIndex: 3,
+    });
+  });
+
+  it('pushes an undo toast on completed Won/Lost drop and restores open status on undo', async () => {
+    const setStatusSpy = vi.fn().mockResolvedValue({});
+    const store = createStore({
+      modules: {
+        opportunities: {
+          namespaced: true,
+          state: {
+            byId: {
+              1: { id: 1, pipeline_stage_id: 2, status: 'open' },
+            },
+            idsByStage: {},
+            pagination: { byStage: {} },
+          },
+          actions: {
+            moveCard: vi.fn(),
+            setStatus: setStatusSpy,
+            fetchForStage: vi.fn(),
+          },
+          getters: {
+            cardsForStage: () => () => [],
+            hasMoreForStage: () => () => false,
+            isFetchingForStage: () => () => false,
+          },
+        },
+        pipelineStages: {
+          namespaced: true,
+          actions: {
+            fetch: vi.fn(),
+            fetchAggregates: vi.fn(),
+          },
+          getters: {
+            stagesSortedByPosition: () => [{ id: 2, position: 2 }],
+            stageById: () => () => ({ id: 2, position: 2 }),
+          },
+        },
+      },
+    });
+
+    const wrapper = mount(KanbanBoard, {
+      global: {
+        plugins: [store],
+        stubs: {
+          KanbanColumn: true,
+          OpportunityCreateModal: true,
+          OpportunityBackfillModal: true,
+          StageTransitionRequirementsModal: true,
+          'router-view': true,
+        },
+        mocks: {
+          $t: msg => msg,
+          $route: { name: 'opportunities_index', params: {} },
+          $router: { push: vi.fn() },
+        },
+      },
+    });
+
+    await wrapper.vm.onStatusChanged({ id: 1, status: 'won' });
+    expect(wrapper.vm.undoStack.toasts.value.length).toBe(1);
+
+    const toast = wrapper.vm.undoStack.toasts.value[0];
+    setStatusSpy.mockClear();
+    await toast.onUndo();
+
+    expect(setStatusSpy).toHaveBeenCalledWith(expect.anything(), {
+      id: 1,
+      status: 'open',
+    });
   });
 });
