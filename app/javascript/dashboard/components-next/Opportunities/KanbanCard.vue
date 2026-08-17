@@ -37,6 +37,9 @@ const handleCardClick = () => {
         props.opportunity.active_conversation_display_id ||
         props.opportunity.active_conversation_id,
     },
+    query: {
+      opportunityId: props.opportunity.id,
+    },
   });
 };
 

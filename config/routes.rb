@@ -143,6 +143,23 @@ Rails.application.routes.draw do
           end
           resources :opportunities, only: [:index, :show, :create, :update, :destroy] do
             post :link_conversation, on: :member
+            resources :activities, only: [:index], module: :opportunities
+          end
+          resources :opportunity_funnel_reports, only: [:index]
+          resources :opportunity_attribute_reports, only: [:index]
+          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do
+            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'
+          end
+          resources :pipeline_stage_aggregates, only: [:index]
+          resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]
+          resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]
+          resource :pipeline_currency_setting, only: [:show, :update]
+          resource :campaign_attribution_setting, only: [:show, :update] do
+            post :connect, on: :collection
+            post :reprocess_pending, on: :collection
+          end
+          resources :opportunities, only: [:index, :show, :create, :update, :destroy] do
+            post :link_conversation, on: :member
           end
           resources :opportunity_funnel_reports, only: [:index]
           resources :opportunity_attribute_reports, only: [:index]

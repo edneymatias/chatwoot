@@ -361,4 +361,12 @@ export const actions = {
     });
     return payload;
   },
+  fetchActivities: async (_, opportunityId) => {
+    try {
+      const response = await opportunitiesAPI.getActivities(opportunityId);
+      return response.data;
+    } catch (error) {
+      throwErrorMessage(error);
+    }
+  },
 };

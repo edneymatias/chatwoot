@@ -72,8 +72,12 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
       }, status: :conflict
     end
 
-    existing_opp&.detach_active_conversation! if existing_opp.present?
-    @opportunity.attach_conversation!(conversation, set_active: true)
+    if existing_opp.present?
+      existing_opp.detach_active_conversation!(transferred_to: @opportunity)
+      @opportunity.attach_conversation!(conversation, set_active: true, transferred_from: existing_opp)
+    else
+      @opportunity.attach_conversation!(conversation, set_active: true)
+    end
 
     render json: @opportunity
   end

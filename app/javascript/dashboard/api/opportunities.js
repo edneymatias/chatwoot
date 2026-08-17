@@ -19,6 +19,10 @@ class OpportunitiesAPI extends ApiClient {
       force_transfer: forceTransfer,
     });
   }
+
+  getActivities(opportunityId) {
+    return axios.get(`${this.url}/${opportunityId}/activities`);
+  }
 }
 
 export default new OpportunitiesAPI();

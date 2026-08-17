@@ -99,6 +99,9 @@ const handleLink = async (forceTransfer = false) => {
           payload.active_conversation_display_id ||
           payload.active_conversation_id,
       },
+      query: {
+        opportunityId: props.opportunity.id,
+      },
     });
   } catch (error) {
     if (

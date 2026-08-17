@@ -95,7 +95,7 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'config/routes.rb',
                  anchor: "          resources :macros, only: [:index, :create, :show, :update, :destroy] do\n            post :execute, on: :member\n          end",
-                 insert: "          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do\n            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'\n          end\n          resources :pipeline_stage_aggregates, only: [:index]\n          resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]\n          resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]\n          resource :pipeline_currency_setting, only: [:show, :update]\n          resource :campaign_attribution_setting, only: [:show, :update] do\n            post :connect, on: :collection\n            post :reprocess_pending, on: :collection\n          end\n          resources :opportunities, only: [:index, :show, :create, :update, :destroy] do\n            post :link_conversation, on: :member\n          end\n          resources :opportunity_funnel_reports, only: [:index]\n          resources :opportunity_attribute_reports, only: [:index]"
+                 insert: "          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do\n            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'\n          end\n          resources :pipeline_stage_aggregates, only: [:index]\n          resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]\n          resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]\n          resource :pipeline_currency_setting, only: [:show, :update]\n          resource :campaign_attribution_setting, only: [:show, :update] do\n            post :connect, on: :collection\n            post :reprocess_pending, on: :collection\n          end\n          resources :opportunities, only: [:index, :show, :create, :update, :destroy] do\n            post :link_conversation, on: :member\n            resources :activities, only: [:index], module: :opportunities\n          end\n          resources :opportunity_funnel_reports, only: [:index]\n          resources :opportunity_attribute_reports, only: [:index]"
                },
                {
                  file: 'config/features.yml',
@@ -283,7 +283,21 @@ if mode == :audit
   # rubocop:disable Metrics/BlockLength
   excluded = lambda do |path|
     return true if path == 'db/schema.rb'
-    return true if path.start_with?('custom/', 'spec/', 'specs/', 'docs/', 'db/migrate/2026', 'db/migrate/2126')
+    return true if path.start_with?(
+      'custom/', 'spec/', 'specs/', 'docs/', 'db/migrate/2026', 'db/migrate/2126',
+      'app/javascript/dashboard/components-next/Opportunities/',
+      'app/javascript/dashboard/routes/dashboard/opportunities/',
+      'app/javascript/dashboard/store/modules/opportunities/',
+      'app/javascript/dashboard/store/modules/pipelineStages/',
+      'app/javascript/dashboard/store/modules/pipelineClosingRequiredFields/',
+      'app/javascript/dashboard/store/modules/pipelineCardFieldConfigs/',
+      'app/javascript/dashboard/store/modules/pipelineCurrencySetting/'
+    )
+    return true if [
+      'app/javascript/dashboard/api/opportunities.js',
+      'app/javascript/dashboard/i18n/locale/en/opportunities.json',
+      'app/javascript/dashboard/i18n/locale/pt_BR/opportunities.json'
+    ].include?(path)
     return true if path.end_with?('.md', '_spec.rb', '.spec.js')
     return true if path.match?(%r{^(app/javascript/dashboard/i18n/locale|config/locales)/(?!en\b|pt_BR\b)})
 

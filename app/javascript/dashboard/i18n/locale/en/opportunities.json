@@ -104,6 +104,39 @@
       "AD_LABEL": "Ad",
       "POST_LABEL": "Post",
       "PLATFORM_LABEL": "Platform"
+    },
+    "ACTIVITY_LOG": {
+      "TITLE": "Opportunity Activity",
+      "VIEW_ACTIVITIES": "View Activity Log",
+      "VIEW_CONVERSATION": "View Conversation",
+      "EXPAND_DRAWER": "Expand drawer",
+      "COLLAPSE_DRAWER": "Collapse drawer",
+      "DRAG_TO_MOVE": "Drag to move",
+      "EMPTY_STATE": "No activities recorded for this opportunity.",
+      "FETCH_ERROR": "Could not load activity log.",
+      "BY_ACTOR": "by {name}",
+      "SYSTEM_ACTOR": "System",
+      "APPROXIMATE_BADGE": "approximate",
+      "APPROXIMATE_TOOLTIP": "This date is estimated based on the last record update prior to activity tracking.",
+      "EVENTS": {
+        "OPPORTUNITY_CREATED": "Opportunity created",
+        "OPPORTUNITY_STAGE_CHANGED": "Stage moved from {from} to {to}",
+        "OPPORTUNITY_STAGE_CHANGED_INITIAL": "Moved to {to}",
+        "OPPORTUNITY_WON": "Opportunity won",
+        "OPPORTUNITY_LOST": "Opportunity lost",
+        "OPPORTUNITY_LOST_WITH_REASON": "Opportunity lost ({reason})",
+        "OPPORTUNITY_REOPENED": "Opportunity reopened",
+        "CONVERSATION_OPENED": "Conversation #{displayId} opened",
+        "CONVERSATION_LINKED": "Conversation #{displayId} linked",
+        "CONVERSATION_TRANSFERRED_OUT": "Conversation #{displayId} transferred to \"{targetTitle}\"",
+        "CONVERSATION_TRANSFERRED_IN": "Conversation #{displayId} transferred from \"{sourceTitle}\"",
+        "CONVERSATION_DETACHED": "Conversation #{displayId} unlinked"
+      },
+      "TABLE_HEADER": {
+        "ACTIVITY": "Activity",
+        "ACTOR": "Actor",
+        "TIME": "Time"
+      }
     }
   },
   "PIPELINE_STAGES_MGMT": {
@@ -134,13 +167,13 @@
       "NAME_PLACEHOLDER": "Enter stage name",
       "DESC_LABEL": "Description",
       "DESC_PLACEHOLDER": "Enter stage description",
-      "DISPLAY_MODE_LABEL": "Lane Total Display",
+      "DISPLAY_MODE_LABEL": "Column Total Display",
       "DISPLAY_MODE_VALUE": "Total value",
       "DISPLAY_MODE_COUNT": "Count",
       "ACCENT_COLOR_LABEL": "Accent Color",
       "CLEAR_COLOR": "Clear Color",
       "STALE_AFTER_DAYS_LABEL": "Stale after (days)",
-      "STALE_AFTER_DAYS_HELP": "Time in this stage before showing alert styling",
+      "STALE_AFTER_DAYS_HELP": "Time in this stage before showing warning indicator",
       "CANCEL": "Cancel",
       "SUBMIT_CREATE": "Create",
       "SUBMIT_EDIT": "Save changes",
@@ -150,7 +183,7 @@
         "STRIKE": "Strikethrough",
         "UNDERLINE": "Underline",
         "ORDERED_LIST": "Ordered list",
-        "BULLET_LIST": "Bulleted list"
+        "BULLET_LIST": "Bullet list"
       }
     },
     "DELETE": {
@@ -160,7 +193,7 @@
       "ERROR_OCCUPIED": "Cannot delete stage because it contains opportunities."
     },
     "REORDER": {
-      "ERROR": "Couldn't reorder pipeline stages. Please try again."
+      "ERROR": "Could not reorder pipeline stages. Please try again."
     },
     "REQUIREMENTS": {
       "TITLE": "Stage Requirements",

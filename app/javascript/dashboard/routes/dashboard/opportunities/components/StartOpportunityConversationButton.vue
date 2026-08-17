@@ -119,6 +119,9 @@ watch(
             accountId: route.params.accountId,
             conversationId: newlyCreated.display_id || newlyCreated.id,
           },
+          query: {
+            opportunityId: props.opportunity.id,
+          },
         });
       } catch (error) {
         // Continue

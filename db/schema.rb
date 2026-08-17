@@ -10,7 +10,8 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_17_120000) do
+ActiveRecord::Schema[7.1].define(version: 2126_08_17_140000) do
+  create_schema "metabase_cache_0b4bd_2"
 
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
@@ -1053,6 +1054,21 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_17_120000) do
     t.index ["pipeline_stage_id"], name: "index_ichatr_opportunities_on_pipeline_stage_id"
   end
 
+  create_table "ichatr_opportunity_activities", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "opportunity_id", null: false
+    t.string "event_type", null: false
+    t.string "actor_type"
+    t.bigint "actor_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "occurred_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "opportunity_id", "occurred_at"], name: "index_ichatr_opp_activities_on_acc_and_opp_and_occurred"
+    t.index ["account_id"], name: "index_ichatr_opportunity_activities_on_account_id"
+    t.index ["actor_type", "actor_id"], name: "index_ichatr_opportunity_activities_on_actor"
+  end
+
   create_table "ichatr_opportunity_conversations", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "opportunity_id", null: false
@@ -1641,6 +1657,8 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_17_120000) do
   add_foreign_key "ichatr_opportunities", "conversations", column: "origin_conversation_id"
   add_foreign_key "ichatr_opportunities", "ichatr_pipeline_stages", column: "pipeline_stage_id"
   add_foreign_key "ichatr_opportunities", "users", column: "assignee_id"
+  add_foreign_key "ichatr_opportunity_activities", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_opportunity_activities", "ichatr_opportunities", column: "opportunity_id", on_delete: :cascade
   add_foreign_key "ichatr_opportunity_conversations", "accounts", on_delete: :cascade
   add_foreign_key "ichatr_opportunity_conversations", "conversations", on_delete: :cascade
   add_foreign_key "ichatr_opportunity_conversations", "ichatr_opportunities", column: "opportunity_id", on_delete: :cascade
@@ -1725,5 +1743,28 @@ $function$
   SQL
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$ begin perform pg_notify('n8n_channel_717c52d1_52d2_406d_bc05_250afa7cfc2f', row_to_json(NEW)::text); return null; end; $function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614e45cdea', row_to_json(OLD)::text); return null; end; $function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER conversations_before_insert_row_tr BEFORE INSERT ON \"conversations\" FOR EACH ROW EXECUTE FUNCTION conversations_before_insert_row_tr()")
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER n8n_trigger_717c52d1_52d2_406d_bc05_250afa7cfc2f AFTER INSERT ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()")
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
+
 end

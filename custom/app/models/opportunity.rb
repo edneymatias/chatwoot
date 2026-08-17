@@ -5,6 +5,7 @@ class Opportunity < ApplicationRecord
 
   include Custom::Concerns::OpportunityValidations
   include Custom::Concerns::OpportunityCampaignAttribution
+  include Custom::Concerns::OpportunityConversationManagement
 
   belongs_to :account
   belongs_to :contact
@@ -15,6 +16,7 @@ class Opportunity < ApplicationRecord
   has_many :stage_changes, class_name: 'OpportunityStageChange', dependent: :destroy
   has_many :opportunity_conversations, class_name: 'OpportunityConversation', dependent: :destroy
   has_many :conversations, through: :opportunity_conversations
+  has_many :activities, class_name: 'OpportunityActivity', dependent: :destroy
 
   enum status: { open: 0, won: 1, lost: 2 }
 
@@ -27,41 +29,6 @@ class Opportunity < ApplicationRecord
   after_create :record_origin_conversation_link
   after_update :record_subsequent_stage_change, if: :saved_change_to_pipeline_stage_id?
   after_commit :broadcast_opportunity_updated, on: %i[create update]
-
-  def attach_conversation!(conversation, set_active: true)
-    transaction do
-      opportunity_conversations.find_or_create_by!(
-        account_id: account_id,
-        conversation_id: conversation.id
-      ) do |oc|
-        oc.is_origin = (conversation.id == origin_conversation_id)
-      end
-      update!(active_conversation: conversation) if set_active && conversation.open?
-    end
-  end
-
-  def detach_active_conversation!
-    update!(active_conversation: nil) if active_conversation_id.present?
-  end
-
-  def associated_conversations_json
-    opportunity_conversations.includes(conversation: :inbox).order(created_at: :desc).filter_map do |oc|
-      conv = oc.conversation
-      next unless conv
-
-      {
-        'id' => conv.id,
-        'display_id' => conv.display_id,
-        'status' => conv.status,
-        'inbox_id' => conv.inbox_id,
-        'inbox_name' => conv.inbox&.name,
-        'channel_type' => conv.inbox&.channel_type,
-        'created_at' => conv.created_at.to_i,
-        'is_active' => (conv.id == active_conversation_id),
-        'is_origin' => oc.is_origin
-      }
-    end
-  end
 
   def as_json(options = {})
     super(options).merge(

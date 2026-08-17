@@ -71,6 +71,9 @@ const openConversation = conv => {
     params: {
       conversationId: conv.display_id || conv.id,
     },
+    query: {
+      opportunityId: props.opportunityId,
+    },
   });
 };
 

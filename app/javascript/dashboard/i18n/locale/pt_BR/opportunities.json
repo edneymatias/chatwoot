@@ -103,6 +103,39 @@
       "AD_LABEL": "Anúncio",
       "POST_LABEL": "Publicação",
       "PLATFORM_LABEL": "Plataforma"
+    },
+    "ACTIVITY_LOG": {
+      "TITLE": "Histórico da Oportunidade",
+      "VIEW_ACTIVITIES": "Ver Histórico de Atividades",
+      "VIEW_CONVERSATION": "Ver Conversa",
+      "EXPAND_DRAWER": "Expandir painel",
+      "COLLAPSE_DRAWER": "Recolher painel",
+      "DRAG_TO_MOVE": "Arrastar para mover",
+      "EMPTY_STATE": "Nenhuma atividade registrada para esta oportunidade.",
+      "FETCH_ERROR": "Não foi possível carregar o histórico de atividades.",
+      "BY_ACTOR": "por {name}",
+      "SYSTEM_ACTOR": "Sistema",
+      "APPROXIMATE_BADGE": "aproximado",
+      "APPROXIMATE_TOOLTIP": "Esta data é estimada com base na última atualização do registro antes do rastreamento de atividades.",
+      "EVENTS": {
+        "OPPORTUNITY_CREATED": "Oportunidade criada",
+        "OPPORTUNITY_STAGE_CHANGED": "Estágio movido de {from} para {to}",
+        "OPPORTUNITY_STAGE_CHANGED_INITIAL": "Movido para {to}",
+        "OPPORTUNITY_WON": "Oportunidade ganha",
+        "OPPORTUNITY_LOST": "Oportunidade perdida",
+        "OPPORTUNITY_LOST_WITH_REASON": "Oportunidade perdida ({reason})",
+        "OPPORTUNITY_REOPENED": "Oportunidade reaberta",
+        "CONVERSATION_OPENED": "Conversa #{displayId} aberta",
+        "CONVERSATION_LINKED": "Conversa #{displayId} vinculada",
+        "CONVERSATION_TRANSFERRED_OUT": "Conversa #{displayId} transferida para \"{targetTitle}\"",
+        "CONVERSATION_TRANSFERRED_IN": "Conversa #{displayId} transferida de \"{sourceTitle}\"",
+        "CONVERSATION_DETACHED": "Conversa #{displayId} desvinculada"
+      },
+      "TABLE_HEADER": {
+        "ACTIVITY": "Atividade",
+        "ACTOR": "Autor",
+        "TIME": "Data / Hora"
+      }
     }
   },
   "PIPELINE_STAGES_MGMT": {
