@@ -6,6 +6,14 @@ class PipelineStagesAPI extends ApiClient {
     super('pipeline_stages', { accountScoped: true });
   }
 
+  create(data) {
+    return axios.post(this.url, { pipeline_stage: data });
+  }
+
+  update(id, data) {
+    return axios.patch(`${this.url}/${id}`, { pipeline_stage: data });
+  }
+
   addRequiredField(stageId, customAttributeDefinitionId) {
     return axios.post(`${this.url}/${stageId}/required_fields`, {
       pipeline_stage_required_field: {

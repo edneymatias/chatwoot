@@ -298,6 +298,7 @@ if mode == :audit
       'app/javascript/dashboard/routes/dashboard/settings/automation/constants.js',
       'app/javascript/dashboard/store/modules/attributes.js',
       'app/models/custom_attribute_definition.rb',
+      'app/javascript/dashboard/api/pipelineStages.js',
       '.vscode/settings.json',
       '.github/workflows/publish_ee_docker.yml',
       '.github/workflows/run_foss_spec.yml',
