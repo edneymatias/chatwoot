@@ -20,12 +20,19 @@ class Scout < ApplicationRecord
 
   enum provider: { gemini: 0, openai: 1, anthropic: 2 }
 
+  alias_attribute :system_prompt, :persona
+
   belongs_to :account
   belongs_to :default_pipeline_stage, class_name: 'PipelineStage', optional: true
+  belongs_to :qualified_stage, class_name: 'PipelineStage', optional: true
+  belongs_to :unqualified_stage, class_name: 'PipelineStage', optional: true
+  belongs_to :handover_team, class_name: 'Team', optional: true
+
   has_many :scout_inboxes, class_name: 'ScoutInbox', dependent: :destroy
   has_many :inboxes, through: :scout_inboxes
 
   validates :account_id, :name, :provider, :model_name, presence: true
+  validates :debounce_delay_seconds, numericality: { only_integer: true, greater_than_or_equal_to: 1 }
   validates :responses_quota, numericality: { only_integer: true, greater_than_or_equal_to: -1 }
   validates :responses_consumed, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 

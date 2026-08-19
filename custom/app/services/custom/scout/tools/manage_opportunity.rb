@@ -1,0 +1,67 @@
+# frozen_string_literal: true
+
+class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
+  description 'Creates or updates a commercial Opportunity in the sales pipeline for the current conversation'
+
+  param :action, type: :string, desc: "Action: 'create' or 'update'", required: false
+  param :title, type: :string, desc: 'Opportunity title', required: false
+  param :stage_id, type: :integer, desc: 'Target pipeline stage ID', required: false
+  param :estimated_value, type: :number, desc: 'Estimated deal value', required: false
+  param :custom_attributes, type: :hash, desc: 'Key-value map of qualification fields', required: false
+
+  def name
+    'manage_opportunity'
+  end
+
+  def execute(action: 'create', title: nil, stage_id: nil, estimated_value: nil, custom_attributes: nil)
+    opportunity = Opportunity.find_by(origin_conversation_id: conversation.id)
+
+    if action == 'update' && opportunity.present?
+      update_opportunity(opportunity, title, stage_id, estimated_value, custom_attributes)
+    else
+      create_opportunity(opportunity, title, stage_id, estimated_value, custom_attributes)
+    end
+  end
+
+  private
+
+  def create_opportunity(existing_opp, title, stage_id, estimated_value, custom_attrs)
+    return update_opportunity(existing_opp, title, stage_id, estimated_value, custom_attrs) if existing_opp.present?
+
+    resolved_stage_id = stage_id.presence || scout.default_pipeline_stage_id || account.pipeline_stages.first&.id
+    resolved_title = title.presence || "Oportunidade ##{conversation.display_id}"
+
+    opp = Opportunity.create!(
+      account: account,
+      contact: contact,
+      origin_conversation: conversation,
+      pipeline_stage_id: resolved_stage_id,
+      title: resolved_title,
+      value: estimated_value,
+      custom_attributes: custom_attrs || {},
+      status: :open
+    )
+
+    referral_message = find_referral_message
+    Custom::ReferralAttributionService.process(opp, referral_message) if referral_message
+
+    "Opportunity created successfully (ID: #{opp.id}, Stage: #{resolved_stage_id})."
+  end
+
+  def update_opportunity(opp, title, stage_id, estimated_value, custom_attrs)
+    opp.title = title if title.present?
+    opp.pipeline_stage_id = stage_id if stage_id.present?
+    opp.value = estimated_value if estimated_value.present?
+    opp.custom_attributes = (opp.custom_attributes || {}).merge(custom_attrs) if custom_attrs.is_a?(Hash)
+
+    opp.save!
+    "Opportunity updated successfully (ID: #{opp.id})."
+  end
+
+  def find_referral_message
+    conversation.messages.incoming
+                .where("(content_attributes #>> '{}')::jsonb -> 'referral' IS NOT NULL")
+                .order(created_at: :asc)
+                .first || conversation.messages.incoming.order(created_at: :asc).first
+  end
+end

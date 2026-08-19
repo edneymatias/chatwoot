@@ -10,8 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_19_000004) do
-  create_schema "metabase_cache_0b4bd_2"
+ActiveRecord::Schema[7.1].define(version: 2126_08_19_000005) do
 
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
@@ -1190,8 +1189,18 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000004) do
     t.boolean "enabled", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "debounce_delay_seconds", default: 5, null: false
+    t.boolean "feature_memory", default: true, null: false
+    t.bigint "qualified_stage_id"
+    t.bigint "unqualified_stage_id"
+    t.bigint "handover_team_id"
+    t.jsonb "product_catalog", default: {}, null: false
+    t.jsonb "knowledge_sources", default: {}, null: false
     t.index ["account_id"], name: "index_ichatr_scouts_on_account_id"
     t.index ["default_pipeline_stage_id"], name: "index_ichatr_scouts_on_default_pipeline_stage_id"
+    t.index ["handover_team_id"], name: "index_ichatr_scouts_on_handover_team_id"
+    t.index ["qualified_stage_id"], name: "index_ichatr_scouts_on_qualified_stage_id"
+    t.index ["unqualified_stage_id"], name: "index_ichatr_scouts_on_unqualified_stage_id"
   end
 
   create_table "inbox_assignment_policies", force: :cascade do |t|
@@ -1720,6 +1729,9 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000004) do
   add_foreign_key "ichatr_scout_tools", "accounts", on_delete: :cascade
   add_foreign_key "ichatr_scouts", "accounts", on_delete: :cascade
   add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "default_pipeline_stage_id", on_delete: :nullify
+  add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "qualified_stage_id", on_delete: :nullify
+  add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "unqualified_stage_id", on_delete: :nullify
+  add_foreign_key "ichatr_scouts", "teams", column: "handover_team_id", on_delete: :nullify
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
   # WARNING: generating adapter-specific definition for accounts_after_insert_row_tr() due to a mismatch.
@@ -1811,4 +1823,5 @@ AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
+
 end

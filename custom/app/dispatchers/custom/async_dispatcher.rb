@@ -2,6 +2,9 @@
 
 module Custom::AsyncDispatcher
   def listeners
-    super + [Custom::OpportunityActivityListener.instance]
+    super + [
+      Custom::OpportunityActivityListener.instance,
+      Custom::ScoutListener.instance
+    ]
   end
 end

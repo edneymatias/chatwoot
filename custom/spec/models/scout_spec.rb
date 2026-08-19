@@ -13,6 +13,7 @@ RSpec.describe Scout, type: :model do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
   let(:stage) { PipelineStage.create!(account: account, name: 'Lead Qualified') }
+  let(:team) { create(:team, account: account) }
   let(:valid_attributes) do
     {
       account: account,
@@ -22,9 +23,14 @@ RSpec.describe Scout, type: :model do
       model_name: 'gemini-2.0-flash',
       api_key_override: 'gemini-secret-api-key',
       default_pipeline_stage: stage,
+      qualified_stage: stage,
+      unqualified_stage: stage,
+      handover_team: team,
+      debounce_delay_seconds: 5,
       responses_quota: -1,
       responses_consumed: 0,
-      enabled: true
+      enabled: true,
+      feature_memory: true
     }
   end
 
@@ -34,8 +40,13 @@ RSpec.describe Scout, type: :model do
       expect(scout.account).to eq(account)
     end
 
-    it 'belongs to default_pipeline_stage optionally' do
-      scout = described_class.new(valid_attributes.merge(default_pipeline_stage: nil))
+    it 'belongs to pipeline stages and handover team optionally' do
+      scout = described_class.new(valid_attributes.merge(
+                                    default_pipeline_stage: nil,
+                                    qualified_stage: nil,
+                                    unqualified_stage: nil,
+                                    handover_team: nil
+                                  ))
       expect(scout).to be_valid
     end
 
@@ -44,6 +55,14 @@ RSpec.describe Scout, type: :model do
       scout_inbox = ScoutInbox.create!(scout: scout, inbox: inbox)
 
       expect { scout.destroy! }.to change { ScoutInbox.exists?(scout_inbox.id) }.from(true).to(false)
+    end
+  end
+
+  describe 'system_prompt alias' do
+    it 'aliases system_prompt to persona' do
+      scout = described_class.new(system_prompt: 'Custom Prompt')
+      expect(scout.persona).to eq('Custom Prompt')
+      expect(scout.system_prompt).to eq('Custom Prompt')
     end
   end
 
@@ -78,6 +97,12 @@ RSpec.describe Scout, type: :model do
 
     it 'defines provider enum with gemini, openai, anthropic' do
       expect(described_class.providers).to eq({ 'gemini' => 0, 'openai' => 1, 'anthropic' => 2 })
+    end
+
+    it 'validates debounce_delay_seconds numericality' do
+      expect(described_class.new(valid_attributes.merge(debounce_delay_seconds: 0))).not_to be_valid
+      expect(described_class.new(valid_attributes.merge(debounce_delay_seconds: -1))).not_to be_valid
+      expect(described_class.new(valid_attributes.merge(debounce_delay_seconds: 5))).to be_valid
     end
 
     it 'validates responses_quota numericality' do
