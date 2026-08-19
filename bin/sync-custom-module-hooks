@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
-# rubocop:disable Layout/LineLength
+
+# rubocop:disable Layout/LineLength, Rails/Pluck, Rails/NegateInclude
 
 require 'json'
 
@@ -253,8 +254,8 @@ MANIFEST = if ENV['TEST_MANIFEST']
                },
                {
                  file: 'app/models/automation_rule.rb',
-                 anchor: "mail_subject phone_number priority conversation_language labels private_note]",
-                 insert: "mail_subject phone_number priority conversation_language labels private_note campaign_referral_present]",
+                 anchor: 'mail_subject phone_number priority conversation_language labels private_note]',
+                 insert: 'mail_subject phone_number priority conversation_language labels private_note campaign_referral_present]',
                  replace: true
                }
              ]
@@ -302,7 +303,7 @@ if mode == :audit
     return true if path.match?(%r{^(app/javascript/dashboard/i18n/locale|config/locales)/(?!en\b|pt_BR\b)})
 
     out_of_scope = [
-      'docker-compose.yaml', '.gitignore', 'AGENTS.md', '.specify/feature.json',
+      'docker-compose.yaml', 'docker-compose.production.yaml', '.gitignore', 'AGENTS.md', '.specify/feature.json',
       'bin/sync-custom-module-hooks', 'lib/seeders/account_seeder.rb',
       'app/javascript/dashboard/components/IntersectionObserver.vue',
       'app/javascript/dashboard/i18n/locale/en/attributesMgmt.json',
@@ -443,4 +444,4 @@ puts "All #{MANIFEST.size} wiring points present." if mode == :check && !failure
 
 exit(failures ? 1 : 0)
 
-# rubocop:enable Layout/LineLength
+# rubocop:enable Layout/LineLength, Rails/Pluck, Rails/NegateInclude
