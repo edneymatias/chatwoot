@@ -63,6 +63,23 @@ RSpec.describe Custom::Scout::AgentRunner do
         expect(outgoing.content).to eq('Olá! Como posso ajudar você hoje?')
         expect(conversation.reload.status).to eq('pending')
       end
+
+      it 'registers CallCustomApi tool including account enabled tools catalog' do
+        account.scout_tools.create!(
+          name: 'erp_stock',
+          description: 'Lookup ERP stock',
+          endpoint_url: 'https://api.example.com/stock',
+          http_method: 'POST',
+          enabled: true
+        )
+        expect(fake_chat).to receive(:with_tool).with(an_instance_of(Custom::Scout::Tools::CallCustomApi)) do |tool|
+          expect(tool.description).to include('erp_stock')
+          expect(tool.description).to include('Lookup ERP stock')
+          fake_chat
+        end.at_least(:once)
+
+        runner.perform
+      end
     end
 
     context 'when fail-safe pre-call check fails (quota exhausted)' do

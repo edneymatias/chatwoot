@@ -7,5 +7,7 @@ class ScoutTool < ApplicationRecord
 
   belongs_to :account
 
+  alias_attribute :parameters_schema, :parameter_schema
+
   validates :account_id, :name, :description, :endpoint_url, :http_method, presence: true
 end

@@ -73,8 +73,9 @@ class Custom::Scout::AgentRunner
     update_contact = Custom::Scout::Tools::UpdateContact.new(@scout, @conversation)
     create_note = Custom::Scout::Tools::CreatePrivateNote.new(@scout, @conversation)
     handover = Custom::Scout::Tools::HandoverToHuman.new(@scout, @conversation)
+    call_custom_api = Custom::Scout::Tools::CallCustomApi.new(@scout, @conversation)
 
-    [[manage_opp, move_stage, update_contact, create_note, handover], handover]
+    [[manage_opp, move_stage, update_contact, create_note, handover, call_custom_api], handover]
   end
 
   def build_system_instructions

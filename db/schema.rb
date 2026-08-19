@@ -10,7 +10,8 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_19_000005) do
+ActiveRecord::Schema[7.1].define(version: 2126_08_19_000006) do
+  create_schema "metabase_cache_0b4bd_2"
 
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
@@ -1173,6 +1174,7 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000005) do
     t.jsonb "parameter_schema", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "enabled", default: true, null: false
     t.index ["account_id"], name: "index_ichatr_scout_tools_on_account_id"
   end
 
@@ -1740,11 +1742,11 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000005) do
 CREATE OR REPLACE FUNCTION public.accounts_after_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
 $function$
   SQL
 
@@ -1757,11 +1759,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.camp_dpid_before_insert()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
 $function$
   SQL
 
@@ -1774,11 +1776,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.campaigns_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
+AS $function$
+BEGIN
+    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
 $function$
   SQL
 
@@ -1791,11 +1793,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.conversations_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
+AS $function$
+BEGIN
+    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
 $function$
   SQL
 
@@ -1823,5 +1825,4 @@ AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
-
 end
