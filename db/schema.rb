@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_17_140000) do
+ActiveRecord::Schema[7.1].define(version: 2126_08_19_000004) do
   create_schema "metabase_cache_0b4bd_2"
 
   # These extensions should be enabled to support this database
@@ -1044,6 +1044,7 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_17_140000) do
     t.text "campaign_body"
     t.text "campaign_thumbnail_url"
     t.bigint "active_conversation_id"
+    t.string "lost_reason"
     t.index ["account_id", "closed_at"], name: "index_ichatr_opportunities_on_account_id_and_closed_at"
     t.index ["account_id"], name: "index_ichatr_opportunities_on_account_id"
     t.index ["active_conversation_id"], name: "index_ichatr_opportunities_on_active_conversation_id", unique: true, where: "(active_conversation_id IS NOT NULL)"
@@ -1152,6 +1153,45 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_17_140000) do
     t.integer "stale_after_days"
     t.text "description"
     t.index ["account_id"], name: "index_ichatr_pipeline_stages_on_account_id"
+  end
+
+  create_table "ichatr_scout_inboxes", force: :cascade do |t|
+    t.bigint "scout_id", null: false
+    t.bigint "inbox_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["inbox_id"], name: "index_ichatr_scout_inboxes_on_inbox_id", unique: true
+    t.index ["scout_id"], name: "index_ichatr_scout_inboxes_on_scout_id"
+  end
+
+  create_table "ichatr_scout_tools", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.text "description", null: false
+    t.string "endpoint_url", null: false
+    t.string "http_method", null: false
+    t.text "auth_headers"
+    t.jsonb "parameter_schema", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_scout_tools_on_account_id"
+  end
+
+  create_table "ichatr_scouts", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.text "persona"
+    t.integer "provider", null: false
+    t.string "model_name", null: false
+    t.text "api_key_override"
+    t.bigint "default_pipeline_stage_id"
+    t.integer "responses_quota", default: -1, null: false
+    t.integer "responses_consumed", default: 0, null: false
+    t.boolean "enabled", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_scouts_on_account_id"
+    t.index ["default_pipeline_stage_id"], name: "index_ichatr_scouts_on_default_pipeline_stage_id"
   end
 
   create_table "inbox_assignment_policies", force: :cascade do |t|
@@ -1675,6 +1715,11 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_17_140000) do
   add_foreign_key "ichatr_pipeline_stage_required_fields", "custom_attribute_definitions"
   add_foreign_key "ichatr_pipeline_stage_required_fields", "ichatr_pipeline_stages", column: "pipeline_stage_id"
   add_foreign_key "ichatr_pipeline_stages", "accounts"
+  add_foreign_key "ichatr_scout_inboxes", "ichatr_scouts", column: "scout_id", on_delete: :cascade
+  add_foreign_key "ichatr_scout_inboxes", "inboxes", on_delete: :cascade
+  add_foreign_key "ichatr_scout_tools", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scouts", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "default_pipeline_stage_id", on_delete: :nullify
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
   # WARNING: generating adapter-specific definition for accounts_after_insert_row_tr() due to a mismatch.
@@ -1683,11 +1728,11 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_17_140000) do
 CREATE OR REPLACE FUNCTION public.accounts_after_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
 $function$
   SQL
 
@@ -1700,11 +1745,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.camp_dpid_before_insert()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
 $function$
   SQL
 
@@ -1717,11 +1762,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.campaigns_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
+AS $function$
+BEGIN
+    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
 $function$
   SQL
 
@@ -1734,11 +1779,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.conversations_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
+AS $function$
+BEGIN
+    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
 $function$
   SQL
 
@@ -1766,5 +1811,4 @@ AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
-
 end

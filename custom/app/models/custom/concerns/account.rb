@@ -8,5 +8,7 @@ module Custom::Concerns::Account
     has_many :pipeline_card_field_configs, dependent: :destroy
     has_one :pipeline_currency_setting, dependent: :destroy
     has_one :campaign_attribution_setting, dependent: :destroy
+    has_many :scouts, dependent: :destroy
+    has_many :scout_tools, dependent: :destroy
   end
 end
