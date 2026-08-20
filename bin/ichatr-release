@@ -67,12 +67,20 @@ confirm = $stdin.gets.chomp.downcase
 
 abort_with_error('Release aborted by user.') unless %w[y yes].include?(confirm)
 
-# T007: Execute git tag and push
+# T007: Push branch first so run_foss_spec triggers before the Docker build
+current_branch, _err, status = run_cmd('git rev-parse --abbrev-ref HEAD')
+abort_with_error('Could not determine current branch.') unless status.success?
+
+puts "Pushing branch #{current_branch} to origin (triggers CI tests)..."
+_, err, status = run_cmd("git push origin #{current_branch}")
+abort_with_error("Failed to push branch: #{err}") unless status.success?
+
+# T008: Create and push the release tag
 puts "Creating annotated tag #{next_tag}..."
 _, err, status = run_cmd("git tag -a #{next_tag} -m \"Release #{next_tag}\"")
 abort_with_error("Failed to create tag: #{err}") unless status.success?
 
-puts 'Pushing tag to origin...'
+puts 'Pushing tag to origin (triggers Docker build)...'
 _, err, status = run_cmd("git push origin #{next_tag}")
 abort_with_error("Failed to push tag: #{err}") unless status.success?
 
