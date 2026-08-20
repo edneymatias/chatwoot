@@ -154,6 +154,13 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  anchor: '    AutomationActionTeamMessageInput,',
                  insert: "\n    AutomationActionCreateOpportunityInput,"
                },
+               # create_opportunity/update_opportunity_* actions need their dropdown values passed
+               # separately since AutomationActionInput expects a distinct prop for them.
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/automation/components/AutomationActions.vue',
+                 anchor: "        :dropdown-values=\"\n          Array.isArray(getActionDropdownValues(action.action_name))\n            ? getActionDropdownValues(action.action_name)\n            : []\n        \"",
+                 insert: "\n        :opportunity-dropdown-values=\"\n          !Array.isArray(getActionDropdownValues(action.action_name))\n            ? getActionDropdownValues(action.action_name)\n            : {}\n        \""
+               },
                {
                  file: 'app/javascript/dashboard/composables/useUISettings.js',
                  anchor: "  { name: 'shopify_orders' },",

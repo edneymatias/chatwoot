@@ -76,6 +76,9 @@ export const DATE_RANGE_OPTIONS = {
   },
 };
 
+export const CHART_FONT_FAMILY =
+  'Inter,-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
+
 export const OVERVIEW_METRICS = {
   open: 'OPEN',
   unattended: 'UNATTENDED',
