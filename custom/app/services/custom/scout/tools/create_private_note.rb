@@ -10,6 +10,8 @@ class Custom::Scout::Tools::CreatePrivateNote < Custom::Scout::Tools::BaseTool
   end
 
   def execute(content:)
+    return "[Simulado] Nota interna criada: #{content}" if playground?
+
     Messages::MessageBuilder.new(nil, conversation, { content: content, private: true }).perform
     'Private note created successfully.'
   end

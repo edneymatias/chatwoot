@@ -59,7 +59,7 @@ stuck waiting on the bot.
 
 - No external REST/webhook tool execution (`call_custom_api`/`ScoutTool` dispatch) — Phase 04.
 - No UI for configuring Scouts, tools, or product catalogs — Phase 05.
-- No follow-up/re-engagement job — Phase 07.
+- No follow-up/re-engagement job — Phase 10.
 - Production encryption-key availability is a **dependency**, not built here — see Phase 03. This
   phase can be developed/tested in an environment where `ActiveRecord::Encryption` is already
   configured (e.g. local dev with keys generated via `bin/rails db:encryption:init`), but must not

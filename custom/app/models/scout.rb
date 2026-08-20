@@ -30,6 +30,9 @@ class Scout < ApplicationRecord
 
   has_many :scout_inboxes, class_name: 'ScoutInbox', dependent: :destroy
   has_many :inboxes, through: :scout_inboxes
+  has_many :scout_knowledge_sources, class_name: 'ScoutKnowledgeSource', dependent: :destroy
+  has_many :scout_required_fields, class_name: 'ScoutRequiredField', dependent: :destroy
+  has_many :required_custom_attribute_definitions, through: :scout_required_fields, source: :custom_attribute_definition
 
   validates :account_id, :name, :provider, :model_name, presence: true
   validates :debounce_delay_seconds, numericality: { only_integer: true, greater_than_or_equal_to: 1 }

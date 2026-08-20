@@ -81,16 +81,47 @@ class Custom::Scout::AgentRunner
   def build_system_instructions
     parts = []
     parts << @scout.system_prompt if @scout.system_prompt.present?
-    parts << "Catálogo de Produtos e Ofertas:\n#{@scout.product_catalog.to_json}" if @scout.product_catalog.present? && @scout.product_catalog != {}
-    parts << "Base de Conhecimento:\n#{@scout.knowledge_sources.to_json}" if @scout.knowledge_sources.present? && @scout.knowledge_sources != {}
+    parts << build_catalog_instructions
+    parts << build_knowledge_instructions
     parts << "Contexto do Contato:\n#{@contact.to_llm_text}" if @contact.present?
+    parts << out_of_office_notice if @inbox&.out_of_office?
 
-    if @inbox&.out_of_office?
-      parts << '[AVISO DE EXPEDIENTE: A equipe humana está fora do horário de atendimento. ' \
-               'Prossiga com a qualificação normalmente e informe o lead se oportuno.]'
+    parts.compact.join("\n\n")
+  end
+
+  def out_of_office_notice
+    '[AVISO DE EXPEDIENTE: A equipe humana está fora do horário de atendimento. ' \
+      'Prossiga com a qualificação normalmente e informe o lead se oportuno.]'
+  end
+
+  def build_catalog_instructions
+    return if @scout.product_catalog.blank? || @scout.product_catalog == {}
+
+    "Catálogo de Produtos e Ofertas:\n#{@scout.product_catalog.to_json}"
+  end
+
+  def build_knowledge_instructions
+    entries = @scout.scout_knowledge_sources.where(status: :ready).filter_map do |src|
+      format_knowledge_source(src)
     end
 
-    parts.join("\n\n")
+    if entries.any?
+      "Base de Conhecimento:\n#{entries.join("\n---\n")}"
+    elsif @scout.respond_to?(:knowledge_sources) && @scout.knowledge_sources.present? && @scout.knowledge_sources != {}
+      "Base de Conhecimento:\n#{@scout.knowledge_sources.to_json}"
+    end
+  end
+
+  def format_knowledge_source(src)
+    case src.kind.to_sym
+    when :faq
+      "FAQ:\nP: #{src.question}\nR: #{src.answer}"
+    when :url
+      "URL (#{src.url}):\n#{src.content}"
+    when :document
+      filename = src.document_file.attached? ? src.document_file.filename : 'Document'
+      "Documento (#{filename}):\n#{src.content}"
+    end
   end
 
   def conversation_messages

@@ -150,6 +150,16 @@ Rails.application.routes.draw do
           resources :pipeline_stages, only: [:index, :create, :update, :destroy] do
             resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'
           end
+          resources :scouts, only: [:index, :show, :create, :update, :destroy] do
+            scope module: :scouts do
+              resources :scout_inboxes, only: [:index, :create, :destroy]
+              resources :product_catalog_items, only: [:index, :create, :update, :destroy]
+              resources :knowledge_sources, only: [:index, :create, :update, :destroy]
+              resource :provider_settings, only: [:show, :update]
+              resources :playground_messages, only: [:create]
+            end
+          end
+          resources :scout_tools, only: [:index, :show, :create, :update, :destroy]
           resources :pipeline_stage_aggregates, only: [:index]
           resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]
           resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]

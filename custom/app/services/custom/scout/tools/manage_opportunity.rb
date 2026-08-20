@@ -14,6 +14,11 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
   end
 
   def execute(action: 'create', title: nil, stage_id: nil, estimated_value: nil, custom_attributes: nil)
+    if playground?
+      payload = { title: title, stage_id: stage_id, value: estimated_value, custom_attributes: custom_attributes }.compact
+      return "[Simulado] Oportunidade gerenciada (#{action}): #{payload.to_json}"
+    end
+
     opportunity = Opportunity.find_by(origin_conversation_id: conversation.id)
 
     if action == 'update' && opportunity.present?

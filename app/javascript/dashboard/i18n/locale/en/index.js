@@ -32,18 +32,20 @@ import report from './report.json';
 import resetPassword from './resetPassword.json';
 import search from './search.json';
 import setNewPassword from './setNewPassword.json';
+import sessionLimit from './sessionLimit.json';
 import settings from './settings.json';
 import signup from './signup.json';
 import sla from './sla.json';
 import snooze from './snooze.json';
 import teamsSettings from './teamsSettings.json';
+import webhooks from './webhooks.json';
 import whatsappTemplates from './whatsappTemplates.json';
 import contentTemplates from './contentTemplates.json';
 import mfa from './mfa.json';
 import onboarding from './onboarding.json';
-import sessionLimit from './sessionLimit.json';
 import yearInReview from './yearInReview.json';
 import opportunities from './opportunities.json';
+import scout from './scout.json';
 
 export default {
   ...advancedFilters,
@@ -85,6 +87,7 @@ export default {
   ...sla,
   ...snooze,
   ...teamsSettings,
+  ...webhooks,
   ...whatsappTemplates,
   ...contentTemplates,
   ...mfa,
@@ -92,4 +95,5 @@ export default {
   ...sessionLimit,
   ...yearInReview,
   ...opportunities,
+  ...scout,
 };

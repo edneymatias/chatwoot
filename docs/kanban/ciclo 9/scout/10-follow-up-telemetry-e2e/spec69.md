@@ -1,4 +1,4 @@
-# Phase 07 — Follow-up, Telemetry & E2E
+# Phase 10 — Follow-up, Telemetry & E2E
 
 **Master doc**: `docs/kanban/backlog/scout/spec60.md` §5, §6
 **Depends on**: Phase 02 (Opportunity/tool pipeline), Phase 05 (UI to surface telemetry, if

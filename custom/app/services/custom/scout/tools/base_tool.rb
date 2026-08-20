@@ -1,19 +1,24 @@
 # frozen_string_literal: true
 
 class Custom::Scout::Tools::BaseTool < RubyLLM::Tool
-  attr_reader :scout, :conversation
+  attr_reader :scout, :conversation, :playground
 
-  def initialize(scout, conversation)
+  def initialize(scout, conversation, playground: false)
     @scout = scout
     @conversation = conversation
+    @playground = playground
     super()
   end
 
+  def playground?
+    @playground == true
+  end
+
   def account
-    @conversation.account
+    @conversation&.account || @scout&.account
   end
 
   def contact
-    @conversation.contact
+    @conversation&.contact
   end
 end

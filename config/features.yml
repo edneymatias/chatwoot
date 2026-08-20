@@ -272,3 +272,8 @@
   display_name: Opportunities (Kanban)
   enabled: true
   column: feature_flags_ext_1
+- name: scout
+  display_name: Scout
+  enabled: true
+  column: feature_flags_ext_1
+

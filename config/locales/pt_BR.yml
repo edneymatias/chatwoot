@@ -61,6 +61,13 @@ pt_BR:
     pipeline_stage_required_field:
       already_required: 'já é obrigatório neste estágio do funil'
       must_be_opportunity_attribute: 'deve ser um atributo de oportunidade'
+    scout_required_field:
+      already_required: 'já está selecionado para este Scout'
+      must_be_contact_or_opportunity_attribute: 'deve ser um atributo de Contato ou Oportunidade'
+    scout_knowledge_source:
+      invalid_url: 'deve ser uma URL HTTP(S) válida'
+      must_be_pdf: 'deve ser um documento PDF'
+      file_too_large: 'deve ter menos de 10MB'
     pipeline_closing_required_field:
       already_required: 'já é obrigatório para este fechamento'
       not_an_opportunity_attribute: 'deve ser um atributo de oportunidade'

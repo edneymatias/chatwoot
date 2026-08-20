@@ -77,6 +77,13 @@ en:
     pipeline_stage_required_field:
       already_required: 'is already required in this pipeline stage'
       must_be_opportunity_attribute: 'must be an opportunity attribute'
+    scout_required_field:
+      already_required: 'is already selected for this Scout'
+      must_be_contact_or_opportunity_attribute: 'must be a Contact or Opportunity attribute'
+    scout_knowledge_source:
+      invalid_url: 'must be a valid HTTP(S) URL'
+      must_be_pdf: 'must be a PDF document'
+      file_too_large: 'must be smaller than 10MB'
     pipeline_closing_required_field:
       already_required: 'is already required for this outcome'
       not_an_opportunity_attribute: 'must be an opportunity attribute'

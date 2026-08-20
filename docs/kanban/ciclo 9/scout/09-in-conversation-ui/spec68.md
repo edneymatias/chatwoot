@@ -1,4 +1,4 @@
-# Phase 06 — In-Conversation UI
+# Phase 09 — In-Conversation UI
 
 **Master doc**: `docs/kanban/backlog/scout/spec60.md` §4.2, §7
 **Depends on**: Phase 02 (Fail-Safe/handoff flow exists to reflect status from), Phase 05 (Scout

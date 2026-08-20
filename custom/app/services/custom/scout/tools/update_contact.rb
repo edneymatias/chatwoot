@@ -13,6 +13,11 @@ class Custom::Scout::Tools::UpdateContact < Custom::Scout::Tools::BaseTool
   end
 
   def execute(name: nil, email: nil, phone: nil, custom_attributes: nil)
+    if playground?
+      payload = { name: name, email: email, phone: phone, custom_attributes: custom_attributes }.compact
+      return "[Simulado] Contato atualizado: #{payload.to_json}"
+    end
+
     target_contact = contact
     return 'No contact associated with this conversation.' if target_contact.blank?
 

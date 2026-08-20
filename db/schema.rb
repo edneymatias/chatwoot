@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_19_000006) do
+ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
   create_schema "metabase_cache_0b4bd_2"
 
   # These extensions should be enabled to support this database
@@ -1164,6 +1164,35 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000006) do
     t.index ["scout_id"], name: "index_ichatr_scout_inboxes_on_scout_id"
   end
 
+  create_table "ichatr_scout_knowledge_sources", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "scout_id", null: false
+    t.integer "kind", null: false
+    t.string "url"
+    t.text "question"
+    t.text "answer"
+    t.integer "status", default: 0, null: false
+    t.text "error_message"
+    t.text "content"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_scout_knowledge_sources_on_account_id"
+    t.index ["scout_id", "status"], name: "index_ichatr_scout_ks_on_scout_and_status"
+    t.index ["scout_id"], name: "index_ichatr_scout_knowledge_sources_on_scout_id"
+  end
+
+  create_table "ichatr_scout_required_fields", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "scout_id", null: false
+    t.bigint "custom_attribute_definition_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_scout_required_fields_on_account_id"
+    t.index ["custom_attribute_definition_id"], name: "index_ichatr_scout_required_fields_on_cad_id"
+    t.index ["scout_id", "custom_attribute_definition_id"], name: "index_ichatr_scout_req_fields_on_scout_and_cad", unique: true
+    t.index ["scout_id"], name: "index_ichatr_scout_required_fields_on_scout_id"
+  end
+
   create_table "ichatr_scout_tools", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "name", null: false
@@ -1728,6 +1757,11 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000006) do
   add_foreign_key "ichatr_pipeline_stages", "accounts"
   add_foreign_key "ichatr_scout_inboxes", "ichatr_scouts", column: "scout_id", on_delete: :cascade
   add_foreign_key "ichatr_scout_inboxes", "inboxes", on_delete: :cascade
+  add_foreign_key "ichatr_scout_knowledge_sources", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scout_knowledge_sources", "ichatr_scouts", column: "scout_id", on_delete: :cascade
+  add_foreign_key "ichatr_scout_required_fields", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scout_required_fields", "custom_attribute_definitions", on_delete: :cascade
+  add_foreign_key "ichatr_scout_required_fields", "ichatr_scouts", column: "scout_id", on_delete: :cascade
   add_foreign_key "ichatr_scout_tools", "accounts", on_delete: :cascade
   add_foreign_key "ichatr_scouts", "accounts", on_delete: :cascade
   add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "default_pipeline_stage_id", on_delete: :nullify
@@ -1736,71 +1770,6 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000006) do
   add_foreign_key "ichatr_scouts", "teams", column: "handover_team_id", on_delete: :nullify
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
-  # WARNING: generating adapter-specific definition for accounts_after_insert_row_tr() due to a mismatch.
-  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.accounts_after_insert_row_tr()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
-$function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER accounts_after_insert_row_tr AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION accounts_after_insert_row_tr()")
-
-  # WARNING: generating adapter-specific definition for camp_dpid_before_insert() due to a mismatch.
-  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.camp_dpid_before_insert()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
-$function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER camp_dpid_before_insert AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION camp_dpid_before_insert()")
-
-  # WARNING: generating adapter-specific definition for campaigns_before_insert_row_tr() due to a mismatch.
-  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.campaigns_before_insert_row_tr()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
-$function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER campaigns_before_insert_row_tr BEFORE INSERT ON \"campaigns\" FOR EACH ROW EXECUTE FUNCTION campaigns_before_insert_row_tr()")
-
-  # WARNING: generating adapter-specific definition for conversations_before_insert_row_tr() due to a mismatch.
-  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.conversations_before_insert_row_tr()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
-$function$
-  SQL
-
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute(<<-SQL)
 CREATE OR REPLACE FUNCTION public.n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()
@@ -1818,11 +1787,38 @@ AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614
   SQL
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER conversations_before_insert_row_tr BEFORE INSERT ON \"conversations\" FOR EACH ROW EXECUTE FUNCTION conversations_before_insert_row_tr()")
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER n8n_trigger_717c52d1_52d2_406d_bc05_250afa7cfc2f AFTER INSERT ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()")
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
+
+  create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
+      on("accounts").
+      after(:insert).
+      for_each(:row) do
+    "execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);"
+  end
+
+  create_trigger("conversations_before_insert_row_tr", :generated => true, :compatibility => 1).
+      on("conversations").
+      before(:insert).
+      for_each(:row) do
+    "NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);"
+  end
+
+  create_trigger("camp_dpid_before_insert", :generated => true, :compatibility => 1).
+      on("accounts").
+      name("camp_dpid_before_insert").
+      after(:insert).
+      for_each(:row) do
+    "execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);"
+  end
+
+  create_trigger("campaigns_before_insert_row_tr", :generated => true, :compatibility => 1).
+      on("campaigns").
+      before(:insert).
+      for_each(:row) do
+    "NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);"
+  end
+
 end

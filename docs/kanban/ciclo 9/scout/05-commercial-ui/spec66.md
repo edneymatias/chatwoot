@@ -44,7 +44,7 @@ Mirror Chatwoot's existing Captain feature exactly — do not invent a new patte
 
 ## Out of scope
 
-- No in-conversation UI components (badge, pause/resume button) — Phase 06.
+- No in-conversation UI components (badge, pause/resume button) — Phase 09.
 - No billing/plan-gating UI — quota is set via `responses_quota` directly (console/seed or a simple
   numeric field on this screen), no subscription flow.
 

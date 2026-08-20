@@ -14,12 +14,16 @@ class Custom::Scout::Tools::HandoverToHuman < Custom::Scout::Tools::BaseTool
   end
 
   def execute(assignee_id: nil, team_id: nil, reason: nil)
+    @handoff_executed = true
+    if playground?
+      return "[Simulado] Atendimento transferido para humano#{reason.present? ? " (Motivo: #{reason})" : ''}."
+    end
+
     assign_team_and_user(assignee_id, team_id)
     perform_handoff
     create_transfer_note(reason) if reason.present?
     generate_contact_memory if scout.feature_memory?
 
-    @handoff_executed = true
     'Conversation transferred to human queue successfully.'
   end
 

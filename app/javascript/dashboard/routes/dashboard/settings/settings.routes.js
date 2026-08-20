@@ -28,6 +28,7 @@ import conversationWorkflow from './conversationWorkflow/conversationWorkflow.ro
 import captain from './captain/captain.routes';
 import data from './data/data.routes';
 import pipelineStages from './pipelineStages/pipelineStages.routes';
+import scout from './scout/scout.routes';
 
 export default {
   routes: [
@@ -71,5 +72,6 @@ export default {
     ...conversationWorkflow.routes,
     ...captain.routes,
     ...pipelineStages.routes,
+    ...scout.routes,
   ],
 };

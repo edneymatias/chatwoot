@@ -107,6 +107,13 @@ const hasOpportunities = computed(() => {
   );
 });
 
+const hasScout = computed(() => {
+  return isFeatureEnabledonAccount.value(
+    accountId.value,
+    FEATURE_FLAGS.SCOUT
+  );
+});
+
 const fetchConversationUnreadCounts = ([currentAccountId, isEnabled]) => {
   if (!currentAccountId) return;
 
@@ -746,6 +753,26 @@ const menuItems = computed(() => {
             icon: 'i-lucide-kanban',
             to: accountScopedRoute('opportunities_index'),
             activeOn: ['opportunities_index'],
+          },
+        ]
+      : []),
+    ...(hasScout.value
+      ? [
+          {
+            name: 'Scout',
+            label: t('SIDEBAR.SCOUT'),
+            icon: 'i-lucide-bot',
+            to: accountScopedRoute('scouts_index'),
+            activeOn: [
+              'scouts_index',
+              'scout_tools',
+              'scout_detail',
+              'scout_inboxes',
+              'scout_products',
+              'scout_knowledge',
+              'scout_funnel',
+              'scout_playground',
+            ],
           },
         ]
       : []),

@@ -11,6 +11,10 @@ class Custom::Scout::Tools::MoveOpportunityStage < Custom::Scout::Tools::BaseToo
   end
 
   def execute(stage_id:, lost_reason: nil)
+    if playground?
+      return "[Simulado] Oportunidade movida para etapa #{stage_id}#{lost_reason.present? ? " (Motivo: #{lost_reason})" : ''}"
+    end
+
     opportunity = Opportunity.find_by(origin_conversation_id: conversation.id)
     return 'No opportunity found for this conversation.' if opportunity.blank?
 
