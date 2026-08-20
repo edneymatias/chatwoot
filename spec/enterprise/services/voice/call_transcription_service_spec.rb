@@ -67,7 +67,7 @@ RSpec.describe Voice::CallTranscriptionService, type: :service do
     it 'reindexes before broadcasting so a retry after a reindex failure does not resend the update event' do
       call.update!(transcript: 'Existing transcript')
       allow(ChatwootApp).to receive(:advanced_search_allowed?).and_return(true)
-      allow(message).to receive(:reindex).and_raise(StandardError, 'reindex boom')
+      allow(message).to receive(:reindex_for_search).and_raise(StandardError, 'reindex boom')
 
       expect(message).not_to receive(:send_update_event)
       expect { described_class.new(call: call).perform }.to raise_error(StandardError, 'reindex boom')

@@ -285,6 +285,12 @@ class Message < ApplicationRecord
     '[Attachment]' if attachments.any?
   end
 
+  def reindex_for_search
+    return unless respond_to?(:reindex)
+
+    reindex(mode: :async)
+  end
+
   private
 
   def prevent_message_flooding
@@ -451,12 +457,6 @@ class Message < ApplicationRecord
     # rubocop:disable Rails/SkipsModelValidations
     conversation.update_columns(last_activity_at: created_at, updated_at: Time.current)
     # rubocop:enable Rails/SkipsModelValidations
-  end
-
-  def reindex_for_search
-    return unless respond_to?(:reindex)
-
-    reindex(mode: :async)
   end
 end
 

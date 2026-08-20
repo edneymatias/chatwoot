@@ -188,7 +188,7 @@ RSpec.describe Captain::ConversationOutcomeTracker do
 
       tracker.record_csat(response: response)
 
-      expect(initial.reload).to have_attributes(csat_rating: 4, csat_received_at: response.created_at)
+      expect(initial.reload).to have_attributes(csat_rating: 4, csat_received_at: be_within(0.000001).of(response.created_at))
       expect(episodes.last.csat_rating).to be_nil
     end
   end

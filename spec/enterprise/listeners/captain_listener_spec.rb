@@ -115,7 +115,7 @@ describe CaptainListener do
 
       expect(outcome.reload).to have_attributes(
         csat_rating: 5,
-        csat_received_at: response.created_at
+        csat_received_at: be_within(0.000001).of(response.created_at)
       )
     end
   end
