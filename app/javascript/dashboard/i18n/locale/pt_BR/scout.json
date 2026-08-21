@@ -107,6 +107,10 @@
       "EMPTY_TITLE": "Nenhuma Fonte Adicionada",
       "EMPTY_DESC": "Adicione URLs, arquivos PDF (até 10MB) ou perguntas frequentes para treinar o Scout.",
       "CONFIRM_DELETE": "Tem certeza de que deseja excluir esta fonte de conhecimento?",
+      "STATUS_READY": "Pronto",
+      "STATUS_PENDING": "Processando",
+      "STATUS_FAILED": "Falhou",
+      "EMBEDDINGS_COUNT": "{count} par de perguntas e respostas indexado | {count} pares de perguntas e respostas indexados",
       "MODAL": {
         "TITLE": "Adicionar Fonte de Conhecimento",
         "DESCRIPTION": "Escolha o tipo de fonte para alimentar a base de conhecimento do Scout.",

@@ -6,6 +6,8 @@ class ScoutKnowledgeSource < ApplicationRecord
   belongs_to :account
   belongs_to :scout
 
+  has_many :scout_knowledge_embeddings, class_name: 'ScoutKnowledgeEmbedding', dependent: :destroy
+
   has_one_attached :document_file
 
   enum kind: { url: 0, document: 1, faq: 2 }
@@ -22,9 +24,10 @@ class ScoutKnowledgeSource < ApplicationRecord
   validate :validate_document_file
 
   before_validation :set_account_from_scout
-  after_commit :enqueue_processing_job, on: %i[create update], if: :should_process?
+  after_commit :enqueue_processing_job, on: :create, if: :should_process?
 
   def reprocess!
+    scout_knowledge_embeddings.destroy_all
     update!(status: :pending, error_message: nil)
     enqueue_processing_job
   end
@@ -44,7 +47,7 @@ class ScoutKnowledgeSource < ApplicationRecord
   end
 
   def should_process?
-    pending? && (url? || document?)
+    pending?
   end
 
   def enqueue_processing_job

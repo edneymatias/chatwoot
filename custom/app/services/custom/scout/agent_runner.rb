@@ -41,11 +41,15 @@ class Custom::Scout::AgentRunner
     config&.api_key.present?
   end
 
-  def perform_fail_safe_handoff(_reason)
+  def perform_fail_safe_handoff(reason = nil)
     return unless conversation_pending?
 
     @conversation.bot_handoff!
-    alert_content = '⚠️ [IA Pausada]: A conversa foi transferida para atendimento humano devido a esgotamento de saldo/limite de API.'
+    alert_content = if reason.present?
+                      "⚠️ [IA Pausada]: A conversa foi transferida para atendimento humano. Motivo: #{reason}"
+                    else
+                      '⚠️ [IA Pausada]: A conversa foi transferida para atendimento humano devido a esgotamento de saldo/limite de API.'
+                    end
     Messages::MessageBuilder.new(nil, @conversation, { content: alert_content, private: true }).perform
 
     Custom::Scout::ContactNotesService.new(@scout, @conversation).generate_and_update_notes if @scout.feature_memory?
@@ -62,9 +66,40 @@ class Custom::Scout::AgentRunner
     add_history_to_chat(chat, history_messages, last_user_message)
 
     response = execute_chat(chat, last_user_message)
-    return if handover_tool.handoff_executed
+    process_response(response, handover_tool)
+  end
 
-    dispatch_outgoing_reply(response) if response&.content.present? && conversation_pending?
+  def process_response(response, handover_tool)
+    return if handover_tool.handoff_executed
+    return unless conversation_pending?
+
+    parsed = parse_structured_response(response&.content)
+    if parsed.blank?
+      perform_fail_safe_handoff('Falha ao interpretar resposta estruturada do modelo.')
+      return
+    end
+
+    dispatch_outgoing_reply(parsed[:response])
+  end
+
+  def parse_structured_response(content)
+    if content.blank?
+      Rails.logger.warn '[Scout AgentRunner] Structured response parsing failed: content is blank'
+      return nil
+    end
+
+    sanitized = content.strip.sub(/\A```(?:\w*)\s*\n?/, '').sub(/\n?\s*```\s*\z/, '').strip
+    json = JSON.parse(sanitized)
+    if json['response'].blank?
+      Rails.logger.warn "[Scout AgentRunner] Structured response missing 'response' key: #{sanitized}"
+      return nil
+    end
+
+    Rails.logger.info "[Scout AgentRunner] reasoning: #{json['reasoning']}"
+    { response: json['response'] }
+  rescue JSON::ParserError => e
+    Rails.logger.warn "[Scout AgentRunner] JSON parsing failed: #{e.message} | raw content: #{content}"
+    nil
   end
 
   def build_tools
@@ -74,54 +109,25 @@ class Custom::Scout::AgentRunner
     create_note = Custom::Scout::Tools::CreatePrivateNote.new(@scout, @conversation)
     handover = Custom::Scout::Tools::HandoverToHuman.new(@scout, @conversation)
     call_custom_api = Custom::Scout::Tools::CallCustomApi.new(@scout, @conversation)
+    search_kb = Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, @conversation)
 
-    [[manage_opp, move_stage, update_contact, create_note, handover, call_custom_api], handover]
+    [[manage_opp, move_stage, update_contact, create_note, handover, call_custom_api, search_kb], handover]
   end
 
   def build_system_instructions
-    parts = []
-    parts << @scout.system_prompt if @scout.system_prompt.present?
-    parts << build_catalog_instructions
-    parts << build_knowledge_instructions
-    parts << "Contexto do Contato:\n#{@contact.to_llm_text}" if @contact.present?
-    parts << out_of_office_notice if @inbox&.out_of_office?
-
-    parts.compact.join("\n\n")
-  end
-
-  def out_of_office_notice
-    '[AVISO DE EXPEDIENTE: A equipe humana está fora do horário de atendimento. ' \
-      'Prossiga com a qualificação normalmente e informe o lead se oportuno.]'
+    Custom::Scout::SystemPromptsService.build(
+      scout: @scout,
+      contact: @contact,
+      inbox: @inbox,
+      catalog_instructions: build_catalog_instructions,
+      knowledge_available: @scout.scout_knowledge_sources.ready.exists?
+    )
   end
 
   def build_catalog_instructions
     return if @scout.product_catalog.blank? || @scout.product_catalog == {}
 
     "Catálogo de Produtos e Ofertas:\n#{@scout.product_catalog.to_json}"
-  end
-
-  def build_knowledge_instructions
-    entries = @scout.scout_knowledge_sources.where(status: :ready).filter_map do |src|
-      format_knowledge_source(src)
-    end
-
-    if entries.any?
-      "Base de Conhecimento:\n#{entries.join("\n---\n")}"
-    elsif @scout.respond_to?(:knowledge_sources) && @scout.knowledge_sources.present? && @scout.knowledge_sources != {}
-      "Base de Conhecimento:\n#{@scout.knowledge_sources.to_json}"
-    end
-  end
-
-  def format_knowledge_source(src)
-    case src.kind.to_sym
-    when :faq
-      "FAQ:\nP: #{src.question}\nR: #{src.answer}"
-    when :url
-      "URL (#{src.url}):\n#{src.content}"
-    when :document
-      filename = src.document_file.attached? ? src.document_file.filename : 'Document'
-      "Documento (#{filename}):\n#{src.content}"
-    end
   end
 
   def conversation_messages
@@ -162,8 +168,8 @@ class Custom::Scout::AgentRunner
     end
   end
 
-  def dispatch_outgoing_reply(response)
-    params = { content: response.content, message_type: 'outgoing', private: false }
+  def dispatch_outgoing_reply(reply_content)
+    params = { content: reply_content, message_type: 'outgoing', private: false }
     Messages::MessageBuilder.new(nil, @conversation, params).perform
 
     @scout.with_lock do

@@ -37,7 +37,8 @@ RSpec.describe Custom::Scout::AgentRunner do
 
   describe '#perform' do
     let(:fake_chat) { instance_double(RubyLLM::Chat) }
-    let(:fake_response) { instance_double(RubyLLM::Message, content: 'Olá! Como posso ajudar você hoje?') }
+    let(:valid_json_content) { { reasoning: 'Lead perguntou sobre planos.', response: 'Olá! Como posso ajudar você hoje?' }.to_json }
+    let(:fake_response) { instance_double(RubyLLM::Message, content: valid_json_content) }
 
     before do
       account_config
@@ -48,7 +49,7 @@ RSpec.describe Custom::Scout::AgentRunner do
       allow(fake_chat).to receive(:ask).and_return(fake_response)
     end
 
-    context 'when qualifying conversation executes normally' do
+    context 'when qualifying conversation executes normally with structured JSON response' do
       before do
         conversation.messages.create!(
           account: account,
@@ -59,15 +60,29 @@ RSpec.describe Custom::Scout::AgentRunner do
         )
       end
 
-      it 'dispatches outgoing response and increments responses_consumed' do
+      it 'parses response, dispatches only the clean response text and increments responses_consumed' do
         expect do
           runner.perform
         end.to change { scout.reload.responses_consumed }.by(1)
 
-        outgoing = conversation.messages.where(message_type: :outgoing).last
+        outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
         expect(outgoing).to be_present
         expect(outgoing.content).to eq('Olá! Como posso ajudar você hoje?')
+        expect(outgoing.content).not_to include('reasoning')
+        expect(outgoing.content).not_to include('{')
         expect(conversation.reload.status).to eq('pending')
+      end
+
+      it 'delegates prompt construction to Custom::Scout::SystemPromptsService' do
+        expect(Custom::Scout::SystemPromptsService).to receive(:build).with(
+          scout: scout,
+          contact: contact,
+          inbox: inbox,
+          catalog_instructions: nil,
+          knowledge_available: false
+        ).and_call_original
+
+        runner.perform
       end
 
       it 'registers CallCustomApi tool including account enabled tools catalog' do
@@ -85,6 +100,77 @@ RSpec.describe Custom::Scout::AgentRunner do
         end.at_least(:once)
 
         runner.perform
+      end
+
+      it 'registers SearchKnowledgeBase tool and includes prompt guidance when ready sources exist' do
+        scout.scout_knowledge_sources.create!(
+          account: account,
+          kind: :faq,
+          question: 'Hours?',
+          answer: '9am to 5pm',
+          status: :ready
+        )
+
+        expect(fake_chat).to receive(:with_tool).with(an_instance_of(Custom::Scout::Tools::SearchKnowledgeBase)).at_least(:once)
+        expect(fake_chat).to receive(:with_instructions) do |instructions|
+          expect(instructions).to include('search_knowledge_base')
+          expect(instructions).not_to include('9am to 5pm')
+          fake_chat
+        end
+
+        runner.perform
+      end
+
+      it 'sanitizes markdown code fences around JSON before parsing' do
+        fenced_content = "```json\n#{valid_json_content}\n```"
+        allow(fake_response).to receive(:content).and_return(fenced_content)
+
+        runner.perform
+
+        outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
+        expect(outgoing.content).to eq('Olá! Como posso ajudar você hoje?')
+      end
+    end
+
+    context 'when model returns unparseable or invalid structured output (fail-closed)' do
+      before do
+        conversation.messages.create!(
+          account: account,
+          inbox: inbox,
+          sender: contact,
+          message_type: :incoming,
+          content: 'Quero saber mais'
+        )
+      end
+
+      it 'fails closed on plain text without JSON syntax' do
+        allow(fake_response).to receive(:content).and_return('Texto simples sem JSON')
+
+        runner.perform
+
+        expect(conversation.reload.status).to eq('open')
+        expect(conversation.messages.where(private: false, message_type: :outgoing)).to be_empty
+        expect(conversation.messages.where(private: true).last.content).to include('⚠️ [IA Pausada]')
+      end
+
+      it 'fails closed when json response field is blank' do
+        allow(fake_response).to receive(:content).and_return({ reasoning: 'justificativa', response: '' }.to_json)
+
+        runner.perform
+
+        expect(conversation.reload.status).to eq('open')
+        expect(conversation.messages.where(private: false, message_type: :outgoing)).to be_empty
+        expect(conversation.messages.where(private: true).last.content).to include('⚠️ [IA Pausada]')
+      end
+
+      it 'fails closed when content is nil' do
+        allow(fake_response).to receive(:content).and_return(nil)
+
+        runner.perform
+
+        expect(conversation.reload.status).to eq('open')
+        expect(conversation.messages.where(private: false, message_type: :outgoing)).to be_empty
+        expect(conversation.messages.where(private: true).last.content).to include('⚠️ [IA Pausada]')
       end
     end
 

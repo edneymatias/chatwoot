@@ -35,6 +35,8 @@ RSpec.describe Custom::Scout::PlaygroundRunner do
     end
 
     it 'executes chat without consuming responses quota and returns simulated response' do
+      expect(fake_chat).to receive(:with_tool).with(an_instance_of(Custom::Scout::Tools::SearchKnowledgeBase)).at_least(:once)
+
       expect do
         result = runner.perform
         expect(result[:reply]).to eq('Olá! Perfeito, qual é o seu nome?')

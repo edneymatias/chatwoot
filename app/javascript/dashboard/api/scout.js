@@ -66,6 +66,12 @@ class ScoutAPI extends ApiClient {
     );
   }
 
+  reprocessKnowledgeSource(scoutId, sourceId) {
+    return axios.patch(`${this.url}/${scoutId}/knowledge_sources/${sourceId}`, {
+      reprocess: true,
+    });
+  }
+
   deleteKnowledgeSource(scoutId, sourceId) {
     return axios.delete(`${this.url}/${scoutId}/knowledge_sources/${sourceId}`);
   }

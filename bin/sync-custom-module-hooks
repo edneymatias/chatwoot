@@ -297,12 +297,20 @@ if mode == :audit
     return true if [
       'app/javascript/dashboard/api/opportunities.js',
       'app/javascript/dashboard/i18n/locale/en/opportunities.json',
-      'app/javascript/dashboard/i18n/locale/pt_BR/opportunities.json'
+      'app/javascript/dashboard/i18n/locale/pt_BR/opportunities.json',
+      'app/javascript/dashboard/api/scout.js',
+      'app/javascript/dashboard/i18n/locale/en/scout.json',
+      'app/javascript/dashboard/i18n/locale/pt_BR/scout.json'
     ].include?(path)
     return true if path.end_with?('.md', '_spec.rb', '.spec.js')
     return true if path.match?(%r{^(app/javascript/dashboard/i18n/locale|config/locales)/(?!en\b|pt_BR\b)})
+    return true if path.start_with?(
+      'app/javascript/dashboard/routes/dashboard/scout/',
+      'app/javascript/dashboard/components-next/Scout/'
+    )
 
     out_of_scope = [
+      'config/initializers/rack_profiler.rb',
       'docker-compose.yaml', 'docker-compose.production.yaml', '.gitignore', 'AGENTS.md', '.specify/feature.json',
       'bin/sync-custom-module-hooks', 'lib/seeders/account_seeder.rb',
       'app/javascript/dashboard/components/IntersectionObserver.vue',

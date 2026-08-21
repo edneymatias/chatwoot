@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ScoutAPI from 'dashboard/api/scout';
 import Button from 'dashboard/components-next/button/Button.vue';
@@ -18,12 +18,21 @@ const { t } = useI18n();
 const sources = ref([]);
 const isLoading = ref(true);
 const sourceModalRef = ref(null);
+let pollTimer = null;
 
 const fetchSources = async () => {
-  isLoading.value = true;
+  if (pollTimer) clearTimeout(pollTimer);
+  if (sources.value.length === 0) {
+    isLoading.value = true;
+  }
+
   try {
     const { data } = await ScoutAPI.getKnowledgeSources(props.scout.id);
     sources.value = Array.isArray(data) ? data : [];
+
+    if (sources.value.some(item => item.status === 'pending')) {
+      pollTimer = setTimeout(fetchSources, 3000);
+    }
   } catch (error) {
     sources.value = [];
   } finally {
@@ -38,11 +47,14 @@ const handleOpenAdd = () => {
 };
 
 const handleReprocess = async sourceId => {
+  const item = sources.value.find(s => s.id === sourceId);
+  if (item) item.status = 'pending';
+
   try {
     await ScoutAPI.reprocessKnowledgeSource(props.scout.id, sourceId);
     await fetchSources();
   } catch (error) {
-    // Handled
+    if (item) item.status = 'failed';
   }
 };
 
@@ -60,6 +72,10 @@ const handleDelete = async sourceId => {
 
 onMounted(() => {
   fetchSources();
+});
+
+onUnmounted(() => {
+  if (pollTimer) clearTimeout(pollTimer);
 });
 </script>
 
@@ -134,15 +150,31 @@ onMounted(() => {
                   v-if="item.status === 'pending'"
                   class="i-lucide-loader-2 size-2.5 animate-spin"
                 />
-                {{ item.status }}
+                {{ t(`SCOUT.KNOWLEDGE.STATUS_${item.status.toUpperCase()}`) }}
               </span>
             </div>
 
+            <!-- Summary / Info -->
             <p
               v-if="item.kind === 'faq'"
               class="text-xs text-n-slate-11 mt-1 line-clamp-2"
             >
               {{ item.answer }}
+            </p>
+            <p
+              v-else-if="item.status === 'ready'"
+              class="text-xs text-n-slate-11 mt-1 flex items-center gap-1.5"
+            >
+              <span class="i-lucide-sparkles size-3.5 text-n-brand" />
+              <span>
+                {{
+                  t(
+                    'SCOUT.KNOWLEDGE.EMBEDDINGS_COUNT',
+                    { count: item.embeddings_count || 0 },
+                    item.embeddings_count || 0
+                  )
+                }}
+              </span>
             </p>
             <p v-if="item.error_message" class="text-xs text-n-ruby-9 mt-1">
               {{ item.error_message }}

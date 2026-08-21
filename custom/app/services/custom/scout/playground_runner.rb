@@ -16,9 +16,10 @@ class Custom::Scout::PlaygroundRunner
     tools.each { |tool| chat = chat.with_tool(tool) }
 
     response = chat.ask(@message)
+    reply_text = extract_reply_content(response&.content)
 
     {
-      reply: response&.content.to_s,
+      reply: reply_text,
       tool_calls: @recorded_tool_calls
     }
   rescue StandardError => e
@@ -32,6 +33,16 @@ class Custom::Scout::PlaygroundRunner
 
   private
 
+  def extract_reply_content(content)
+    return '' if content.blank?
+
+    sanitized = content.strip.sub(/\A```(?:\w*)\s*\n?/, '').sub(/\n?\s*```\s*\z/, '').strip
+    json = JSON.parse(sanitized)
+    json['response'].presence || content
+  rescue JSON::ParserError
+    content
+  end
+
   def build_tools
     raw_tools = [
       Custom::Scout::Tools::ManageOpportunity.new(@scout, nil, playground: true),
@@ -39,7 +50,8 @@ class Custom::Scout::PlaygroundRunner
       Custom::Scout::Tools::UpdateContact.new(@scout, nil, playground: true),
       Custom::Scout::Tools::CreatePrivateNote.new(@scout, nil, playground: true),
       Custom::Scout::Tools::HandoverToHuman.new(@scout, nil, playground: true),
-      Custom::Scout::Tools::CallCustomApi.new(@scout, nil, playground: true)
+      Custom::Scout::Tools::CallCustomApi.new(@scout, nil, playground: true),
+      Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, nil, playground: true)
     ]
 
     raw_tools.map { |tool| wrap_tool(tool) }
@@ -71,40 +83,16 @@ class Custom::Scout::PlaygroundRunner
   end
 
   def build_system_instructions
-    parts = []
-    parts << @scout.system_prompt if @scout.system_prompt.present?
-    parts << build_catalog_instructions
-    parts << build_knowledge_instructions
-    parts.compact.join("\n\n")
+    Custom::Scout::SystemPromptsService.build(
+      scout: @scout,
+      catalog_instructions: build_catalog_instructions,
+      knowledge_available: @scout.scout_knowledge_sources.ready.exists?
+    )
   end
 
   def build_catalog_instructions
     return if @scout.product_catalog.blank? || @scout.product_catalog == {}
 
     "Catálogo de Produtos e Ofertas:\n#{@scout.product_catalog.to_json}"
-  end
-
-  def build_knowledge_instructions
-    entries = @scout.scout_knowledge_sources.where(status: :ready).filter_map do |src|
-      format_knowledge_source(src)
-    end
-
-    if entries.any?
-      "Base de Conhecimento:\n#{entries.join("\n---\n")}"
-    elsif @scout.respond_to?(:knowledge_sources) && @scout.knowledge_sources.present? && @scout.knowledge_sources != {}
-      "Base de Conhecimento:\n#{@scout.knowledge_sources.to_json}"
-    end
-  end
-
-  def format_knowledge_source(src)
-    case src.kind.to_sym
-    when :faq
-      "FAQ:\nP: #{src.question}\nR: #{src.answer}"
-    when :url
-      "URL (#{src.url}):\n#{src.content}"
-    when :document
-      filename = src.document_file.attached? ? src.document_file.filename : 'Document'
-      "Documento (#{filename}):\n#{src.content}"
-    end
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_21_000001) do
+ActiveRecord::Schema[7.1].define(version: 2126_08_21_102500) do
   create_schema "metabase_cache_0b4bd_2"
 
   # These extensions should be enabled to support this database
@@ -1262,6 +1262,21 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_21_000001) do
     t.index ["scout_id"], name: "index_ichatr_scout_inboxes_on_scout_id"
   end
 
+  create_table "ichatr_scout_knowledge_embeddings", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "scout_id", null: false
+    t.bigint "scout_knowledge_source_id", null: false
+    t.text "question", null: false
+    t.text "answer", null: false
+    t.vector "embedding", limit: 768
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_scout_ke_on_account_id"
+    t.index ["embedding"], name: "idx_scout_knowledge_embeddings_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["scout_id"], name: "index_ichatr_scout_ke_on_scout_id"
+    t.index ["scout_knowledge_source_id"], name: "index_ichatr_scout_ke_on_source_id"
+  end
+
   create_table "ichatr_scout_knowledge_sources", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "scout_id", null: false
@@ -1857,6 +1872,9 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_21_000001) do
   add_foreign_key "ichatr_scout_account_configs", "accounts", on_delete: :cascade
   add_foreign_key "ichatr_scout_inboxes", "ichatr_scouts", column: "scout_id", on_delete: :cascade
   add_foreign_key "ichatr_scout_inboxes", "inboxes", on_delete: :cascade
+  add_foreign_key "ichatr_scout_knowledge_embeddings", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scout_knowledge_embeddings", "ichatr_scout_knowledge_sources", column: "scout_knowledge_source_id", on_delete: :cascade
+  add_foreign_key "ichatr_scout_knowledge_embeddings", "ichatr_scouts", column: "scout_id", on_delete: :cascade
   add_foreign_key "ichatr_scout_knowledge_sources", "accounts", on_delete: :cascade
   add_foreign_key "ichatr_scout_knowledge_sources", "ichatr_scouts", column: "scout_id", on_delete: :cascade
   add_foreign_key "ichatr_scout_required_fields", "accounts", on_delete: :cascade

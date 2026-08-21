@@ -35,4 +35,36 @@ RSpec.describe ScoutKnowledgeSource, type: :model do
       expect(faq).to be_valid
     end
   end
+
+  describe 'associations' do
+    it 'destroys dependent scout_knowledge_embeddings when source is destroyed' do
+      source = described_class.create!(scout: scout, account: account, kind: :faq, question: 'Q?', answer: 'A.')
+      source.scout_knowledge_embeddings.create!(question: 'Q?', answer: 'A.')
+
+      expect do
+        source.destroy!
+      end.to change(ScoutKnowledgeEmbedding, :count).by(-1)
+    end
+  end
+
+  describe '#reprocess!' do
+    it 'destroys existing embeddings and resets status to pending' do
+      source = described_class.create!(
+        scout: scout,
+        account: account,
+        kind: :url,
+        url: 'https://example.com/doc',
+        status: :ready
+      )
+      source.scout_knowledge_embeddings.create!(question: 'Old Q?', answer: 'Old A.')
+
+      expect(source.scout_knowledge_embeddings.count).to eq(1)
+
+      expect do
+        source.reprocess!
+      end.to change(source.scout_knowledge_embeddings, :count).to(0)
+
+      expect(source.reload.status).to eq('pending')
+    end
+  end
 end

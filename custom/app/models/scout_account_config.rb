@@ -18,7 +18,7 @@ class ScoutAccountConfig < ApplicationRecord
 
   belongs_to :account
 
-  enum provider: { gemini: 0, openai: 1, anthropic: 2 }
+  enum provider: { gemini: 0, openai: 1 }
 
   encrypts :api_key
 
@@ -48,7 +48,6 @@ class ScoutAccountConfig < ApplicationRecord
       case provider.to_sym
       when :gemini then config.gemini_api_key = api_key
       when :openai then config.openai_api_key = api_key
-      when :anthropic then config.anthropic_api_key = api_key
       end
     end
   end

@@ -19,7 +19,6 @@ const errorMessage = ref('');
 const providerOptions = [
   { value: 'gemini', label: 'Google Gemini' },
   { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic Claude' },
 ];
 
 const provider = ref('gemini');

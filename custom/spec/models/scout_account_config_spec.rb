@@ -63,8 +63,8 @@ RSpec.describe ScoutAccountConfig, type: :model do
       expect(duplicate.errors[:account_id]).to include('has already been taken')
     end
 
-    it 'defines provider enum with gemini, openai, anthropic' do
-      expect(described_class.providers).to eq({ 'gemini' => 0, 'openai' => 1, 'anthropic' => 2 })
+    it 'defines provider enum with gemini, openai' do
+      expect(described_class.providers).to eq({ 'gemini' => 0, 'openai' => 1 })
     end
   end
 

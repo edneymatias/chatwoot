@@ -6,7 +6,7 @@ class Api::V1::Accounts::Scouts::KnowledgeSourcesController < Api::V1::Accounts:
   before_action :set_knowledge_source, only: %i[show update destroy]
 
   def index
-    @knowledge_sources = @scout.scout_knowledge_sources.order(created_at: :desc)
+    @knowledge_sources = @scout.scout_knowledge_sources.includes(:scout_knowledge_embeddings).order(created_at: :desc)
     render json: @knowledge_sources.map { |source| serialize_source(source) }
   end
 
@@ -58,11 +58,12 @@ class Api::V1::Accounts::Scouts::KnowledgeSourcesController < Api::V1::Accounts:
   end
 
   def knowledge_source_params
-    params.permit(:kind, :url, :question, :answer, :document_file)
+    (params[:knowledge_source] || params).permit(:kind, :url, :question, :answer, :document_file)
   end
 
   def serialize_source(source)
     data = source.as_json
+    data['embeddings_count'] = source.scout_knowledge_embeddings.size
     if source.document? && source.document_file.attached?
       data['document_file'] = {
         'filename' => source.document_file.filename.to_s,

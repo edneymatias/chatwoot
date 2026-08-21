@@ -14,6 +14,7 @@ class Scout < ApplicationRecord
   has_many :scout_inboxes, class_name: 'ScoutInbox', dependent: :destroy
   has_many :inboxes, through: :scout_inboxes
   has_many :scout_knowledge_sources, class_name: 'ScoutKnowledgeSource', dependent: :destroy
+  has_many :scout_knowledge_embeddings, class_name: 'ScoutKnowledgeEmbedding', dependent: :destroy
   has_many :scout_required_fields, class_name: 'ScoutRequiredField', dependent: :destroy
   has_many :required_custom_attribute_definitions, through: :scout_required_fields, source: :custom_attribute_definition
 
@@ -28,7 +29,7 @@ class Scout < ApplicationRecord
     responses_consumed < responses_quota
   end
 
-  def llm_chat
+  def llm_chat(temperature: 0.6)
     config = ScoutAccountConfig.find_by(account_id: account_id)
     raise "Configuração de LLM não encontrada para a conta #{account_id}" if config.blank?
 
@@ -38,11 +39,11 @@ class Scout < ApplicationRecord
         c.gemini_api_key = config.api_key
       when :openai
         c.openai_api_key = config.api_key
-      when :anthropic
-        c.anthropic_api_key = config.api_key
       end
     end
 
-    context.chat(model: config.model_name)
+    chat = context.chat(model: config.model_name)
+    chat = chat.with_params(temperature: temperature) if temperature && chat.respond_to?(:with_params)
+    chat
   end
 end
