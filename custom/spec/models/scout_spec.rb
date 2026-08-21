@@ -3,13 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe Scout, type: :model do
-  before do
-    ActiveRecord::Encryption.config.primary_key = 'test-primary-key-32-chars-length'
-    ActiveRecord::Encryption.config.deterministic_key = 'test-determ-key-32-chars-length!'
-    ActiveRecord::Encryption.config.key_derivation_salt = 'test-derivation-salt-32-chars!'
-    ActiveRecord::Encryption.context.instance_variable_set(:@key_provider, nil)
-  end
-
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
   let(:stage) { PipelineStage.create!(account: account, name: 'Lead Qualified') }
@@ -19,9 +12,6 @@ RSpec.describe Scout, type: :model do
       account: account,
       name: 'Sales Qualifier',
       persona: 'You qualify incoming leads according to BANT criteria.',
-      provider: :gemini,
-      model_name: 'gemini-2.0-flash',
-      api_key_override: 'gemini-secret-api-key',
       default_pipeline_stage: stage,
       qualified_stage: stage,
       unqualified_stage: stage,
@@ -83,22 +73,6 @@ RSpec.describe Scout, type: :model do
       expect(scout.errors[:name]).to include("can't be blank")
     end
 
-    it 'validates presence of provider' do
-      scout = described_class.new(valid_attributes.except(:provider))
-      expect(scout).not_to be_valid
-      expect(scout.errors[:provider]).to include("can't be blank")
-    end
-
-    it 'validates presence of model_name' do
-      scout = described_class.new(valid_attributes.merge(model_name: nil))
-      expect(scout).not_to be_valid
-      expect(scout.errors[:model_name]).to include("can't be blank")
-    end
-
-    it 'defines provider enum with gemini, openai, anthropic' do
-      expect(described_class.providers).to eq({ 'gemini' => 0, 'openai' => 1, 'anthropic' => 2 })
-    end
-
     it 'validates debounce_delay_seconds numericality' do
       expect(described_class.new(valid_attributes.merge(debounce_delay_seconds: 0))).not_to be_valid
       expect(described_class.new(valid_attributes.merge(debounce_delay_seconds: -1))).not_to be_valid
@@ -114,36 +88,6 @@ RSpec.describe Scout, type: :model do
     it 'validates responses_consumed numericality' do
       expect(described_class.new(valid_attributes.merge(responses_consumed: -1))).not_to be_valid
       expect(described_class.new(valid_attributes.merge(responses_consumed: 0))).to be_valid
-    end
-
-    it 'rejects invalid provider strings with ArgumentError' do
-      expect do
-        described_class.new(valid_attributes.merge(provider: 'openrouter'))
-      end.to raise_error(ArgumentError, /'openrouter' is not a valid provider/)
-    end
-  end
-
-  describe 'encryption at rest' do
-    it 'encrypts api_key_override unconditionally' do
-      scout = described_class.create!(valid_attributes)
-
-      raw_stored = scout.reload.read_attribute_before_type_cast(:api_key_override).to_s
-      expect(raw_stored).to be_present
-      expect(raw_stored).not_to include('gemini-secret-api-key')
-      expect(scout.api_key_override).to eq('gemini-secret-api-key')
-      expect(scout.encrypted_attribute?(:api_key_override)).to be(true)
-    end
-
-    it 'fails closed when encryption keys are not configured' do
-      ActiveRecord::Encryption.config.primary_key = nil
-      ActiveRecord::Encryption.context.instance_variable_set(:@key_provider, nil)
-
-      expect do
-        described_class.create!(valid_attributes.merge(api_key_override: 'unencrypted-secret'))
-      end.to raise_error(ActiveRecord::Encryption::Errors::Configuration)
-    ensure
-      ActiveRecord::Encryption.config.primary_key = 'test-primary-key-32-chars-length'
-      ActiveRecord::Encryption.context.instance_variable_set(:@key_provider, nil)
     end
   end
 
@@ -175,46 +119,24 @@ RSpec.describe Scout, type: :model do
   end
 
   describe '#llm_chat' do
-    it 'resolves gemini chat client with custom api_key_override' do
-      scout = described_class.new(
+    it 'resolves chat client using account ScoutAccountConfig' do
+      ScoutAccountConfig.create!(
         account: account,
-        name: 'Gemini Scout',
         provider: :gemini,
         model_name: 'gemini-2.0-flash',
-        api_key_override: 'custom-gemini-key'
+        api_key: 'custom-gemini-key'
       )
+      scout = described_class.new(valid_attributes)
 
       chat = scout.llm_chat
       expect(chat).to be_a(RubyLLM::Chat)
       expect(chat.model.id).to eq('gemini-2.0-flash')
     end
 
-    it 'resolves openai chat client with custom api_key_override' do
-      scout = described_class.new(
-        account: account,
-        name: 'OpenAI Scout',
-        provider: :openai,
-        model_name: 'gpt-4o',
-        api_key_override: 'custom-openai-key'
-      )
+    it 'raises error when ScoutAccountConfig is not present' do
+      scout = described_class.new(valid_attributes)
 
-      chat = scout.llm_chat
-      expect(chat).to be_a(RubyLLM::Chat)
-      expect(chat.model.id).to eq('gpt-4o')
-    end
-
-    it 'resolves anthropic chat client with custom api_key_override' do
-      scout = described_class.new(
-        account: account,
-        name: 'Claude Scout',
-        provider: :anthropic,
-        model_name: 'claude-3-5-sonnet',
-        api_key_override: 'custom-anthropic-key'
-      )
-
-      chat = scout.llm_chat
-      expect(chat).to be_a(RubyLLM::Chat)
-      expect(chat.model.id).to start_with('claude-3-5-sonnet')
+      expect { scout.llm_chat }.to raise_error(/Configuração de LLM não encontrada/)
     end
   end
 end

@@ -155,10 +155,10 @@ Rails.application.routes.draw do
               resources :scout_inboxes, only: [:index, :create, :destroy]
               resources :product_catalog_items, only: [:index, :create, :update, :destroy]
               resources :knowledge_sources, only: [:index, :create, :update, :destroy]
-              resource :provider_settings, only: [:show, :update]
               resources :playground_messages, only: [:create]
             end
           end
+          resource :scout_account_config, only: [:show, :update]
           resources :scout_tools, only: [:index, :show, :create, :update, :destroy]
           resources :pipeline_stage_aggregates, only: [:index]
           resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]

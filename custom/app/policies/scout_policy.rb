@@ -20,12 +20,4 @@ class ScoutPolicy < ApplicationPolicy
   def destroy?
     @account_user.administrator?
   end
-
-  def provider_settings?
-    @account_user.administrator?
-  end
-
-  def update_provider_settings?
-    @account_user.administrator?
-  end
 end

@@ -21,8 +21,9 @@ Mirror Chatwoot's existing Captain feature exactly — do not invent a new patte
   its own `provider`/`model_name`/`api_key_override`) belongs under
   `accounts/:accountId/settings/scout`, mirroring `accounts/:accountId/settings/captain`
   (`routes/dashboard/settings/captain/captain.routes.js`), which restricts `permissions:
-  ['administrator']`. When BYOK is later replaced by super-admin-provisioned credits, this is the
-  screen that changes — the primary-menu business config screens are unaffected.
+  ['administrator']`. **Superseded by Phase 06** (`06-account-llm-config/spec70.md`): per-Scout BYOK
+  is replaced by one account-level `ScoutAccountConfig`, and the settings screen moves out of the
+  Settings module into a "Configurações" entry in the Scout primary-menu submenu.
 - **Permission split.** Primary-menu Scout routes (list/create/edit, product catalog, knowledge
   base, funnel config, tools, playground) use `permissions: ['administrator', 'agent']`, matching
   Captain's `assistantRoutes` meta. The Settings LLM/provider screen uses `permissions:

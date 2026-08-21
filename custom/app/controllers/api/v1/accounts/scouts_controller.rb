@@ -14,6 +14,12 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
   end
 
   def create
+    account_config = ScoutAccountConfig.find_by(account_id: Current.account.id)
+    if account_config.blank? || account_config.api_key.blank?
+      render json: { error: 'Configuração de LLM da conta obrigatória antes de criar Scouts.' }, status: :unprocessable_entity
+      return
+    end
+
     @scout = Current.account.scouts.build(scout_params)
     if @scout.save
       sync_attributes if params[:scout][:required_custom_attribute_definition_ids].present?
@@ -59,8 +65,6 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
       default_pipeline_stage_id qualified_stage_id unqualified_stage_id handover_team_id
     ]
 
-    allowed += %i[provider model_name api_key_override] if current_user.administrator?
-
     params.require(:scout).permit(*allowed, required_custom_attribute_definition_ids: [])
   end
 
@@ -76,8 +80,7 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
         required_custom_attribute_definitions: {
           only: %i[id attribute_key attribute_display_name attribute_display_type attribute_model]
         }
-      },
-      except: %i[api_key_override]
+      }
     }
   end
 end

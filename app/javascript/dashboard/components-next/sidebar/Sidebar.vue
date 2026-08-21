@@ -108,10 +108,7 @@ const hasOpportunities = computed(() => {
 });
 
 const hasScout = computed(() => {
-  return isFeatureEnabledonAccount.value(
-    accountId.value,
-    FEATURE_FLAGS.SCOUT
-  );
+  return isFeatureEnabledonAccount.value(accountId.value, FEATURE_FLAGS.SCOUT);
 });
 
 const fetchConversationUnreadCounts = ([currentAccountId, isEnabled]) => {
@@ -762,16 +759,33 @@ const menuItems = computed(() => {
             name: 'Scout',
             label: t('SIDEBAR.SCOUT'),
             icon: 'i-lucide-bot',
-            to: accountScopedRoute('scouts_index'),
-            activeOn: [
-              'scouts_index',
-              'scout_tools',
-              'scout_detail',
-              'scout_inboxes',
-              'scout_products',
-              'scout_knowledge',
-              'scout_funnel',
-              'scout_playground',
+            children: [
+              {
+                name: 'Scout Agents',
+                label: t('SIDEBAR.SCOUT_AGENTS'),
+                activeOn: [
+                  'scouts_index',
+                  'scout_detail',
+                  'scout_inboxes',
+                  'scout_products',
+                  'scout_knowledge',
+                  'scout_funnel',
+                  'scout_playground',
+                ],
+                to: accountScopedRoute('scouts_index'),
+              },
+              {
+                name: 'Scout Settings',
+                label: t('SIDEBAR.SCOUT_SETTINGS'),
+                activeOn: ['scout_settings'],
+                to: accountScopedRoute('scout_settings'),
+              },
+              {
+                name: 'Scout Tools',
+                label: t('SIDEBAR.SCOUT_TOOLS'),
+                activeOn: ['scout_tools'],
+                to: accountScopedRoute('scout_tools'),
+              },
             ],
           },
         ]

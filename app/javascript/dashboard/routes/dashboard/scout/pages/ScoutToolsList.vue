@@ -1,27 +1,20 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue';
-import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import ScoutAPI from 'dashboard/api/scout';
 import SettingsLayout from '../../settings/SettingsLayout.vue';
 import BaseSettingsHeader from '../../settings/components/BaseSettingsHeader.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
-import BackButton from 'dashboard/components/widgets/BackButton.vue';
 import Switch from 'dashboard/components-next/switch/Switch.vue';
-import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import EmptyStateLayout from 'dashboard/components-next/EmptyStateLayout.vue';
 import ScoutToolModal from 'dashboard/components-next/Scout/pageComponents/ScoutToolModal.vue';
 
-const route = useRoute();
 const { t } = useI18n();
 
 const tools = ref([]);
 const isLoading = ref(true);
 const toolModalRef = ref(null);
 const editingTool = ref(null);
-
-const accountId = route.params.accountId;
-const backUrl = { name: 'scouts_index', params: { accountId } };
 
 const fetchTools = async () => {
   isLoading.value = true;

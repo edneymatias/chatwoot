@@ -11,6 +11,14 @@ RSpec.describe Custom::Scout::AgentRunner do
   end
 
   let(:account) { create(:account) }
+  let(:account_config) do
+    ScoutAccountConfig.create!(
+      account: account,
+      provider: :gemini,
+      model_name: 'gemini-2.0-flash',
+      api_key: 'test-api-key'
+    )
+  end
   let(:inbox) { create(:inbox, account: account) }
   let(:contact) { create(:contact, account: account) }
   let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: inbox) }
@@ -19,9 +27,6 @@ RSpec.describe Custom::Scout::AgentRunner do
     Scout.create!(
       account: account,
       name: 'Runner Scout',
-      provider: :gemini,
-      model_name: 'gemini-2.0-flash',
-      api_key_override: 'test-api-key',
       responses_quota: 10,
       responses_consumed: 0,
       enabled: true,
@@ -35,6 +40,7 @@ RSpec.describe Custom::Scout::AgentRunner do
     let(:fake_response) { instance_double(RubyLLM::Message, content: 'Olá! Como posso ajudar você hoje?') }
 
     before do
+      account_config
       allow(scout).to receive(:llm_chat).and_return(fake_chat)
       allow(fake_chat).to receive(:with_instructions).and_return(fake_chat)
       allow(fake_chat).to receive(:with_tool).and_return(fake_chat)

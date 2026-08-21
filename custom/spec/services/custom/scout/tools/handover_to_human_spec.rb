@@ -14,8 +14,6 @@ RSpec.describe Custom::Scout::Tools::HandoverToHuman do
     Scout.create!(
       account: account,
       name: 'Test Scout',
-      provider: :gemini,
-      model_name: 'gemini-2.0-flash',
       handover_team: team,
       enabled: true,
       feature_memory: true

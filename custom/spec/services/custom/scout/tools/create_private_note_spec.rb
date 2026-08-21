@@ -12,8 +12,6 @@ RSpec.describe Custom::Scout::Tools::CreatePrivateNote do
     Scout.create!(
       account: account,
       name: 'Test Scout',
-      provider: :gemini,
-      model_name: 'gemini-2.0-flash',
       enabled: true
     )
   end

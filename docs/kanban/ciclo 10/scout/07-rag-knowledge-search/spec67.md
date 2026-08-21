@@ -1,8 +1,9 @@
-# Phase 06 — RAG Knowledge Search (Embeddings)
+# Phase 07 — RAG Knowledge Search (Embeddings)
 
 **Master doc**: `docs/kanban/backlog/scout/spec60.md` §7.2, §11
 **Depends on**: Phase 01 (`ScoutKnowledgeSource` model/pipeline), Phase 02 (native tool pattern to
-follow for the new retrieval tool).
+follow for the new retrieval tool), Phase 06 (`ScoutAccountConfig` — the provider/model/key the
+embedding call and the tool's provider gate both read from).
 
 ## Goal
 
@@ -47,16 +48,19 @@ What actually gets refactored/removed:
   `url`/`document` source `ready`; runs the synthesis service and creates embedding rows.
 - `Custom::Scout::KnowledgeSources::EmbedEntryJob` — enqueued on `ScoutKnowledgeEmbedding#create`,
   calls `RubyLLM.embed` and persists the vector.
-- `Custom::Scout::EmbeddingConfig` — resolves the embedding model from an `InstallationConfig`
-  (mirrors Captain's `CAPTAIN_EMBEDDING_MODEL`), decoupled from the Scout's own chat `provider`
-  (Anthropic has no embeddings API, so embedding generation cannot ride the Scout's configured
-  provider).
+- `Custom::Scout::EmbeddingConfig` — resolves the embedding provider/model/key from the account's
+  `ScoutAccountConfig` (Phase 06). Since Anthropic has no embeddings API (confirmed: `ruby_llm`'s
+  Anthropic provider raises on `embed`), `EmbeddingConfig` only supports `gemini`/`openai` accounts;
+  for `anthropic` accounts it signals "unsupported" and the tool is not registered (see `AgentRunner`
+  changes below) — no secondary/embedding-only key is introduced.
 - `Custom::Scout::Tools::SearchKnowledgeBase` — new native tool (same `RubyLLM` `chat.with_tool`
   pattern as `ManageOpportunity`/`HandoverToHuman`), embeds the query and runs
   `nearest_neighbors(:embedding, ..., distance: 'cosine')` scoped to the Scout, returns top-5
   formatted Q&A pairs.
 - `AgentRunner` changes: remove blind knowledge injection, register `SearchKnowledgeBase` in
-  `build_tools`, and add a short system-prompt line pointing the assistant at the tool.
+  `build_tools` only when the account's `ScoutAccountConfig#provider` supports embeddings (not
+  `anthropic`), and add a short system-prompt line pointing the assistant at the tool when it's
+  registered.
 - `ScoutKnowledgeSource#reprocess!` extended to destroy its existing `scout_knowledge_embeddings`
   before re-triggering `ProcessJob`, so reprocessing doesn't leave stale/duplicate Q&A pairs.
 
@@ -82,3 +86,6 @@ What actually gets refactored/removed:
   stale Q&A pairs remain searchable afterward.
 - Token usage per turn for Scouts with a non-trivial knowledge base drops measurably compared to
   the current full-injection baseline (qualitative check via Playground, not a hard numeric gate).
+- For an account whose `ScoutAccountConfig#provider` is `anthropic`, Scouts have no
+  `search_knowledge_base` tool registered (knowledge sources can still be created/managed, just not
+  searched by the assistant) — no error, no crash, just an absent tool.

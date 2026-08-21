@@ -20,8 +20,6 @@ RSpec.describe Custom::Scout::Tools::CallCustomApi do
     Scout.create!(
       account: account,
       name: 'Integration Scout',
-      provider: :gemini,
-      model_name: 'gemini-2.0-flash',
       enabled: true
     )
   end

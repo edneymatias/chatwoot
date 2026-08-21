@@ -16,8 +16,6 @@ RSpec.describe Custom::ScoutListener do
     Scout.create!(
       account: account,
       name: 'WhatsApp SDR',
-      provider: :gemini,
-      model_name: 'gemini-2.0-flash',
       enabled: true
     )
   end

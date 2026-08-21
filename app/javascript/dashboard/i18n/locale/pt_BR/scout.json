@@ -187,12 +187,19 @@
       "DISCLAIMER": "As conversas do Playground não afetam métricas de caixas reais nem criam conversas ativas no painel.",
       "ERROR_REPLY": "Erro ao executar simulação."
     },
-    "PROVIDER_SETTINGS": {
+    "ACCOUNT_SETTINGS": {
       "TITLE": "Configuração de Provedores de IA",
-      "SUBTITLE": "Gerencie provedores padrão, parâmetros de modelos e credenciais de API (Apenas Administradores).",
-      "SELECT_SCOUT_LABEL": "Selecionar Assistente Scout",
+      "SUBTITLE": "Configure o provedor de LLM, nome do modelo e credenciais de API para toda a conta.",
+      "API_KEY_LABEL": "Chave de API",
+      "API_KEY_PLACEHOLDER": "Digite a Chave de API",
       "API_KEY_CONFIGURED_HINT": "Chave de API configurada (deixe em branco para manter)",
-      "API_KEY_SECURITY_NOTE": "As chaves de API são criptografadas no banco de dados e nunca expostas aos clientes web."
+      "API_KEY_SECURITY_NOTE": "As chaves de API são criptografadas no banco de dados e nunca expostas aos clientes web.",
+      "SAVE_ERROR": "Falha ao salvar configuração. Por favor, verifique suas credenciais e nome do modelo."
+    },
+    "UNCONFIGURED_GATING": {
+      "TITLE": "Configuração de LLM Obrigatória",
+      "DESCRIPTION": "Antes de criar Scouts ou configurar ferramentas, um administrador precisa configurar o provedor de LLM e a chave de API da conta.",
+      "BUTTON": "Configurar Provedor de IA"
     }
   }
 }

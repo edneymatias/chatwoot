@@ -15,10 +15,7 @@ RSpec.describe ScoutInbox, type: :model do
   let(:scout) do
     Scout.create!(
       account: account,
-      name: 'Sales Scout',
-      provider: :gemini,
-      model_name: 'gemini-2.0-flash',
-      api_key_override: 'secret-key'
+      name: 'Sales Scout'
     )
   end
 
@@ -52,10 +49,7 @@ RSpec.describe ScoutInbox, type: :model do
 
       other_scout = Scout.create!(
         account: account,
-        name: 'Support Scout',
-        provider: :openai,
-        model_name: 'gpt-4o',
-        api_key_override: 'other-key'
+        name: 'Support Scout'
       )
 
       duplicate_link = described_class.new(scout: other_scout, inbox: inbox)

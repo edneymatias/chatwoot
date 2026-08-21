@@ -12,8 +12,6 @@ RSpec.describe Custom::Scout::ProcessMessageJob, type: :job do
     Scout.create!(
       account: account,
       name: 'Debounce Scout',
-      provider: :gemini,
-      model_name: 'gemini-2.0-flash',
       debounce_delay_seconds: 4,
       enabled: true
     )

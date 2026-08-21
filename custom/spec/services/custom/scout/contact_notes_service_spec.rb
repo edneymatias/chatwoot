@@ -12,8 +12,6 @@ RSpec.describe Custom::Scout::ContactNotesService do
     Scout.create!(
       account: account,
       name: 'Memory Scout',
-      provider: :gemini,
-      model_name: 'gemini-2.0-flash',
       enabled: true,
       feature_memory: true
     )

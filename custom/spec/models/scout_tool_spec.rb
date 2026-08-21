@@ -101,10 +101,7 @@ RSpec.describe ScoutTool, type: :model do
       tool = described_class.create!(valid_attributes)
       scout = Scout.create!(
         account: account,
-        name: 'Weather Agent',
-        provider: :gemini,
-        model_name: 'gemini-2.0-flash',
-        api_key_override: 'gemini-key'
+        name: 'Weather Agent'
       )
 
       expect { scout.destroy! }.not_to(change { described_class.exists?(tool.id) })

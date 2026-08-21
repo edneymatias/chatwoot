@@ -5,7 +5,6 @@ import { useI18n } from 'vue-i18n';
 import ScoutAPI from 'dashboard/api/scout';
 import Button from 'dashboard/components-next/button/Button.vue';
 import BackButton from 'dashboard/components/widgets/BackButton.vue';
-import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
 import SettingIntroBanner from 'dashboard/components/widgets/SettingIntroBanner.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import ScoutGeneralSettings from 'dashboard/components-next/Scout/pageComponents/ScoutGeneralSettings.vue';

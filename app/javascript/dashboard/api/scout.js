@@ -91,13 +91,17 @@ class ScoutAPI extends ApiClient {
     return axios.delete(`${accountUrl}/scout_tools/${toolId}`);
   }
 
-  // Provider Settings (Admin Only)
-  getProviderSettings(scoutId) {
-    return axios.get(`${this.url}/${scoutId}/provider_settings`);
+  // Account LLM Config (Admin Only)
+  getAccountConfig() {
+    const accountUrl = this.url.replace(/\/scouts$/, '');
+    return axios.get(`${accountUrl}/scout_account_config`);
   }
 
-  updateProviderSettings(scoutId, data) {
-    return axios.patch(`${this.url}/${scoutId}/provider_settings`, data);
+  updateAccountConfig(data) {
+    const accountUrl = this.url.replace(/\/scouts$/, '');
+    return axios.patch(`${accountUrl}/scout_account_config`, {
+      scout_account_config: data,
+    });
   }
 
   // Playground

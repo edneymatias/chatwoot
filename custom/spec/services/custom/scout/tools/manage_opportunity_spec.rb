@@ -13,8 +13,6 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
     Scout.create!(
       account: account,
       name: 'Test Scout',
-      provider: :gemini,
-      model_name: 'gemini-2.0-flash',
       default_pipeline_stage: stage,
       enabled: true
     )

@@ -37,8 +37,8 @@ class Custom::Scout::AgentRunner
   def pre_call_checks_pass?
     return false unless @scout.quota_available?
 
-    api_key = @scout.api_key_override.presence || ENV.fetch("#{@scout.provider.upcase}_API_KEY", nil)
-    api_key.present?
+    config = ScoutAccountConfig.find_by(account_id: @scout.account_id)
+    config&.api_key.present?
   end
 
   def perform_fail_safe_handoff(_reason)

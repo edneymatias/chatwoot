@@ -14,6 +14,15 @@ export const routes = [
     meta,
   },
   {
+    path: frontendURL('accounts/:accountId/scout/settings'),
+    component: () => import('./pages/ScoutSettings.vue'),
+    name: 'scout_settings',
+    meta: {
+      permissions: ['administrator'],
+      featureFlag: FEATURE_FLAGS.SCOUT,
+    },
+  },
+  {
     path: frontendURL('accounts/:accountId/scout/tools'),
     component: () => import('./pages/ScoutToolsList.vue'),
     name: 'scout_tools',

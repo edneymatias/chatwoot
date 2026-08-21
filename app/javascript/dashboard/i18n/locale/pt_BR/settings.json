@@ -309,6 +309,9 @@
   "SIDEBAR": {
     "OPPORTUNITIES": "Oportunidades",
     "SCOUT": "Scout",
+    "SCOUT_AGENTS": "Agentes",
+    "SCOUT_SETTINGS": "Configurações",
+    "SCOUT_TOOLS": "Ferramentas",
     "NO_ITEMS": "Nenhum item",
     "CURRENTLY_VIEWING_ACCOUNT": "Visualização atual:",
     "SWITCH": "Trocar",

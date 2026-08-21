@@ -8,8 +8,6 @@ RSpec.describe ScoutRequiredField, type: :model do
     Scout.create!(
       account: account,
       name: 'Field Scout',
-      provider: :gemini,
-      model_name: 'gemini-2.5-flash',
       responses_quota: 10,
       responses_consumed: 0,
       enabled: true

@@ -15,9 +15,6 @@ RSpec.describe Custom::Scout::PlaygroundRunner do
     Scout.create!(
       account: account,
       name: 'Playground Scout',
-      provider: :gemini,
-      model_name: 'gemini-2.5-flash',
-      api_key_override: 'test-api-key',
       persona: 'You are an SDR assistant.',
       responses_quota: 10,
       responses_consumed: 0,

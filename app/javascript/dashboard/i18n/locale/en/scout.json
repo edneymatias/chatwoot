@@ -187,12 +187,19 @@
       "DISCLAIMER": "Playground conversations do not affect live inbox metrics or conversation lists.",
       "ERROR_REPLY": "Error executing simulation."
     },
-    "PROVIDER_SETTINGS": {
+    "ACCOUNT_SETTINGS": {
       "TITLE": "Scout AI Provider Configuration",
-      "SUBTITLE": "Configure default AI providers, model parameters, and API credentials (Admin Only).",
-      "SELECT_SCOUT_LABEL": "Select Scout Assistant",
+      "SUBTITLE": "Configure the account-wide LLM provider, model name, and API credentials.",
+      "API_KEY_LABEL": "API Key",
+      "API_KEY_PLACEHOLDER": "Enter API Key",
       "API_KEY_CONFIGURED_HINT": "API Key configured (leave blank to keep current)",
-      "API_KEY_SECURITY_NOTE": "API keys are encrypted in the database and never sent to browser clients."
+      "API_KEY_SECURITY_NOTE": "API keys are encrypted at rest in the database and never sent to browser clients.",
+      "SAVE_ERROR": "Failed to save configuration. Please check your credentials and model name."
+    },
+    "UNCONFIGURED_GATING": {
+      "TITLE": "LLM Configuration Required",
+      "DESCRIPTION": "Before creating Scouts or configuring tools, an administrator must configure the account LLM provider and API key.",
+      "BUTTON": "Configure LLM Settings"
     }
   }
 }

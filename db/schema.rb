@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
+ActiveRecord::Schema[7.1].define(version: 2126_08_21_000001) do
   create_schema "metabase_cache_0b4bd_2"
 
   # These extensions should be enabled to support this database
@@ -165,11 +165,16 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
     t.jsonb "run_context", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "cited_document_ids", default: [], null: false
+    t.jsonb "used_faq_ids", default: [], null: false
     t.index ["account_id", "result_type", "result_id"], name: "idx_on_account_id_result_type_result_id_ca66c00cd7"
     t.index ["account_id", "session_type", "created_at"], name: "idx_on_account_id_session_type_created_at_c20a14bd4e"
     t.index ["account_id", "subject_type", "subject_id"], name: "idx_on_account_id_subject_type_subject_id_6d60963b3d"
     t.index ["account_id"], name: "index_agent_sessions_on_account_id"
     t.index ["assistant_id"], name: "index_agent_sessions_on_assistant_id"
+    t.index ["cited_document_ids"], name: "index_agent_sessions_on_cited_document_ids", using: :gin
+    t.index ["document_ids"], name: "index_agent_sessions_on_document_ids", using: :gin
+    t.index ["used_faq_ids"], name: "index_agent_sessions_on_used_faq_ids", using: :gin
     t.index ["user_id"], name: "index_agent_sessions_on_user_id"
   end
 
@@ -273,11 +278,31 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
     t.string "remote_address"
     t.string "request_uuid"
     t.datetime "created_at", precision: nil
+    t.index ["associated_type", "associated_id", "created_at"], name: "index_audits_on_associated_and_created_at"
     t.index ["associated_type", "associated_id"], name: "associated_index"
     t.index ["auditable_type", "auditable_id", "version"], name: "auditable_index"
     t.index ["created_at"], name: "index_audits_on_created_at"
     t.index ["request_uuid"], name: "index_audits_on_request_uuid"
     t.index ["user_id", "user_type"], name: "user_index"
+  end
+
+  create_table "automation_rule_pending_executions", force: :cascade do |t|
+    t.bigint "automation_rule_id", null: false
+    t.bigint "conversation_id", null: false
+    t.bigint "account_id", null: false
+    t.bigint "message_id"
+    t.datetime "due_at", null: false
+    t.string "episode_key", null: false
+    t.integer "status", default: 0, null: false
+    t.string "skip_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_automation_rule_pending_executions_on_account_id"
+    t.index ["automation_rule_id", "conversation_id", "episode_key"], name: "uniq_automation_pending_execution_episode", unique: true
+    t.index ["automation_rule_id"], name: "index_automation_rule_pending_executions_on_automation_rule_id"
+    t.index ["conversation_id"], name: "index_automation_rule_pending_executions_on_conversation_id"
+    t.index ["status", "due_at"], name: "index_automation_rule_pending_executions_on_status_and_due_at"
+    t.index ["status", "updated_at"], name: "index_automation_pending_executions_on_status_and_updated_at"
   end
 
   create_table "automation_rules", force: :cascade do |t|
@@ -290,6 +315,7 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
     t.boolean "active", default: true, null: false
+    t.integer "execution_delay"
     t.index ["account_id"], name: "index_automation_rules_on_account_id"
   end
 
@@ -318,6 +344,33 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
     t.index ["provider", "provider_call_id"], name: "index_calls_on_provider_and_provider_call_id", unique: true
   end
 
+  create_table "campaign_recipients", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "campaign_id", null: false
+    t.bigint "contact_id", null: false
+    t.bigint "inbox_id", null: false
+    t.string "source_id"
+    t.integer "status", default: 0, null: false
+    t.string "error_code"
+    t.string "error_title"
+    t.text "error_message"
+    t.text "message_content"
+    t.datetime "sent_at"
+    t.datetime "delivered_at"
+    t.datetime "read_at"
+    t.datetime "failed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "campaign_id"], name: "index_campaign_recipients_on_account_id_and_campaign_id"
+    t.index ["account_id"], name: "index_campaign_recipients_on_account_id"
+    t.index ["campaign_id", "contact_id"], name: "index_campaign_recipients_on_campaign_id_and_contact_id", unique: true
+    t.index ["campaign_id", "status"], name: "index_campaign_recipients_on_campaign_id_and_status"
+    t.index ["campaign_id"], name: "index_campaign_recipients_on_campaign_id"
+    t.index ["contact_id"], name: "index_campaign_recipients_on_contact_id"
+    t.index ["inbox_id"], name: "index_campaign_recipients_on_inbox_id"
+    t.index ["source_id"], name: "index_campaign_recipients_on_source_id", unique: true, where: "(source_id IS NOT NULL)"
+  end
+
   create_table "campaigns", force: :cascade do |t|
     t.integer "display_id", null: false
     t.string "title", null: false
@@ -336,6 +389,8 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
     t.datetime "scheduled_at", precision: nil
     t.boolean "trigger_only_during_business_hours", default: false
     t.jsonb "template_params"
+    t.datetime "started_at"
+    t.datetime "completed_at"
     t.index ["account_id"], name: "index_campaigns_on_account_id"
     t.index ["campaign_status"], name: "index_campaigns_on_campaign_status"
     t.index ["campaign_type"], name: "index_campaigns_on_campaign_type"
@@ -757,6 +812,37 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
     t.index ["phone_number", "account_id"], name: "index_contacts_on_phone_number_and_account_id"
   end
 
+  create_table "conversation_outcomes", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "assistant_id", null: false
+    t.bigint "conversation_id", null: false
+    t.bigint "inbox_id", null: false
+    t.datetime "first_captain_reply_at"
+    t.datetime "last_captain_reply_at"
+    t.integer "captain_reply_count", default: 0, null: false
+    t.datetime "first_human_reply_at"
+    t.datetime "handoff_at"
+    t.string "handoff_reason_category"
+    t.datetime "resolved_at"
+    t.integer "csat_rating"
+    t.datetime "csat_received_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "episode_trigger", default: "initial", null: false
+    t.datetime "started_at", null: false
+    t.datetime "ended_at"
+    t.index ["account_id", "assistant_id", "handoff_at"], name: "idx_conversation_outcomes_on_assistant_handoff_at"
+    t.index ["account_id", "assistant_id", "resolved_at"], name: "idx_conversation_outcomes_on_assistant_resolved_at"
+    t.index ["account_id", "assistant_id", "started_at"], name: "idx_conversation_outcomes_on_assistant_started_at"
+    t.index ["account_id", "conversation_id", "started_at"], name: "idx_conversation_outcomes_unique_boundary", unique: true
+    t.index ["account_id", "conversation_id"], name: "idx_conversation_outcomes_initial_episode", unique: true, where: "((episode_trigger)::text = 'initial'::text)"
+    t.index ["account_id", "conversation_id"], name: "idx_conversation_outcomes_open_episode", unique: true, where: "(ended_at IS NULL)"
+    t.index ["account_id"], name: "index_conversation_outcomes_on_account_id"
+    t.index ["assistant_id"], name: "index_conversation_outcomes_on_assistant_id"
+    t.index ["conversation_id"], name: "index_conversation_outcomes_on_conversation_id"
+    t.index ["inbox_id"], name: "index_conversation_outcomes_on_inbox_id"
+  end
+
   create_table "conversation_participants", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "user_id", null: false
@@ -796,9 +882,11 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
     t.datetime "waiting_since"
     t.text "cached_label_list"
     t.bigint "assignee_agent_bot_id"
+    t.datetime "status_changed_at"
     t.index ["account_id", "display_id"], name: "index_conversations_on_account_id_and_display_id", unique: true
     t.index ["account_id", "id"], name: "index_conversations_on_id_and_account_id"
     t.index ["account_id", "inbox_id", "status", "assignee_id"], name: "conv_acid_inbid_stat_asgnid_idx"
+    t.index ["account_id", "status", "created_at"], name: "index_conversations_on_account_id_status_created_at"
     t.index ["account_id"], name: "index_conversations_on_account_id"
     t.index ["assignee_id", "account_id"], name: "index_conversations_on_assignee_id_and_account_id"
     t.index ["campaign_id"], name: "index_conversations_on_campaign_id"
@@ -1155,6 +1243,16 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
     t.index ["account_id"], name: "index_ichatr_pipeline_stages_on_account_id"
   end
 
+  create_table "ichatr_scout_account_configs", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "provider", default: 0, null: false
+    t.string "model_name", null: false
+    t.text "api_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_scout_account_configs_on_account_id", unique: true
+  end
+
   create_table "ichatr_scout_inboxes", force: :cascade do |t|
     t.bigint "scout_id", null: false
     t.bigint "inbox_id", null: false
@@ -1211,9 +1309,6 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
     t.bigint "account_id", null: false
     t.string "name", null: false
     t.text "persona"
-    t.integer "provider", null: false
-    t.string "model_name", null: false
-    t.text "api_key_override"
     t.bigint "default_pipeline_stage_id"
     t.integer "responses_quota", default: -1, null: false
     t.integer "responses_consumed", default: 0, null: false
@@ -1731,6 +1826,10 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "campaign_recipients", "accounts", on_delete: :cascade
+  add_foreign_key "campaign_recipients", "campaigns", on_delete: :cascade
+  add_foreign_key "campaign_recipients", "contacts", on_delete: :cascade
+  add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
   add_foreign_key "ichatr_opportunities", "accounts"
   add_foreign_key "ichatr_opportunities", "contacts"
   add_foreign_key "ichatr_opportunities", "conversations", column: "active_conversation_id", on_delete: :nullify
@@ -1755,6 +1854,7 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
   add_foreign_key "ichatr_pipeline_stage_required_fields", "custom_attribute_definitions"
   add_foreign_key "ichatr_pipeline_stage_required_fields", "ichatr_pipeline_stages", column: "pipeline_stage_id"
   add_foreign_key "ichatr_pipeline_stages", "accounts"
+  add_foreign_key "ichatr_scout_account_configs", "accounts", on_delete: :cascade
   add_foreign_key "ichatr_scout_inboxes", "ichatr_scouts", column: "scout_id", on_delete: :cascade
   add_foreign_key "ichatr_scout_inboxes", "inboxes", on_delete: :cascade
   add_foreign_key "ichatr_scout_knowledge_sources", "accounts", on_delete: :cascade
@@ -1770,6 +1870,74 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_19_000008) do
   add_foreign_key "ichatr_scouts", "teams", column: "handover_team_id", on_delete: :nullify
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
+  # WARNING: generating adapter-specific definition for accounts_after_insert_row_tr() due to a mismatch.
+  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.accounts_after_insert_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
+$function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER accounts_after_insert_row_tr AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION accounts_after_insert_row_tr()")
+
+  # WARNING: generating adapter-specific definition for camp_dpid_before_insert() due to a mismatch.
+  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.camp_dpid_before_insert()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
+$function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER camp_dpid_before_insert AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION camp_dpid_before_insert()")
+
+  # WARNING: generating adapter-specific definition for campaigns_before_insert_row_tr() due to a mismatch.
+  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.campaigns_before_insert_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
+$function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER campaigns_before_insert_row_tr BEFORE INSERT ON \"campaigns\" FOR EACH ROW EXECUTE FUNCTION campaigns_before_insert_row_tr()")
+
+  # WARNING: generating adapter-specific definition for conversations_before_insert_row_tr() due to a mismatch.
+  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.conversations_before_insert_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
+$function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER conversations_before_insert_row_tr BEFORE INSERT ON \"conversations\" FOR EACH ROW EXECUTE FUNCTION conversations_before_insert_row_tr()")
+
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute(<<-SQL)
 CREATE OR REPLACE FUNCTION public.n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()
@@ -1791,34 +1959,5 @@ AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
-
-  create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
-      on("accounts").
-      after(:insert).
-      for_each(:row) do
-    "execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);"
-  end
-
-  create_trigger("conversations_before_insert_row_tr", :generated => true, :compatibility => 1).
-      on("conversations").
-      before(:insert).
-      for_each(:row) do
-    "NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);"
-  end
-
-  create_trigger("camp_dpid_before_insert", :generated => true, :compatibility => 1).
-      on("accounts").
-      name("camp_dpid_before_insert").
-      after(:insert).
-      for_each(:row) do
-    "execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);"
-  end
-
-  create_trigger("campaigns_before_insert_row_tr", :generated => true, :compatibility => 1).
-      on("campaigns").
-      before(:insert).
-      for_each(:row) do
-    "NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);"
-  end
 
 end
