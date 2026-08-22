@@ -20,4 +20,8 @@ class ScoutToolPolicy < ApplicationPolicy
   def destroy?
     @account_user.present?
   end
+
+  def test?
+    @account_user.present?
+  end
 end

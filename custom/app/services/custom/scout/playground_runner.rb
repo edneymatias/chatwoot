@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 class Custom::Scout::PlaygroundRunner
-  attr_reader :scout, :message, :recorded_tool_calls
+  attr_reader :scout, :message, :message_history, :recorded_tool_calls
 
-  def initialize(scout:, message:)
+  def initialize(scout:, message:, message_history: [])
     @scout = scout
     @message = message
+    @message_history = message_history || []
     @recorded_tool_calls = []
   end
 
@@ -15,6 +16,7 @@ class Custom::Scout::PlaygroundRunner
     chat.with_instructions(build_system_instructions)
     tools.each { |tool| chat = chat.with_tool(tool) }
 
+    add_history_to_chat(chat)
     response = chat.ask(@message)
     reply_text = extract_reply_content(response&.content)
 
@@ -32,6 +34,14 @@ class Custom::Scout::PlaygroundRunner
   end
 
   private
+
+  def add_history_to_chat(chat)
+    @message_history.each do |msg|
+      role = msg[:role].to_s == 'assistant' ? :assistant : :user
+      content = msg[:content].to_s
+      chat.add_message(role: role, content: content) if content.present?
+    end
+  end
 
   def extract_reply_content(content)
     return '' if content.blank?

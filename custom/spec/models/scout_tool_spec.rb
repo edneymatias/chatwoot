@@ -25,7 +25,8 @@ RSpec.describe ScoutTool, type: :model do
           'city' => { 'type' => 'string' }
         },
         'required' => ['city']
-      }
+      },
+      response_template: 'Weather: {{ r.temp }}C'
     }
   end
 
@@ -106,6 +107,27 @@ RSpec.describe ScoutTool, type: :model do
 
       expect { scout.destroy! }.not_to(change { described_class.exists?(tool.id) })
       expect(described_class.find(tool.id)).to eq(tool)
+    end
+  end
+
+  describe '#format_response (User Story 3)' do
+    it 'renders response_template when present with response and r aliases' do
+      tool = described_class.new(valid_attributes.merge(response_template: 'City {{ r.city }} has {{ response.temp }}C.'))
+      formatted = tool.format_response({ city: 'Tokyo', temp: 22 }.to_json)
+      expect(formatted).to eq('City Tokyo has 22C.')
+    end
+
+    it 'returns parsed JSON when response_template is blank' do
+      tool = described_class.new(valid_attributes.merge(response_template: nil))
+      formatted = tool.format_response({ city: 'Tokyo' }.to_json)
+      expect(formatted).to eq({ 'city' => 'Tokyo' })
+    end
+
+    it 'raises when template references missing variable in strict mode' do
+      tool = described_class.new(valid_attributes.merge(response_template: 'City {{ r.missing }}'))
+      expect do
+        tool.format_response({ city: 'Tokyo' }.to_json)
+      end.to raise_error(/Template rendering failed/)
     end
   end
 end

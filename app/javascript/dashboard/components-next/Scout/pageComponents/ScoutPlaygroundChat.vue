@@ -27,6 +27,13 @@ const handleSendMessage = async () => {
   const content = inputMessage.value.trim();
   if (!content || isSending.value) return;
 
+  const historyPayload = messages.value
+    .filter(msg => msg.content)
+    .map(msg => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+
   messages.value.push({
     role: 'user',
     content,
@@ -39,6 +46,7 @@ const handleSendMessage = async () => {
   try {
     const { data } = await ScoutAPI.sendPlaygroundMessage(props.scout.id, {
       message: content,
+      message_history: historyPayload,
     });
 
     messages.value.push({

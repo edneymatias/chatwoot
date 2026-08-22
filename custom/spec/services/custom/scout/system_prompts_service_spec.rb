@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Custom::Scout::SystemPromptsService do
-  let(:account) { create(:account) }
+  let(:account) { create(:account, name: 'Acme Corp') }
   let(:scout) do
     Scout.create!(
       account: account,
@@ -15,7 +15,7 @@ RSpec.describe Custom::Scout::SystemPromptsService do
     )
   end
   let(:contact) { create(:contact, account: account, name: 'Maria Silva') }
-  let(:inbox) { create(:inbox, account: account) }
+  let(:inbox) { create(:inbox, account: account, timezone: 'America/Sao_Paulo') }
 
   describe '.build' do
     subject(:prompt) do
@@ -28,10 +28,24 @@ RSpec.describe Custom::Scout::SystemPromptsService do
       )
     end
 
-    it 'includes assistant identity, name, and domain scope bounding' do
+    it 'includes assistant identity, name, company name, and domain scope bounding' do
       expect(prompt).to include('Vendas Bot')
+      expect(prompt).to include('da empresa Acme Corp')
       expect(prompt).to include('[Identidade e Escopo]')
       expect(prompt).to include('apenas sobre os produtos, serviços, catálogo e informações fornecidas')
+    end
+
+    it 'includes current reference time and relative date interpretation guidance' do
+      expect(prompt).to include('[Data e Horário Atual]')
+      expect(prompt).to include('Horário atual:')
+      expect(prompt).to include('interpretar expressões temporais relativas como hoje, amanhã, esta noite')
+      expect(prompt).to include('respeite as instruções de fuso horário')
+    end
+
+    it 'formats current time respecting the inbox timezone' do
+      tz = ActiveSupport::TimeZone['America/Sao_Paulo']
+      expected_time_fragment = Time.current.in_time_zone(tz).strftime('%Y')
+      expect(prompt).to include(expected_time_fragment)
     end
 
     it 'includes anti-hallucination guardrails forbidding training assumptions' do

@@ -24,6 +24,7 @@ class Custom::Scout::SystemPromptsService
   def build
     sections = [
       identity_section,
+      current_time_section,
       guardrails_section,
       context_section,
       custom_instructions_section,
@@ -37,13 +38,33 @@ class Custom::Scout::SystemPromptsService
 
   def identity_section
     name = @scout.name.presence || 'Scout'
+    account_name = @scout.account&.name
+    company_context = account_name.present? ? " da empresa #{account_name}" : ''
+
     <<~SECTION.strip
       [Identidade e Escopo]
-      Você é #{name}, um assistente inteligente de qualificação comercial e vendas.
+      Você é #{name}, um assistente inteligente de qualificação comercial e vendas#{company_context}.
       Seu objetivo é qualificar leads, tirar dúvidas sobre produtos e serviços e auxiliar no processo comercial.
       Você deve responder apenas sobre os produtos, serviços, catálogo e informações fornecidas neste contexto ou acessíveis através das ferramentas disponíveis.
       Recuse educadamente responder sobre outros produtos, assuntos gerais não relacionados ao escopo comercial ou eventos fora deste domínio.
     SECTION
+  end
+
+  def current_time_section
+    <<~SECTION.strip
+      [Data e Horário Atual]
+      Horário atual: #{format_current_time(@inbox&.timezone)}.
+
+      Utilize este horário atual para interpretar expressões temporais relativas como hoje, amanhã, esta noite, este fim de semana ou próxima semana.
+      Ao chamar ferramentas (tools), respeite as instruções de fuso horário ou formato de data nos parâmetros da ferramenta.
+      Este horário atual serve apenas como contexto de apoio para requisições e parâmetros dentro do escopo; ele não expande os tópicos que você pode responder.
+    SECTION
+  end
+
+  def format_current_time(timezone)
+    tz = ActiveSupport::TimeZone[timezone] if timezone.present?
+    time = tz ? Time.current.in_time_zone(tz) : Time.current
+    time.strftime('%A, %B %d, %Y %I:%M %p %Z')
   end
 
   def guardrails_section

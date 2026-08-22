@@ -154,6 +154,51 @@ RSpec.describe Custom::Scout::Tools::CallCustomApi do
         tempfile&.close!
       end
 
+      it 'executes outbound request with dynamic URL path parameters and response template' do
+        templated_tool = account.scout_tools.create!(
+          name: 'get_order',
+          description: 'Get order details',
+          endpoint_url: 'https://erp.example.com/orders/{{order_id}}/status',
+          http_method: 'GET',
+          auth_headers: 'Bearer secret',
+          response_template: 'Order {{ r.id }} is {{ r.status }}.',
+          parameters_schema: {
+            'type' => 'object',
+            'properties' => {
+              'order_id' => { 'type' => 'string' },
+              'include_history' => { 'type' => 'boolean' }
+            },
+            'required' => ['order_id']
+          },
+          enabled: true
+        )
+
+        tempfile = Tempfile.new('order-response')
+        tempfile.write({ id: '999', status: 'shipped' }.to_json)
+        tempfile.rewind
+
+        result_double = SafeFetch::Result.new(
+          tempfile: tempfile,
+          filename: 'order',
+          content_type: 'application/json'
+        )
+
+        expect(SafeFetch).to receive(:fetch).with(
+          'https://erp.example.com/orders/999/status?include_history=true',
+          method: :get,
+          body: nil,
+          headers: hash_including('Authorization' => 'Bearer secret'),
+          sensitive_headers: array_including('Authorization'),
+          max_bytes: 1.megabyte,
+          validate_content_type: false
+        ).and_yield(result_double)
+
+        response = tool.execute(tool_id: templated_tool.id, payload: { 'order_id' => '999', 'include_history' => true })
+        expect(response).to eq('Order 999 is shipped.')
+      ensure
+        tempfile&.close!
+      end
+
       it 'enforces cross-account isolation by refusing tools from other accounts' do
         other_tool = other_account.scout_tools.create!(
           name: 'competitor_stock',

@@ -36,6 +36,26 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
     head :ok
   end
 
+  def test
+    tp = test_params
+    executor = Custom::Scout::Tools::HttpRequestExecutor.new(
+      endpoint_url: tp[:endpoint_url],
+      http_method: tp[:http_method] || 'POST',
+      auth_headers: tp[:auth_headers],
+      response_template: tp[:response_template],
+      payload: tp[:payload]
+    )
+    result = executor.execute
+
+    render json: {
+      success: result.success?,
+      status: result.status,
+      raw_body: result.truncated_raw_body(500),
+      formatted_response: result.formatted_response,
+      error: result.error
+    }
+  end
+
   private
 
   def set_scout_tool
@@ -47,13 +67,45 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
   end
 
   def tool_params
-    permitted = params.permit(:name, :description, :endpoint_url, :http_method, :enabled, :auth_headers)
-    if params[:parameter_schema].present?
-      permitted[:parameter_schema] = params[:parameter_schema].is_a?(String) ? JSON.parse(params[:parameter_schema]) : params[:parameter_schema]
-    end
+    src = params[:scout_tool].presence || params
+    permitted = src.permit(:name, :description, :endpoint_url, :http_method, :enabled, :response_template).to_h
+
+    schema = src[:parameter_schema] || src[:parameters_schema]
+    permitted[:parameter_schema] = parse_nested_param(schema) if schema.present?
+
+    headers = src[:auth_headers] || src[:headers]
+    permitted[:auth_headers] = parse_nested_param(headers) if headers.present?
+
     permitted
-  rescue JSON::ParserError => e
-    render json: { error: "Invalid JSON in parameter_schema: #{e.message}" }, status: :unprocessable_entity
-    nil
+  end
+
+  def test_params
+    src = params[:scout_tool].presence || params
+    base = src.permit(:endpoint_url, :http_method, :response_template).to_h
+
+    payload = src[:payload]
+    payload = parse_nested_param(payload) if payload.present?
+
+    headers = src[:auth_headers] || src[:headers]
+    headers = parse_nested_param(headers) if headers.present?
+
+    base.merge(
+      auth_headers: headers,
+      payload: payload
+    )
+  end
+
+  def parse_nested_param(val)
+    if val.is_a?(String)
+      val.start_with?('{', '[') ? JSON.parse(val) : val
+    elsif val.respond_to?(:to_unsafe_h)
+      val.to_unsafe_h
+    elsif val.is_a?(Hash)
+      val.to_h
+    else
+      val
+    end
+  rescue JSON::ParserError
+    val
   end
 end

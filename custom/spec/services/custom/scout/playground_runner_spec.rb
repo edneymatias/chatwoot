@@ -21,16 +21,23 @@ RSpec.describe Custom::Scout::PlaygroundRunner do
       enabled: true
     )
   end
-  let(:runner) { described_class.new(scout: scout, message: 'Olá, gostaria de contratar o plano') }
+  let(:message_history) do
+    [
+      { role: 'user', content: 'Que dia é hoje?' },
+      { role: 'assistant', content: 'Hoje é sexta-feira.' }
+    ]
+  end
+  let(:runner) { described_class.new(scout: scout, message: 'Tem atendimento hoje?', message_history: message_history) }
 
   describe '#perform' do
     let(:fake_chat) { instance_double(RubyLLM::Chat) }
-    let(:fake_response) { instance_double(RubyLLM::Message, content: 'Olá! Perfeito, qual é o seu nome?') }
+    let(:fake_response) { instance_double(RubyLLM::Message, content: 'Sim, atendemos hoje!') }
 
     before do
       allow(scout).to receive(:llm_chat).and_return(fake_chat)
       allow(fake_chat).to receive(:with_instructions).and_return(fake_chat)
       allow(fake_chat).to receive(:with_tool).and_return(fake_chat)
+      allow(fake_chat).to receive(:add_message).and_return(fake_chat)
       allow(fake_chat).to receive(:ask).and_return(fake_response)
     end
 
@@ -39,9 +46,17 @@ RSpec.describe Custom::Scout::PlaygroundRunner do
 
       expect do
         result = runner.perform
-        expect(result[:reply]).to eq('Olá! Perfeito, qual é o seu nome?')
+        expect(result[:reply]).to eq('Sim, atendemos hoje!')
         expect(result[:tool_calls]).to be_an(Array)
       end.not_to(change { scout.reload.responses_consumed })
+    end
+
+    it 'injects message history into the chat before asking the current message' do
+      expect(fake_chat).to receive(:add_message).with(role: :user, content: 'Que dia é hoje?').ordered
+      expect(fake_chat).to receive(:add_message).with(role: :assistant, content: 'Hoje é sexta-feira.').ordered
+      expect(fake_chat).to receive(:ask).with('Tem atendimento hoje?').ordered.and_return(fake_response)
+
+      runner.perform
     end
   end
 end

@@ -248,6 +248,7 @@ flowchart TD
 - `auth_headers` (jsonb, **`encrypts`, obrigatório** — ver seção 4.3): Headers HTTP de autenticação.
 - `parameters_schema` (jsonb): Schema JSON dos parâmetros extraídos pelo LLM.
 - `enabled` (boolean, default: true)
+- `response_template` (text, opcional, Liquid — Fase 13): quando preenchido, molda o corpo da resposta antes de chegar à LLM (`{{ r.campo }}`); vazio preserva o comportamento atual (JSON parseado ou corpo cru).
 
 ### 9.4. Migration adicional em `Opportunity` (core do Kanban, tabela custom já existente)
 - `lost_reason` (string, optional): necessário para a ferramenta nativa `move_opportunity_stage` (seção 10) registrar o motivo de descarte. Não existe hoje em `custom/app/models/opportunity.rb` — nova migration `ichatr_` sob `custom/`, sem tocar em tabelas core.
@@ -297,3 +298,4 @@ flowchart TD
 - [ ] **[Fase 10 — UI na Conversa](10-in-conversation-ui/spec68.md)**: Componentes de UI na Conversa (Badge de Status do Scout, botão Pausar/Retomar e link para o card no Kanban).
 - [ ] **[Fase 11 — Follow-up, Telemetria & E2E](11-follow-up-telemetry-e2e/spec69.md)**: Job de Follow-up / Re-engajamento (`Scout::FollowUpJob`, a criar do zero — seção 5), telemetria de tokens/cota e testes ponta a ponta.
 - [ ] **[Fase 12 — Auditor de Resposta (pós-v1)](12-response-auditor/spec-preview.md)** *(condicional a métricas do v1)*: Segunda chamada de LLM que audita a resposta final antes da persistência (classificador de ação e/ou detector de falsa-promessa), inspirada em `Captain::Conversation::V1ActionClassifier`/`V1FalsePromiseHandler`. Só entra em implementação se a telemetria da Fase 11 mostrar handoffs perdidos ou promessas futuras não cumpridas no v1; depende do ponto único de interceptação da resposta final estabelecido na Fase 8 (ver nota nesse spec).
+- [ ] **[Fase 13 — Teste de Requisição & Formato de Saída das Ferramentas Externas](13-tool-testing-and-response-shaping/spec73.md)**: Botão de teste de requisição (com payload de exemplo) na configuração de `ScoutTool`, suporte a path params (`{{param}}` na URL, Liquid estrito) e querystring automática para `GET` (corrige descarte silencioso do payload em GET), e `response_template` (Liquid) para moldar o corpo da resposta antes de chegar à LLM — inspirado em `Captain::CustomTool`/`Toolable`. Depende da Fase 4.

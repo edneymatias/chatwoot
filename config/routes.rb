@@ -159,7 +159,9 @@ Rails.application.routes.draw do
             end
           end
           resource :scout_account_config, only: [:show, :update]
-          resources :scout_tools, only: [:index, :show, :create, :update, :destroy]
+          resources :scout_tools, only: [:index, :show, :create, :update, :destroy] do
+            post :test, on: :collection
+          end
           resources :pipeline_stage_aggregates, only: [:index]
           resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]
           resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]

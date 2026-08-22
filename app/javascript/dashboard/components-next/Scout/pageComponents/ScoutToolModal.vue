@@ -6,6 +6,7 @@ import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import TextArea from 'dashboard/components-next/textarea/TextArea.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
 
 const props = defineProps({
   tool: {
@@ -20,12 +21,33 @@ const { t } = useI18n();
 const dialogRef = ref(null);
 const name = ref('');
 const description = ref('');
-const url = ref('');
+const endpointUrl = ref('');
 const httpMethod = ref('POST');
 const headersJson = ref('{}');
 const schemaJson = ref('{}');
+const responseTemplate = ref('');
+
 const isSubmitting = ref(false);
 const jsonError = ref('');
+
+// Test Playground State
+const testPayloadJson = ref('{}');
+const isTesting = ref(false);
+const testResult = ref(null);
+const testError = ref('');
+
+const rawPreview = computed(() => {
+  return testResult.value?.raw_body || '—';
+});
+
+const formattedPreview = computed(() => {
+  if (!testResult.value) return '—';
+  const fr = testResult.value.formatted_response;
+  if (typeof fr === 'object' && fr !== null) {
+    return JSON.stringify(fr, null, 2);
+  }
+  return fr || '—';
+});
 
 const isEditing = computed(() => !!props.tool);
 const methodOptions = [
@@ -33,6 +55,7 @@ const methodOptions = [
   { value: 'GET', label: 'GET' },
   { value: 'PUT', label: 'PUT' },
   { value: 'PATCH', label: 'PATCH' },
+  { value: 'DELETE', label: 'DELETE' },
 ];
 
 watch(
@@ -41,41 +64,64 @@ watch(
     if (newVal) {
       name.value = newVal.name || '';
       description.value = newVal.description || '';
-      url.value = newVal.url || '';
+      endpointUrl.value = newVal.endpoint_url || newVal.url || '';
       httpMethod.value = newVal.http_method || 'POST';
-      headersJson.value = JSON.stringify(newVal.headers || {}, null, 2);
+
+      if (
+        typeof newVal.auth_headers === 'object' &&
+        newVal.auth_headers !== null
+      ) {
+        headersJson.value = JSON.stringify(newVal.auth_headers, null, 2);
+      } else if (newVal.auth_headers) {
+        headersJson.value = newVal.auth_headers;
+      } else if (newVal.headers) {
+        headersJson.value = JSON.stringify(newVal.headers, null, 2);
+      } else {
+        headersJson.value = '{}';
+      }
+
       schemaJson.value = JSON.stringify(
-        newVal.parameters_schema || {},
+        newVal.parameter_schema ||
+          newVal.parameters_schema || { type: 'object', properties: {} },
         null,
         2
       );
+      responseTemplate.value = newVal.response_template || '';
     } else {
       name.value = '';
       description.value = '';
-      url.value = '';
+      endpointUrl.value = '';
       httpMethod.value = 'POST';
       headersJson.value = '{}';
       schemaJson.value = '{\n  "type": "object",\n  "properties": {}\n}';
+      responseTemplate.value = '';
     }
     jsonError.value = '';
+    testResult.value = null;
+    testError.value = '';
+    testPayloadJson.value = '{}';
   },
   { immediate: true }
 );
 
 const openModal = () => {
   jsonError.value = '';
+  testResult.value = null;
+  testError.value = '';
   dialogRef.value?.open();
 };
 
 const handleSave = async () => {
   jsonError.value = '';
-  if (!name.value.trim() || !url.value.trim()) return;
+  if (!name.value.trim() || !endpointUrl.value.trim()) return;
 
   let parsedHeaders = {};
   let parsedSchema = {};
 
   try {
-    parsedHeaders = JSON.parse(headersJson.value || '{}');
+    parsedHeaders = headersJson.value.trim().startsWith('{')
+      ? JSON.parse(headersJson.value || '{}')
+      : headersJson.value.trim();
   } catch (e) {
     jsonError.value = t('SCOUT.TOOLS.MODAL.INVALID_HEADERS_JSON');
     return;
@@ -91,14 +137,13 @@ const handleSave = async () => {
   isSubmitting.value = true;
   try {
     const payload = {
-      scout_tool: {
-        name: name.value.trim(),
-        description: description.value.trim(),
-        url: url.value.trim(),
-        http_method: httpMethod.value,
-        headers: parsedHeaders,
-        parameters_schema: parsedSchema,
-      },
+      name: name.value.trim(),
+      description: description.value.trim(),
+      endpoint_url: endpointUrl.value.trim(),
+      http_method: httpMethod.value,
+      auth_headers: parsedHeaders,
+      parameter_schema: parsedSchema,
+      response_template: responseTemplate.value.trim() || null,
     };
 
     if (isEditing.value) {
@@ -110,9 +155,61 @@ const handleSave = async () => {
     dialogRef.value?.close();
     emit('saved');
   } catch (error) {
-    // Handled
+    jsonError.value =
+      error.response?.data?.error ||
+      error.message ||
+      t('SCOUT.ERROR_GENERIC_MESSAGE');
   } finally {
     isSubmitting.value = false;
+  }
+};
+
+const handleTest = async () => {
+  testError.value = '';
+  testResult.value = null;
+
+  if (!endpointUrl.value.trim()) return;
+
+  let parsedHeaders = {};
+  let parsedTestPayload = {};
+
+  try {
+    parsedHeaders = headersJson.value.trim().startsWith('{')
+      ? JSON.parse(headersJson.value || '{}')
+      : headersJson.value.trim();
+  } catch (e) {
+    testError.value = t('SCOUT.TOOLS.MODAL.INVALID_HEADERS_JSON');
+    return;
+  }
+
+  try {
+    parsedTestPayload = testPayloadJson.value.trim().length
+      ? JSON.parse(testPayloadJson.value)
+      : {};
+  } catch (e) {
+    testError.value = t('SCOUT.TOOLS.MODAL.INVALID_PAYLOAD_JSON');
+    return;
+  }
+
+  isTesting.value = true;
+  try {
+    const testPayload = {
+      endpoint_url: endpointUrl.value.trim(),
+      http_method: httpMethod.value,
+      auth_headers: parsedHeaders,
+      response_template: responseTemplate.value.trim() || null,
+      payload: parsedTestPayload,
+    };
+
+    const { data } = await ScoutAPI.testTool(testPayload);
+    testResult.value = data;
+  } catch (err) {
+    testError.value =
+      err.response?.data?.error ||
+      err.message ||
+      t('SCOUT.ERROR_GENERIC_MESSAGE');
+  } finally {
+    isTesting.value = false;
   }
 };
 
@@ -132,9 +229,11 @@ defineExpose({
     :description="t('SCOUT.TOOLS.MODAL.DESCRIPTION')"
     :confirm-button-label="t('SCOUT.TOOLS.MODAL.SUBMIT')"
     :cancel-button-label="t('SCOUT.TOOLS.MODAL.CANCEL')"
-    :disable-confirm-button="!name.trim() || !url.trim() || isSubmitting"
+    :disable-confirm-button="
+      !name.trim() || !endpointUrl.trim() || isSubmitting
+    "
     :is-loading="isSubmitting"
-    width="xl"
+    width="2xl"
     @confirm="handleSave"
   >
     <form class="flex flex-col gap-4 py-2" @submit.prevent="handleSave">
@@ -167,8 +266,8 @@ defineExpose({
           {{ `${t('SCOUT.TOOLS.MODAL.URL_LABEL')} *` }}
         </label>
         <Input
-          v-model="url"
-          placeholder="https://api.empresa.com/webhooks/check"
+          v-model="endpointUrl"
+          placeholder="https://api.empresa.com/orders/{{order_id}}/status"
         />
       </div>
 
@@ -189,7 +288,7 @@ defineExpose({
         </label>
         <textarea
           v-model="headersJson"
-          rows="3"
+          rows="2"
           class="w-full p-3 font-mono text-xs rounded-lg border border-n-weak bg-n-surface-1 text-n-slate-12 focus:outline-none focus:border-n-brand"
         />
       </div>
@@ -200,9 +299,146 @@ defineExpose({
         </label>
         <textarea
           v-model="schemaJson"
-          rows="4"
+          rows="3"
           class="w-full p-3 font-mono text-xs rounded-lg border border-n-weak bg-n-surface-1 text-n-slate-12 focus:outline-none focus:border-n-brand"
         />
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="block text-xs font-medium text-n-slate-11">
+            {{ t('SCOUT.TOOLS.MODAL.RESPONSE_TEMPLATE_LABEL') }}
+          </label>
+        </div>
+        <textarea
+          v-model="responseTemplate"
+          rows="2"
+          :placeholder="t('SCOUT.TOOLS.MODAL.RESPONSE_TEMPLATE_PLACEHOLDER')"
+          class="w-full p-3 font-mono text-xs rounded-lg border border-n-weak bg-n-surface-1 text-n-slate-12 focus:outline-none focus:border-n-brand"
+        />
+        <p class="text-[11px] text-n-slate-10 mt-1">
+          {{ t('SCOUT.TOOLS.MODAL.RESPONSE_TEMPLATE_HINT') }}
+        </p>
+      </div>
+
+      <!-- Test Playground Section -->
+      <div
+        class="mt-2 p-4 rounded-xl border border-n-weak bg-n-alpha-1 flex flex-col gap-3"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="text-xs font-semibold text-n-slate-12">
+              {{ t('SCOUT.TOOLS.MODAL.TEST_SECTION_TITLE') }}
+            </h4>
+            <p class="text-[11px] text-n-slate-11">
+              {{ t('SCOUT.TOOLS.MODAL.TEST_SECTION_DESC') }}
+            </p>
+          </div>
+          <Button
+            :label="
+              isTesting
+                ? t('SCOUT.TOOLS.MODAL.TESTING')
+                : t('SCOUT.TOOLS.MODAL.TEST_BUTTON')
+            "
+            variant="faded"
+            color="slate"
+            size="sm"
+            icon="i-lucide-play"
+            :is-loading="isTesting"
+            :disabled="!endpointUrl.trim() || isTesting"
+            @click="handleTest"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-n-slate-11 mb-1">
+            {{ t('SCOUT.TOOLS.MODAL.TEST_PAYLOAD_LABEL') }}
+          </label>
+          <textarea
+            v-model="testPayloadJson"
+            rows="2"
+            class="w-full p-2.5 font-mono text-xs rounded-lg border border-n-weak bg-n-surface-1 text-n-slate-12 focus:outline-none focus:border-n-brand"
+          />
+        </div>
+
+        <!-- Test Error Banner -->
+        <div
+          v-if="testError"
+          class="p-3 rounded-lg border border-n-ruby-5 bg-n-ruby-2 text-xs text-n-ruby-11 font-medium"
+        >
+          {{ testError }}
+        </div>
+
+        <!-- Test Results Display -->
+        <div
+          v-if="testResult"
+          class="flex flex-col gap-2.5 pt-2 border-t border-n-weak"
+        >
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium text-n-slate-11">
+              {{ t('SCOUT.TOOLS.MODAL.TEST_RESULT_TITLE') }}
+            </span>
+            <div class="flex items-center gap-2">
+              <span
+                v-if="
+                  testResult.status !== null && testResult.status !== undefined
+                "
+                class="px-2 py-0.5 text-xs font-mono font-semibold rounded"
+                :class="
+                  testResult.success
+                    ? 'bg-n-teal-3 text-n-teal-11 border border-n-teal-5'
+                    : 'bg-n-ruby-3 text-n-ruby-11 border border-n-ruby-5'
+                "
+              >
+                {{
+                  t('SCOUT.TOOLS.MODAL.STATUS_HTTP', {
+                    status: testResult.status,
+                  })
+                }}
+              </span>
+              <span
+                v-else
+                class="px-2 py-0.5 text-xs font-mono font-semibold rounded bg-n-amber-3 text-n-amber-11 border border-n-amber-5"
+              >
+                {{ t('SCOUT.TOOLS.MODAL.STATUS_ERROR') }}
+              </span>
+            </div>
+          </div>
+
+          <div
+            v-if="testResult.error"
+            class="p-2.5 rounded-lg border border-n-ruby-5 bg-n-ruby-2 text-xs text-n-ruby-11 font-medium"
+          >
+            {{ testResult.error }}
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-medium text-n-slate-10">
+                  {{ t('SCOUT.TOOLS.MODAL.RAW_RESPONSE_LABEL') }}
+                </span>
+                <span class="text-[10px] text-n-slate-9">
+                  {{ t('SCOUT.TOOLS.MODAL.TRUNCATED_HINT') }}
+                </span>
+              </div>
+              <pre
+                class="p-2.5 font-mono text-xs rounded-lg border border-n-weak bg-n-solid-1 text-n-slate-12 max-h-32 overflow-auto whitespace-pre-wrap break-all"
+                >{{ rawPreview }}
+              </pre>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <span class="text-[11px] font-medium text-n-slate-10">
+                {{ t('SCOUT.TOOLS.MODAL.SHAPED_RESPONSE_LABEL') }}
+              </span>
+              <pre
+                class="p-2.5 font-mono text-xs rounded-lg border border-n-weak bg-n-solid-1 text-n-slate-12 max-h-32 overflow-auto whitespace-pre-wrap break-all"
+                >{{ formattedPreview }}
+              </pre>
+            </div>
+          </div>
+        </div>
       </div>
 
       <p v-if="jsonError" class="text-xs text-n-ruby-9 font-medium">

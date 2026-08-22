@@ -97,6 +97,11 @@ class ScoutAPI extends ApiClient {
     return axios.delete(`${accountUrl}/scout_tools/${toolId}`);
   }
 
+  testTool(data) {
+    const accountUrl = this.url.replace(/\/scouts$/, '');
+    return axios.post(`${accountUrl}/scout_tools/test`, data);
+  }
+
   // Account LLM Config (Admin Only)
   getAccountConfig() {
     const accountUrl = this.url.replace(/\/scouts$/, '');
@@ -111,10 +116,9 @@ class ScoutAPI extends ApiClient {
   }
 
   // Playground
-  sendPlaygroundMessage(scoutId, message) {
-    return axios.post(`${this.url}/${scoutId}/playground_messages`, {
-      message,
-    });
+  sendPlaygroundMessage(scoutId, payload) {
+    const body = typeof payload === 'string' ? { message: payload } : payload;
+    return axios.post(`${this.url}/${scoutId}/playground_messages`, body);
   }
 }
 
