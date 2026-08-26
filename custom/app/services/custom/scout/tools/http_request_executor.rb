@@ -5,13 +5,9 @@ class Custom::Scout::Tools::HttpRequestExecutor
   PREVIEW_TRUNCATE_LIMIT = 500
 
   Result = Struct.new(:success, :status, :raw_body, :formatted_response, :error, keyword_init: true) do
-    def success?
-      success == true
-    end
-
-    def truncated_raw_body(limit = PREVIEW_TRUNCATE_LIMIT)
-      raw_body&.truncate(limit)
-    end
+    def success? = success == true
+    def truncated_raw_body(limit = PREVIEW_TRUNCATE_LIMIT) = raw_body&.truncate(limit)
+    def truncated?(limit = PREVIEW_TRUNCATE_LIMIT) = raw_body.present? && raw_body.length > limit
   end
 
   def initialize(endpoint_url:, http_method: 'POST', auth_headers: nil, response_template: nil, payload: {})
@@ -22,9 +18,7 @@ class Custom::Scout::Tools::HttpRequestExecutor
     @payload = normalize_payload(payload)
   end
 
-  def self.execute(...)
-    new(...).execute
-  end
+  def self.execute(...) = new(...).execute
 
   def self.from_tool(tool, payload: {})
     new(
@@ -55,9 +49,8 @@ class Custom::Scout::Tools::HttpRequestExecutor
     return {} if payload.blank?
     return parse_string_payload(payload) if payload.is_a?(String)
     return payload.to_unsafe_h.deep_stringify_keys if payload.respond_to?(:to_unsafe_h)
-    return payload.deep_stringify_keys if payload.respond_to?(:deep_stringify_keys)
 
-    payload
+    payload.respond_to?(:deep_stringify_keys) ? payload.deep_stringify_keys : payload
   end
 
   def parse_string_payload(payload)
@@ -119,6 +112,7 @@ class Custom::Scout::Tools::HttpRequestExecutor
 
   def parse_auth_headers(auth)
     return {} if auth.blank?
+    return auth.to_unsafe_h.transform_keys(&:to_s) if auth.respond_to?(:to_unsafe_h)
     return auth.transform_keys(&:to_s) if auth.is_a?(Hash)
 
     parse_auth_header_string(auth.to_s.strip)
@@ -191,28 +185,31 @@ class Custom::Scout::Tools::HttpRequestExecutor
   end
 
   def handle_execution_error(error)
-    case error
-    when SafeFetch::HttpError
-      status_code = error.message[/^\d+/]&.to_i || 400
-      Result.new(success: false, status: status_code, raw_body: error.message, formatted_response: nil,
-                 error: "External system returned error status: #{error.message}")
-    when SafeFetch::FileTooLargeError
-      Result.new(success: false, status: nil, raw_body: nil, formatted_response: nil,
-                 error: "Error: Response exceeded maximum allowed size (#{error.message})")
-    when SafeFetch::FetchError
-      Result.new(success: false, status: nil, raw_body: nil, formatted_response: nil,
-                 error: "Request failed or timed out while contacting the external system: #{error.message}")
-    when SafeFetch::InvalidUrlError, SafeFetch::UnsafeUrlError
-      Result.new(success: false, status: nil, raw_body: nil, formatted_response: nil, error: "Invalid or unsafe URL: #{error.message}")
-    when Liquid::SyntaxError, Liquid::UndefinedVariable, Liquid::UndefinedFilter
-      Result.new(success: false, status: nil, raw_body: nil, formatted_response: nil, error: "Template rendering failed: #{error.message}")
-    else
-      err_msg = error.message.start_with?('Template rendering failed', 'Error:') ? error.message : default_error_message
-      Result.new(success: false, status: nil, raw_body: nil, formatted_response: nil, error: err_msg)
-    end
+    return handle_http_error(error) if error.is_a?(SafeFetch::HttpError)
+
+    msg = build_error_message(error)
+    Result.new(success: false, status: nil, raw_body: nil, formatted_response: nil, error: msg)
   end
 
-  def default_error_message
-    'Error: An error occurred while executing the external tool.'
+  def handle_http_error(error)
+    status_code = error.message[/^\d+/]&.to_i || 400
+    Result.new(success: false, status: status_code, raw_body: error.message, formatted_response: nil,
+               error: "External system returned error status: #{error.message}")
+  end
+
+  def build_error_message(error)
+    case error
+    when SafeFetch::FileTooLargeError
+      "Error: Response exceeded maximum allowed size (#{error.message})"
+    when SafeFetch::FetchError
+      "Request failed or timed out while contacting the external system: #{error.message}"
+    when SafeFetch::InvalidUrlError, SafeFetch::UnsafeUrlError
+      "Invalid or unsafe URL: #{error.message}"
+    when Liquid::SyntaxError, Liquid::UndefinedVariable, Liquid::UndefinedFilter
+      "Template rendering failed: #{error.message}"
+    else
+      fallback = 'Error: An error occurred while executing the external tool.'
+      error.message.start_with?('Template rendering failed', 'Error:') ? error.message : fallback
+    end
   end
 end

@@ -1895,11 +1895,11 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_21_120000) do
 CREATE OR REPLACE FUNCTION public.accounts_after_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
 $function$
   SQL
 
@@ -1912,11 +1912,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.camp_dpid_before_insert()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
 $function$
   SQL
 
@@ -1929,11 +1929,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.campaigns_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
+AS $function$
+BEGIN
+    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
 $function$
   SQL
 
@@ -1946,11 +1946,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.conversations_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
+AS $function$
+BEGIN
+    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
 $function$
   SQL
 

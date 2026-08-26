@@ -6,18 +6,18 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
 
   def index
     @scout_tools = Current.account.scout_tools.order(created_at: :desc)
-    render json: @scout_tools.as_json(except: %i[auth_headers])
+    render json: @scout_tools
   end
 
   def show
-    render json: @scout_tool.as_json(except: %i[auth_headers])
+    render json: @scout_tool
   end
 
   def create
     @scout_tool = Current.account.scout_tools.build(tool_params)
 
     if @scout_tool.save
-      render json: @scout_tool.as_json(except: %i[auth_headers]), status: :created
+      render json: @scout_tool, status: :created
     else
       render json: { error: @scout_tool.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
@@ -25,7 +25,7 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
 
   def update
     if @scout_tool.update(tool_params)
-      render json: @scout_tool.as_json(except: %i[auth_headers])
+      render json: @scout_tool
     else
       render json: { error: @scout_tool.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
@@ -51,6 +51,7 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
       success: result.success?,
       status: result.status,
       raw_body: result.truncated_raw_body(500),
+      truncated: result.truncated?(500),
       formatted_response: result.formatted_response,
       error: result.error
     }
@@ -70,34 +71,45 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
     src = params[:scout_tool].presence || params
     permitted = src.permit(:name, :description, :endpoint_url, :http_method, :enabled, :response_template).to_h
 
-    schema = src[:parameter_schema] || src[:parameters_schema]
-    permitted[:parameter_schema] = parse_nested_param(schema) if schema.present?
+    schema = extract_schema_param
+    permitted[:parameter_schema] = schema.blank? ? {} : parse_nested_param(schema) if schema.present?
 
-    headers = src[:auth_headers] || src[:headers]
-    permitted[:auth_headers] = parse_nested_param(headers) if headers.present?
+    headers = extract_headers_param
+    permitted[:auth_headers] = headers.blank? ? nil : parse_nested_param(headers) if headers.present?
 
     permitted
   end
 
   def test_params
-    src = params[:scout_tool].presence || params
-    base = src.permit(:endpoint_url, :http_method, :response_template).to_h
+    headers = extract_headers_param
+    payload = extract_payload_param
 
-    payload = src[:payload]
-    payload = parse_nested_param(payload) if payload.present?
+    {
+      endpoint_url: params[:endpoint_url].presence || params.dig(:scout_tool, :endpoint_url),
+      http_method: params[:http_method].presence || params.dig(:scout_tool, :http_method) || 'POST',
+      response_template: params[:response_template].presence || params.dig(:scout_tool, :response_template),
+      auth_headers: headers.present? ? parse_nested_param(headers) : nil,
+      payload: payload.present? ? parse_nested_param(payload) : {}
+    }
+  end
 
-    headers = src[:auth_headers] || src[:headers]
-    headers = parse_nested_param(headers) if headers.present?
+  def extract_schema_param
+    params[:parameter_schema] || params[:parameters_schema] ||
+      params.dig(:scout_tool, :parameter_schema) || params.dig(:scout_tool, :parameters_schema)
+  end
 
-    base.merge(
-      auth_headers: headers,
-      payload: payload
-    )
+  def extract_headers_param
+    params[:auth_headers] || params[:headers] ||
+      params.dig(:scout_tool, :auth_headers) || params.dig(:scout_tool, :headers)
+  end
+
+  def extract_payload_param
+    params[:payload].presence || params.dig(:scout_tool, :payload)
   end
 
   def parse_nested_param(val)
     if val.is_a?(String)
-      val.start_with?('{', '[') ? JSON.parse(val) : val
+      val.strip.start_with?('{', '[') ? JSON.parse(val) : val
     elsif val.respond_to?(:to_unsafe_h)
       val.to_unsafe_h
     elsif val.is_a?(Hash)

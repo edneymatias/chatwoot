@@ -215,5 +215,13 @@ RSpec.describe Custom::Scout::Tools::HttpRequestExecutor do
 
       expect(result.truncated_raw_body(500).length).to be <= 503 # 500 chars + '...'
     end
+
+    it 'reports truncated? accurately based on raw body length' do
+      short_result = described_class::Result.new(raw_body: 'short')
+      long_result = described_class::Result.new(raw_body: 'A' * 501)
+
+      expect(short_result.truncated?(500)).to be false
+      expect(long_result.truncated?(500)).to be true
+    end
   end
 end

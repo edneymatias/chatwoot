@@ -147,3 +147,9 @@ graph TD
 ### Full Delivery
 1. Add **Phase 6 (US4)** for complete form field persistence and Portuguese/English translations.
 2. Execute **Phase 7 (Polish)** for full lint and spec suite verification.
+
+---
+
+## Phase 8: Convergence
+ 
+- [X] T023 Add a `truncated` boolean to the test result (`Custom::Scout::Tools::HttpRequestExecutor::Result` and the `test` action's JSON response in `custom/app/controllers/api/v1/accounts/scout_tools_controller.rb`) reflecting whether `raw_body` was actually cut at 500 characters, and use it in `ScoutToolModal.vue` to show the `TRUNCATED_HINT` label only when truncation actually occurred, per spec.md Edge Cases: "Large Test Response Bodies" (partial)

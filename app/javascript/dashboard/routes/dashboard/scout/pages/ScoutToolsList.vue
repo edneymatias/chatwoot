@@ -136,7 +136,8 @@ onMounted(() => {
                         {{ tool.name }}
                       </h3>
                       <span class="text-xs font-mono text-n-slate-10">
-                        {{ tool.http_method }} {{ tool.url }}
+                        {{ tool.http_method }}
+                        {{ tool.endpoint_url || tool.url }}
                       </span>
                     </div>
                   </div>

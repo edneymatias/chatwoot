@@ -11,6 +11,34 @@ class ScoutTool < ApplicationRecord
 
   validates :account_id, :name, :description, :endpoint_url, :http_method, presence: true
 
+  def auth_headers=(value)
+    if value.is_a?(Hash) || value.respond_to?(:to_unsafe_h)
+      h = value.respond_to?(:to_unsafe_h) ? value.to_unsafe_h : value
+      super(h.to_json)
+    elsif value.is_a?(String) && value.include?('=>')
+      begin
+        parsed = YAML.safe_load(value.gsub('=>', ': '))
+        super(parsed.is_a?(Hash) ? parsed.to_json : value)
+      rescue StandardError
+        super(value)
+      end
+    else
+      super(value)
+    end
+  end
+
+  def auth_headers
+    val = super
+    return val unless val.is_a?(String) && val.include?('=>')
+
+    begin
+      parsed = YAML.safe_load(val.gsub('=>', ': '))
+      parsed.is_a?(Hash) ? parsed.to_json : val
+    rescue StandardError
+      val
+    end
+  end
+
   def format_response(raw_body)
     return '' if raw_body.blank?
     return parse_json_or_raw(raw_body) if response_template.blank?

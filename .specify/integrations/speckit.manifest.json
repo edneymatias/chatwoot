@@ -1,6 +1,6 @@
 {
   "integration": "speckit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "installed_at": "2026-07-30T18:23:55.954593+00:00",
   "files": {
     ".specify/scripts/bash/setup-plan.sh": "061cec0c6d71f8f88008b4d3d7f5bbc2bfbdb85d734d9e73fc5f07a3c60c88a6",

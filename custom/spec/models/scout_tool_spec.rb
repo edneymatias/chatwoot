@@ -84,6 +84,16 @@ RSpec.describe ScoutTool, type: :model do
       expect(tool.encrypted_attribute?(:auth_headers)).to be(true)
     end
 
+    it 'serializes Hash auth_headers to valid JSON' do
+      tool = described_class.create!(valid_attributes.merge(auth_headers: { 'Authorization' => 'Bearer token123' }))
+      expect(tool.reload.auth_headers).to eq({ 'Authorization' => 'Bearer token123' }.to_json)
+    end
+
+    it 'normalizes legacy Ruby hash rocket string to JSON' do
+      tool = described_class.create!(valid_attributes.merge(auth_headers: '{"Authorization" => "Bearer token123"}'))
+      expect(tool.reload.auth_headers).to eq({ 'Authorization' => 'Bearer token123' }.to_json)
+    end
+
     it 'fails closed when encryption keys are not configured' do
       ActiveRecord::Encryption.config.primary_key = nil
       ActiveRecord::Encryption.context.instance_variable_set(:@key_provider, nil)

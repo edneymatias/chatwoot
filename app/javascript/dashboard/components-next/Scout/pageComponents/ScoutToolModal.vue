@@ -58,6 +58,40 @@ const methodOptions = [
   { value: 'DELETE', label: 'DELETE' },
 ];
 
+const getSamplePayload = schema => {
+  if (!schema || typeof schema !== 'object' || !schema.properties) {
+    return '{}';
+  }
+  const sample = {};
+  Object.keys(schema.properties).forEach(key => {
+    const prop = schema.properties[key] || {};
+    if (prop.type === 'integer' || prop.type === 'number') {
+      sample[key] = prop.default !== undefined ? prop.default : 1;
+    } else if (prop.type === 'boolean') {
+      sample[key] = prop.default !== undefined ? prop.default : true;
+    } else if (prop.type === 'array') {
+      sample[key] = prop.default !== undefined ? prop.default : [];
+    } else if (prop.type === 'object') {
+      sample[key] = prop.default !== undefined ? prop.default : {};
+    } else {
+      sample[key] = prop.default !== undefined ? prop.default : '';
+    }
+  });
+  return JSON.stringify(sample, null, 2);
+};
+
+const testPayloadPlaceholder = computed(() => {
+  try {
+    const parsed = JSON.parse(schemaJson.value || '{}');
+    if (parsed && typeof parsed === 'object' && parsed.properties) {
+      return getSamplePayload(parsed);
+    }
+  } catch {
+    // Ignore JSON parse error in draft schema
+  }
+  return '{\n  "key": "value"\n}';
+});
+
 watch(
   () => props.tool,
   newVal => {
@@ -73,20 +107,27 @@ watch(
       ) {
         headersJson.value = JSON.stringify(newVal.auth_headers, null, 2);
       } else if (newVal.auth_headers) {
-        headersJson.value = newVal.auth_headers;
+        try {
+          const parsed = JSON.parse(newVal.auth_headers);
+          if (typeof parsed === 'object' && parsed !== null) {
+            headersJson.value = JSON.stringify(parsed, null, 2);
+          } else {
+            headersJson.value = newVal.auth_headers;
+          }
+        } catch {
+          headersJson.value = newVal.auth_headers;
+        }
       } else if (newVal.headers) {
         headersJson.value = JSON.stringify(newVal.headers, null, 2);
       } else {
         headersJson.value = '{}';
       }
 
-      schemaJson.value = JSON.stringify(
-        newVal.parameter_schema ||
-          newVal.parameters_schema || { type: 'object', properties: {} },
-        null,
-        2
-      );
+      const rawSchema = newVal.parameter_schema ||
+        newVal.parameters_schema || { type: 'object', properties: {} };
+      schemaJson.value = JSON.stringify(rawSchema, null, 2);
       responseTemplate.value = newVal.response_template || '';
+      testPayloadJson.value = '';
     } else {
       name.value = '';
       description.value = '';
@@ -95,11 +136,11 @@ watch(
       headersJson.value = '{}';
       schemaJson.value = '{\n  "type": "object",\n  "properties": {}\n}';
       responseTemplate.value = '';
+      testPayloadJson.value = '';
     }
     jsonError.value = '';
     testResult.value = null;
     testError.value = '';
-    testPayloadJson.value = '{}';
   },
   { immediate: true }
 );
@@ -356,7 +397,8 @@ defineExpose({
           </label>
           <textarea
             v-model="testPayloadJson"
-            rows="2"
+            rows="3"
+            :placeholder="testPayloadPlaceholder"
             class="w-full p-2.5 font-mono text-xs rounded-lg border border-n-weak bg-n-surface-1 text-n-slate-12 focus:outline-none focus:border-n-brand"
           />
         </div>
@@ -418,7 +460,10 @@ defineExpose({
                 <span class="text-[11px] font-medium text-n-slate-10">
                   {{ t('SCOUT.TOOLS.MODAL.RAW_RESPONSE_LABEL') }}
                 </span>
-                <span class="text-[10px] text-n-slate-9">
+                <span
+                  v-if="testResult.truncated"
+                  class="text-[10px] text-n-slate-9"
+                >
                   {{ t('SCOUT.TOOLS.MODAL.TRUNCATED_HINT') }}
                 </span>
               </div>

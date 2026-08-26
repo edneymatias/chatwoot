@@ -14,13 +14,13 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
   let(:agent) { create(:user, account: account, role: :agent) }
 
   describe 'GET /api/v1/accounts/{account.id}/scout_tools' do
-    it 'returns list of scout tools with response_template and without auth_headers' do
+    it 'returns list of scout tools with response_template and auth_headers' do
       account.scout_tools.create!(
         name: 'test_tool',
         description: 'Test description',
         endpoint_url: 'https://api.example.com/check',
         http_method: 'POST',
-        auth_headers: 'secret',
+        auth_headers: { 'Authorization' => 'Bearer secret' },
         response_template: 'Status: {{ r.status }}'
       )
 
@@ -32,7 +32,7 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
       expect(json.length).to eq(1)
       expect(json.first['name']).to eq('test_tool')
       expect(json.first['response_template']).to eq('Status: {{ r.status }}')
-      expect(json.first).not_to have_key('auth_headers')
+      expect(json.first['auth_headers']).to include('Authorization')
     end
   end
 
@@ -92,7 +92,7 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
   end
 
   describe 'PATCH /api/v1/accounts/{account.id}/scout_tools/:id' do
-    it 'updates an existing tool with new parameters' do
+    it 'updates an existing tool with new parameters and auth_headers' do
       tool = account.scout_tools.create!(
         name: 'old_name',
         description: 'Old description',
@@ -104,6 +104,7 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
       patch "/api/v1/accounts/#{account.id}/scout_tools/#{tool.id}",
             params: {
               name: 'updated_name',
+              auth_headers: { 'X-Api-Key' => 'updated_secret' },
               response_template: 'New: {{ r.out }}',
               parameter_schema: { type: 'object', properties: { count: { type: 'number' } } }
             },
@@ -113,6 +114,7 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
       tool.reload
       expect(tool.name).to eq('updated_name')
       expect(tool.response_template).to eq('New: {{ r.out }}')
+      expect(tool.auth_headers).to include('updated_secret')
     end
   end
 
@@ -144,12 +146,38 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
            headers: agent.create_new_auth_token
 
       expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to include(
+        'success' => true,
+        'status' => 200,
+        'raw_body' => include('delivered'),
+        'truncated' => false,
+        'formatted_response' => 'Order delivered (code 200)',
+        'error' => nil
+      )
+    ensure
+      tempfile&.close!
+    end
+
+    it 'sets truncated to true when raw_body exceeds 500 characters' do
+      long_body = 'A' * 600
+      tempfile = Tempfile.new('test_long')
+      tempfile.write(long_body)
+      tempfile.rewind
+      result_double = SafeFetch::Result.new(tempfile: tempfile, filename: 'test_long', content_type: 'text/plain')
+
+      expect(SafeFetch).to receive(:fetch).and_yield(result_double)
+
+      post "/api/v1/accounts/#{account.id}/scout_tools/test",
+           params: {
+             endpoint_url: 'https://api.example.com/long',
+             http_method: 'GET'
+           },
+           headers: agent.create_new_auth_token
+
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
-      expect(json['success']).to be(true)
-      expect(json['status']).to eq(200)
-      expect(json['raw_body']).to include('delivered')
-      expect(json['formatted_response']).to eq('Order delivered (code 200)')
-      expect(json['error']).to be_nil
+      expect(json['truncated']).to be(true)
+      expect(json['raw_body'].length).to eq(500)
     ensure
       tempfile&.close!
     end
@@ -186,6 +214,42 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
       expect(json['success']).to be(false)
       expect(json['status']).to eq(502)
       expect(json['error']).to include('502 Bad Gateway')
+    end
+
+    it 'correctly extracts payload when wrap_parameters nests scout_tool attributes' do
+      tempfile = Tempfile.new('test')
+      tempfile.write({ ok: true }.to_json)
+      tempfile.rewind
+      result_double = SafeFetch::Result.new(tempfile: tempfile, filename: 'test', content_type: 'application/json')
+
+      expect(SafeFetch).to receive(:fetch).with(
+        'https://api.example.com/check?data=2026-08-26&idEmpresa=1041',
+        method: :get,
+        body: nil,
+        headers: hash_including('token' => 'abobora'),
+        sensitive_headers: array_including('token'),
+        max_bytes: 1.megabyte,
+        validate_content_type: false
+      ).and_yield(result_double)
+
+      post "/api/v1/accounts/#{account.id}/scout_tools/test",
+           params: {
+             endpoint_url: 'https://api.example.com/check',
+             http_method: 'GET',
+             auth_headers: { 'token' => 'abobora' },
+             payload: { 'data' => '2026-08-26', 'idEmpresa' => 1041 },
+             scout_tool: {
+               endpoint_url: 'https://api.example.com/check',
+               http_method: 'GET',
+               auth_headers: { 'token' => 'abobora' }
+             }
+           },
+           headers: agent.create_new_auth_token
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body['success']).to be(true)
+    ensure
+      tempfile&.close!
     end
   end
 end

@@ -169,7 +169,7 @@
         "HEADERS_LABEL": "Cabeçalhos (Headers)",
         "SCHEMA_LABEL": "Esquema de Parâmetros (JSON Schema)",
         "RESPONSE_TEMPLATE_LABEL": "Modelo de Resposta (Liquid)",
-        "RESPONSE_TEMPLATE_PLACEHOLDER": "ex: O status do pedido {{ r.id }} é {{ r.status }}",
+        "RESPONSE_TEMPLATE_PLACEHOLDER": "ex: O status do pedido r.id é r.status",
         "RESPONSE_TEMPLATE_HINT": "Use tags Liquid para formatar a resposta externa antes de entregá-la ao agente de IA. Acesse atributos da resposta via 'r' ou 'response'.",
         "TEST_SECTION_TITLE": "Testar Configuração da Ferramenta",
         "TEST_SECTION_DESC": "Dispare uma requisição de teste real com parâmetros de exemplo sem precisar salvar a ferramenta.",
