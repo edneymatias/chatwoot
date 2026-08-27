@@ -55,12 +55,19 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
 
   def update_opportunity(opp, title, stage_id, estimated_value, custom_attrs)
     opp.title = title if title.present?
-    opp.pipeline_stage_id = stage_id if stage_id.present?
     opp.value = estimated_value if estimated_value.present?
     opp.custom_attributes = (opp.custom_attributes || {}).merge(custom_attrs) if custom_attrs.is_a?(Hash)
 
-    opp.save!
-    "Opportunity updated successfully (ID: #{opp.id})."
+    if stage_id.present?
+      Custom::Scout::OpportunityStageTransitionService.new(
+        scout: scout,
+        conversation: conversation,
+        opportunity: opp
+      ).call(stage_id: stage_id)
+    else
+      opp.save!
+      "Opportunity updated successfully (ID: #{opp.id})."
+    end
   end
 
   def find_referral_message

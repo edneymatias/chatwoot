@@ -151,6 +151,7 @@ Rails.application.routes.draw do
             resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'
           end
           resources :scouts, only: [:index, :show, :create, :update, :destroy] do
+            post :sync_required_attributes, on: :member
             scope module: :scouts do
               resources :scout_inboxes, only: [:index, :create, :destroy]
               resources :product_catalog_items, only: [:index, :create, :update, :destroy]

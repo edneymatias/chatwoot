@@ -54,8 +54,8 @@ const tabs = computed(() => [
   { key: 'funnel', label: t('SCOUT.TABS.FUNNEL') },
 ]);
 
-const fetchScout = async () => {
-  isLoading.value = true;
+const fetchScout = async (showLoading = true) => {
+  if (showLoading) isLoading.value = true;
   try {
     const { data } = await ScoutAPI.show(scoutId.value);
     scout.value = data;
@@ -65,7 +65,7 @@ const fetchScout = async () => {
       params: { accountId: accountId.value },
     });
   } finally {
-    isLoading.value = false;
+    if (showLoading) isLoading.value = false;
   }
 };
 
@@ -182,35 +182,35 @@ onMounted(() => {
           <ScoutGeneralSettings
             v-if="currentTab === 'general'"
             :scout="scout"
-            @updated="fetchScout"
+            @updated="() => fetchScout(false)"
           />
 
           <!-- Inboxes Tab -->
           <ScoutInboxesTab
             v-else-if="currentTab === 'inboxes'"
             :scout="scout"
-            @updated="fetchScout"
+            @updated="() => fetchScout(false)"
           />
 
           <!-- Products Tab -->
           <ScoutProductsTab
             v-else-if="currentTab === 'products'"
             :scout="scout"
-            @updated="fetchScout"
+            @updated="() => fetchScout(false)"
           />
 
           <!-- Knowledge Tab -->
           <ScoutKnowledgeTab
             v-else-if="currentTab === 'knowledge'"
             :scout="scout"
-            @updated="fetchScout"
+            @updated="() => fetchScout(false)"
           />
 
           <!-- Funnel Tab -->
           <ScoutFunnelTab
             v-else-if="currentTab === 'funnel'"
             :scout="scout"
-            @updated="fetchScout"
+            @updated="data => (data ? (scout = data) : fetchScout(false))"
           />
         </div>
       </div>

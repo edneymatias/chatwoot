@@ -12,6 +12,7 @@ class Custom::Scout::Tools::AuthHeaderBuilder
 
   def build
     parsed = parse_auth_headers(@auth_headers)
+    return { 'Authorization' => parsed['Authorization'] } if @auth_type == 'none' && parsed['Authorization'].present?
     return {} if @auth_type == 'none'
 
     case @auth_type

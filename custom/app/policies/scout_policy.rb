@@ -20,4 +20,8 @@ class ScoutPolicy < ApplicationPolicy
   def destroy?
     @account_user.administrator?
   end
+
+  def sync_required_attributes?
+    update?
+  end
 end

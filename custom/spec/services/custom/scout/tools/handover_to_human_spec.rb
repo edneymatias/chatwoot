@@ -42,5 +42,15 @@ RSpec.describe Custom::Scout::Tools::HandoverToHuman do
       expect(conversation.messages.where(private: true).last.content).to include('Transferência para atendimento humano')
       expect(memory_service).to have_received(:generate_and_update_notes)
     end
+
+    it 'delegates to Custom::Scout::HandoffService and sets handoff_executed' do
+      handoff_service = instance_double(Custom::Scout::HandoffService, perform: 'Transferred')
+      allow(Custom::Scout::HandoffService).to receive(:new).with(scout: scout, conversation: conversation).and_return(handoff_service)
+
+      result = tool.execute(assignee_id: user.id, team_id: team.id, reason: 'Test reason')
+      expect(result).to eq('Transferred')
+      expect(tool.handoff_executed).to be(true)
+      expect(handoff_service).to have_received(:perform).with(assignee_id: user.id, team_id: team.id, reason: 'Test reason')
+    end
   end
 end

@@ -13,7 +13,7 @@ class Custom::Scout::Tools::HttpRequestExecutor
   def initialize(endpoint_url:, http_method: 'POST', **options)
     @endpoint_url = endpoint_url.to_s.strip
     @http_method = http_method.to_s.strip.presence || 'POST'
-    @auth_type = options[:auth_type].to_s.strip.presence || 'none'
+    @auth_type = options[:auth_type]
     @auth_headers = options[:auth_headers]
     @response_template = options[:response_template].presence
     @payload = normalize_payload(options[:payload])

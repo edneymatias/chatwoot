@@ -22,11 +22,14 @@ const qualifiedStageId = ref(props.scout.qualified_stage_id ?? '');
 const unqualifiedStageId = ref(props.scout.unqualified_stage_id ?? '');
 const handoverTeamId = ref(props.scout.handover_team_id ?? '');
 const selectedAttributeIds = ref(
-  (props.scout.required_custom_attribute_definitions || []).map(a => a.id)
+  (props.scout.required_custom_attribute_definitions || []).map(a =>
+    Number(a.id)
+  )
 );
 
 const isSaving = ref(false);
 const saveSuccess = ref(false);
+const errorMessage = ref('');
 
 const pipelineStages = computed(
   () => store.getters['pipelineStages/stagesSortedByPosition'] || []
@@ -64,23 +67,30 @@ watch(
     handoverTeamId.value = newVal.handover_team_id ?? '';
     selectedAttributeIds.value = (
       newVal.required_custom_attribute_definitions || []
-    ).map(a => a.id);
+    ).map(a => Number(a.id));
   },
   { deep: true }
 );
 
+const isAttributeSelected = id =>
+  selectedAttributeIds.value.includes(Number(id));
+
 const toggleAttribute = id => {
-  const index = selectedAttributeIds.value.indexOf(id);
+  const numId = Number(id);
+  const index = selectedAttributeIds.value.indexOf(numId);
   if (index >= 0) {
-    selectedAttributeIds.value.splice(index, 1);
+    selectedAttributeIds.value = selectedAttributeIds.value.filter(
+      item => item !== numId
+    );
   } else {
-    selectedAttributeIds.value.push(id);
+    selectedAttributeIds.value = [...selectedAttributeIds.value, numId];
   }
 };
 
 const handleSave = async () => {
   isSaving.value = true;
   saveSuccess.value = false;
+  errorMessage.value = '';
   try {
     const payload = {
       default_pipeline_stage_id: defaultStageId.value
@@ -95,17 +105,24 @@ const handleSave = async () => {
       handover_team_id: handoverTeamId.value
         ? Number(handoverTeamId.value)
         : null,
-      required_custom_attribute_definition_ids: selectedAttributeIds.value,
+      required_custom_attribute_definition_ids: [...selectedAttributeIds.value],
     };
 
-    await ScoutAPI.update(props.scout.id, payload);
+    const { data } = await ScoutAPI.update(props.scout.id, payload);
     saveSuccess.value = true;
-    emit('updated');
+    if (data?.required_custom_attribute_definitions) {
+      selectedAttributeIds.value =
+        data.required_custom_attribute_definitions.map(a => Number(a.id));
+    }
+    emit('updated', data);
     setTimeout(() => {
       saveSuccess.value = false;
     }, 3000);
   } catch (error) {
-    // Handled
+    errorMessage.value =
+      error.response?.data?.error ||
+      error.message ||
+      t('SCOUT.ACCOUNT_SETTINGS.SAVE_ERROR');
   } finally {
     isSaving.value = false;
   }
@@ -129,6 +146,15 @@ onMounted(async () => {
       <p class="text-xs text-n-slate-11 mt-0.5">
         {{ t('SCOUT.FUNNEL.SUBTITLE') }}
       </p>
+    </div>
+
+    <!-- Error Banner -->
+    <div
+      v-if="errorMessage"
+      class="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2"
+    >
+      <span class="i-lucide-alert-triangle size-4 flex-shrink-0" />
+      <span>{{ errorMessage }}</span>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -214,7 +240,7 @@ onMounted(async () => {
           type="button"
           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
           :class="
-            selectedAttributeIds.includes(attr.id)
+            isAttributeSelected(attr.id)
               ? 'bg-n-brand text-white shadow-sm'
               : 'bg-n-surface-1 border border-n-weak text-n-slate-11 hover:border-n-brand/40'
           "
@@ -222,7 +248,7 @@ onMounted(async () => {
         >
           <span
             :class="
-              selectedAttributeIds.includes(attr.id)
+              isAttributeSelected(attr.id)
                 ? 'i-lucide-check size-3.5'
                 : 'i-lucide-plus size-3.5'
             "

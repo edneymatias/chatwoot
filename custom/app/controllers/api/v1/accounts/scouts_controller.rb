@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
+  wrap_parameters :scout, include: Scout.column_names + %w[required_custom_attribute_definition_ids]
+
   before_action :check_authorization
   before_action :set_scout, only: %i[show update destroy sync_required_attributes]
 
@@ -20,19 +22,19 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
       return
     end
 
-    @scout = Current.account.scouts.build(scout_params)
+    @scout = Current.account.scouts.build(scout_params.except(:required_custom_attribute_definition_ids))
     if @scout.save
-      sync_attributes if params[:scout][:required_custom_attribute_definition_ids].present?
-      render json: @scout.as_json(include_associations), status: :created
+      sync_attributes if sync_attributes_requested?
+      render json: @scout.reload.as_json(include_associations), status: :created
     else
       render json: { error: @scout.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
   end
 
   def update
-    if @scout.update(scout_params)
-      sync_attributes if params[:scout][:required_custom_attribute_definition_ids].present?
-      render json: @scout.as_json(include_associations)
+    if @scout.update(scout_params.except(:required_custom_attribute_definition_ids))
+      sync_attributes if sync_attributes_requested?
+      render json: @scout.reload.as_json(include_associations)
     else
       render json: { error: @scout.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
@@ -44,9 +46,9 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
   end
 
   def sync_required_attributes
-    attribute_ids = Array(params[:custom_attribute_definition_ids]).map(&:to_i)
+    attribute_ids = Array(params[:custom_attribute_definition_ids])
     @scout.sync_required_attribute_ids!(attribute_ids)
-    render json: @scout.as_json(include_associations)
+    render json: @scout.reload.as_json(include_associations)
   end
 
   private
@@ -65,12 +67,22 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
       default_pipeline_stage_id qualified_stage_id unqualified_stage_id handover_team_id
     ]
 
-    params.require(:scout).permit(*allowed, required_custom_attribute_definition_ids: [])
+    scout_source = params.key?(:scout) ? params.require(:scout) : params
+    scout_source.permit(*allowed, required_custom_attribute_definition_ids: [])
+  end
+
+  def sync_attributes_requested?
+    params.key?(:required_custom_attribute_definition_ids) ||
+      params[:scout]&.key?(:required_custom_attribute_definition_ids)
   end
 
   def sync_attributes
-    attribute_ids = Array(params[:scout][:required_custom_attribute_definition_ids]).map(&:to_i)
-    @scout.sync_required_attribute_ids!(attribute_ids)
+    raw_ids = if params.key?(:required_custom_attribute_definition_ids)
+                params[:required_custom_attribute_definition_ids]
+              else
+                params.dig(:scout, :required_custom_attribute_definition_ids)
+              end
+    @scout.sync_required_attribute_ids!(raw_ids)
   end
 
   def include_associations

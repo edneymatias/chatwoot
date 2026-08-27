@@ -8,12 +8,24 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
   let(:contact) { create(:contact, account: account) }
   let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: inbox) }
   let(:conversation) { create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox) }
-  let(:stage) { PipelineStage.create!(account: account, name: 'Triage') }
+  let(:stage1) { PipelineStage.create!(account: account, name: 'Triage', position: 1) }
+  let(:stage2) { PipelineStage.create!(account: account, name: 'Negotiation', position: 2) }
+
+  let(:attr_budget) do
+    CustomAttributeDefinition.create!(
+      account: account,
+      attribute_key: 'budget',
+      attribute_display_name: 'Budget',
+      attribute_display_type: 'currency',
+      attribute_model: 'opportunity_attribute'
+    )
+  end
+
   let(:scout) do
     Scout.create!(
       account: account,
       name: 'Test Scout',
-      default_pipeline_stage: stage,
+      default_pipeline_stage: stage1,
       enabled: true
     )
   end
@@ -66,14 +78,14 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
           account: account,
           contact: contact,
           origin_conversation: conversation,
-          pipeline_stage: stage,
+          pipeline_stage: stage1,
           title: 'Opp Existente',
           campaign_platform: 'facebook',
           campaign_headline: 'Headline Original'
         )
       end
 
-      it 'updates fields without modifying existing campaign attribution' do
+      it 'updates fields without modifying existing campaign attribution when stage_id is absent' do
         result = tool.execute(action: 'update', title: 'Opp Atualizada', estimated_value: 8000.0)
         expect(result).to include('successfully')
 
@@ -83,7 +95,27 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
           expect(opportunity.value).to eq(8000.0)
           expect(opportunity.campaign_platform).to eq('facebook')
           expect(opportunity.campaign_headline).to eq('Headline Original')
+          expect(opportunity.pipeline_stage_id).to eq(stage1.id)
         end
+      end
+
+      it 'delegates stage transition to OpportunityStageTransitionService when stage_id is present' do
+        result = tool.execute(action: 'update', title: 'Opp com Stage', stage_id: stage2.id, estimated_value: 10_000.0)
+        expect(result).to include('successfully')
+
+        opportunity.reload
+        expect(opportunity.title).to eq('Opp com Stage')
+        expect(opportunity.value).to eq(10_000.0)
+        expect(opportunity.pipeline_stage_id).to eq(stage2.id)
+      end
+
+      it 'returns descriptive failure message without crashing when stage required field is missing' do
+        stage2.required_custom_attribute_definitions << attr_budget
+
+        result = tool.execute(action: 'update', stage_id: stage2.id)
+        expect(result).to include('Cannot move to stage Negotiation')
+        expect(result).to include('Budget')
+        expect(opportunity.reload.pipeline_stage_id).to eq(stage1.id)
       end
     end
   end

@@ -29,6 +29,25 @@ class Scout < ApplicationRecord
     responses_consumed < responses_quota
   end
 
+  def sync_required_attribute_ids!(attribute_ids)
+    target_ids = Array(attribute_ids).map(&:to_i).reject(&:zero?).uniq
+    valid_ids = account.custom_attribute_definitions
+                       .where(id: target_ids)
+                       .where(attribute_model: %i[contact_attribute opportunity_attribute])
+                       .pluck(:id)
+
+    transaction do
+      scout_required_fields.where.not(custom_attribute_definition_id: valid_ids).destroy_all
+      existing_ids = scout_required_fields.pluck(:custom_attribute_definition_id)
+      (valid_ids - existing_ids).each do |def_id|
+        scout_required_fields.create!(
+          account_id: account_id,
+          custom_attribute_definition_id: def_id
+        )
+      end
+    end
+  end
+
   def llm_chat(temperature: 0.6)
     config = ScoutAccountConfig.find_by(account_id: account_id)
     raise "Configuração de LLM não encontrada para a conta #{account_id}" if config.blank?

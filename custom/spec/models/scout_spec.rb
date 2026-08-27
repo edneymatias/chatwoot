@@ -118,6 +118,25 @@ RSpec.describe Scout, type: :model do
     end
   end
 
+  describe '#sync_required_attribute_ids!' do
+    let(:scout) { described_class.create!(valid_attributes) }
+    let(:attr1) { create(:custom_attribute_definition, account: account, attribute_model: 'contact_attribute') }
+    let(:attr2) { create(:custom_attribute_definition, account: account, attribute_model: 'opportunity_attribute') }
+    let(:other_account) { create(:account) }
+    let(:other_attr) { create(:custom_attribute_definition, account: other_account, attribute_model: 'contact_attribute') }
+
+    it 'synchronizes required custom attribute definitions and ignores other accounts' do
+      scout.sync_required_attribute_ids!([attr1.id, other_attr.id])
+      expect(scout.reload.required_custom_attribute_definitions).to eq([attr1])
+
+      scout.sync_required_attribute_ids!([attr1.id, attr2.id])
+      expect(scout.reload.required_custom_attribute_definitions).to contain_exactly(attr1, attr2)
+
+      scout.sync_required_attribute_ids!([])
+      expect(scout.reload.required_custom_attribute_definitions).to be_empty
+    end
+  end
+
   describe '#llm_chat' do
     it 'resolves chat client using account ScoutAccountConfig' do
       ScoutAccountConfig.create!(

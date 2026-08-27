@@ -96,5 +96,141 @@ RSpec.describe Custom::Scout::SystemPromptsService do
         expect(prompt).to include('[AVISO DE EXPEDIENTE: A equipe humana está fora do horário de atendimento.')
       end
     end
+
+    describe 'funnel_section (User Story 1)' do
+      let!(:stage_new) do
+        PipelineStage.create!(
+          account: account,
+          name: 'New',
+          position: 1,
+          description: 'Triagem inicial de novos contatos'
+        )
+      end
+      let!(:stage_qualified) do
+        PipelineStage.create!(
+          account: account,
+          name: 'Qualified',
+          position: 2,
+          description: 'Lead atende a todos os critérios e tem interesse confirmado'
+        )
+      end
+      let!(:stage_unqualified) do
+        PipelineStage.create!(
+          account: account,
+          name: 'Unqualified',
+          position: 3
+        )
+      end
+
+      let!(:attr_timeline) do
+        CustomAttributeDefinition.create!(
+          account: account,
+          attribute_key: 'timeline',
+          attribute_display_name: 'Prazo de Decisão',
+          attribute_display_type: 'list',
+          attribute_model: 'opportunity_attribute',
+          attribute_values: %w[imediato 30_dias trimestre],
+          attribute_description: 'Quando o cliente pretende fechar a contratação'
+        )
+      end
+
+      let!(:attr_budget) do
+        CustomAttributeDefinition.create!(
+          account: account,
+          attribute_key: 'budget',
+          attribute_display_name: 'Orçamento Mensal',
+          attribute_display_type: 'currency',
+          attribute_model: 'opportunity_attribute',
+          attribute_description: 'Valor disponível para investimento'
+        )
+      end
+
+      let!(:attr_nodesc) do
+        CustomAttributeDefinition.create!(
+          account: account,
+          attribute_key: 'team_size',
+          attribute_display_name: 'Tamanho da Equipe',
+          attribute_display_type: 'number',
+          attribute_model: 'opportunity_attribute'
+        )
+      end
+
+      before do
+        scout.update!(
+          default_pipeline_stage: stage_new,
+          qualified_stage: stage_qualified,
+          unqualified_stage: stage_unqualified
+        )
+
+        stage_qualified.required_custom_attribute_definitions << attr_timeline
+        stage_qualified.required_custom_attribute_definitions << attr_nodesc
+        scout.required_custom_attribute_definitions << attr_budget
+      end
+
+      it 'includes funnel section with stage names and roles' do
+        expect(prompt).to include('[Funil de Vendas e Qualificação]')
+        expect(prompt).to include('New')
+        expect(prompt).to include('Estágio Inicial/Padrão')
+        expect(prompt).to include('Qualified')
+        expect(prompt).to include('Estágio Qualificado')
+        expect(prompt).to include('Unqualified')
+        expect(prompt).to include('Estágio Desqualificado / Revisão Humana')
+      end
+
+      it 'includes purpose descriptions on configured stages' do
+        expect(prompt).to include('Triagem inicial de novos contatos')
+        expect(prompt).to include('Lead atende a todos os critérios e tem interesse confirmado')
+      end
+
+      it 'surfaces stage-specific required fields with types, values, and semantic descriptions' do
+        expect(prompt).to include('Prazo de Decisão')
+        expect(prompt).to include('timeline')
+        expect(prompt).to include('list')
+        expect(prompt).to include('imediato, 30_dias, trimestre')
+        expect(prompt).to include('Quando o cliente pretende fechar a contratação')
+        expect(prompt).to include('Tamanho da Equipe')
+      end
+
+      it 'surfaces scout global qualification requirements distinctly' do
+        expect(prompt).to include('Requisitos Globais de Qualificação')
+        expect(prompt).to include('Orçamento Mensal')
+        expect(prompt).to include('budget')
+        expect(prompt).to include('currency')
+        expect(prompt).to include('Valor disponível para investimento')
+      end
+
+      it 'includes operational directives regarding automatic handoff and human review' do
+        expect(prompt).to include('handoff')
+        expect(prompt).to include('automaticamente')
+        expect(prompt).to include('Não execute `handover_to_human` separadamente ao qualificar')
+        expect(prompt).to include('revisão humana')
+        expect(prompt).to include('Nunca marque a oportunidade como perdida/ganha')
+      end
+
+      context 'when stage or attribute has no description configured' do
+        it 'omits only the description without breaking rendering' do
+          expect(prompt).to include('Unqualified')
+          expect(prompt).to include('Tamanho da Equipe')
+          expect(prompt).not_to match(/Unqualified[^\n]*\n\s*Descrição:/)
+          expect(prompt).not_to match(/Tamanho da Equipe[^\n]*\n\s*Descrição:/)
+        end
+      end
+
+      context 'when account has no pipeline stages and no scout requirements' do
+        before do
+          scout.update!(
+            default_pipeline_stage: nil,
+            qualified_stage: nil,
+            unqualified_stage: nil
+          )
+          scout.required_custom_attribute_definitions.clear
+          account.pipeline_stages.destroy_all
+        end
+
+        it 'omits the entire funnel section cleanly' do
+          expect(prompt).not_to include('[Funil de Vendas e Qualificação]')
+        end
+      end
+    end
   end
 end

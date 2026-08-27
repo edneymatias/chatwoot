@@ -27,6 +27,7 @@ class Custom::Scout::SystemPromptsService
       current_time_section,
       guardrails_section,
       context_section,
+      funnel_section,
       custom_instructions_section,
       response_format_section
     ]
@@ -98,6 +99,89 @@ class Custom::Scout::SystemPromptsService
   def out_of_office_notice
     '[AVISO DE EXPEDIENTE: A equipe humana está fora do horário de atendimento. ' \
       'Prossiga com a qualificação normalmente e informe o lead se oportuno.]'
+  end
+
+  def funnel_section
+    stages = @scout.account&.pipeline_stages&.includes(:required_custom_attribute_definitions)&.order(:position) || []
+    global_reqs = @scout.required_custom_attribute_definitions.to_a
+
+    return nil if stages.empty? && global_reqs.empty?
+
+    lines = ['[Funil de Vendas e Qualificação]']
+    lines.concat(build_stages_lines(stages)) if stages.any?
+    lines.concat(build_global_reqs_lines(global_reqs)) if global_reqs.any?
+    lines.concat(build_funnel_guidelines_lines)
+
+    lines.join("\n")
+  end
+
+  def build_stages_lines(stages)
+    lines = ['Estágios do Funil disponíveis para esta conta:']
+    stages.each do |stage|
+      lines << format_stage(stage)
+    end
+    lines
+  end
+
+  def build_global_reqs_lines(global_reqs)
+    lines = ["\nRequisitos Globais de Qualificação (obrigatórios para mover para o estágio de qualificação):"]
+    global_reqs.each do |definition|
+      lines << format_attribute_definition(definition)
+    end
+    lines
+  end
+
+  def build_funnel_guidelines_lines
+    [
+      "\nDiretrizes Operacionais de Funil:",
+      '- Ao mover a oportunidade para o estágio qualificado, a transferência (handoff) para a equipe humana é realizada ' \
+      'automaticamente. Não execute `handover_to_human` separadamente ao qualificar.',
+      '- O estágio de desqualificação representa uma fila de revisão humana, não o fechamento do negócio. Nunca marque a oportunidade ' \
+      'como perdida/ganha; se houver motivo de desqualificação, registre-o como nota interna via ferramenta apropriada.'
+    ]
+  end
+
+  def format_stage(stage)
+    role = stage_role_label(stage)
+    stage_lines = ["- ID: #{stage.id} | Nome: #{stage.name}#{role}"]
+    stage_lines << "  Descrição do estágio: #{stage.description.strip}" if stage.description.present?
+
+    if stage.required_custom_attribute_definitions.any?
+      stage_lines << '  Campos obrigatórios para avançar para este estágio:'
+      stage.required_custom_attribute_definitions.each do |definition|
+        stage_lines << "    #{format_attribute_definition(definition)}"
+      end
+    end
+
+    stage_lines.join("\n")
+  end
+
+  def stage_role_label(stage)
+    if stage.id == @scout.default_pipeline_stage_id
+      ' (Estágio Inicial/Padrão)'
+    elsif stage.id == @scout.qualified_stage_id
+      ' (Estágio Qualificado)'
+    elsif stage.id == @scout.unqualified_stage_id
+      ' (Estágio Desqualificado / Revisão Humana)'
+    else
+      ''
+    end
+  end
+
+  def format_attribute_definition(definition)
+    type_info = definition.attribute_display_type
+    values_info = if definition.list? && definition.attribute_values.present?
+                    ", Valores permitidos: #{Array(definition.attribute_values).join(', ')}"
+                  else
+                    ''
+                  end
+    base_info = "- #{definition.attribute_display_name} (Chave: #{definition.attribute_key}, Tipo: #{type_info}#{values_info})"
+
+    if definition.attribute_description.present?
+      "#{base_info}\n    Descrição: #{definition.attribute_description.strip}"
+    else
+      base_info
+    end
   end
 
   def custom_instructions_section
