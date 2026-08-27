@@ -6,26 +6,34 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
 
   def index
     @scout_tools = Current.account.scout_tools.order(created_at: :desc)
-    render json: @scout_tools
+    render json: @scout_tools.map { |tool| format_tool_json(tool) }
   end
 
   def show
-    render json: @scout_tool
+    render json: format_tool_json(@scout_tool)
   end
 
   def create
-    @scout_tool = Current.account.scout_tools.build(tool_params)
+    tp = tool_params
+    auth_hdrs = tp.delete(:auth_headers)
+    @scout_tool = Current.account.scout_tools.build(tp)
+    @scout_tool.auth_headers = auth_hdrs if auth_hdrs.present?
 
     if @scout_tool.save
-      render json: @scout_tool, status: :created
+      render json: format_tool_json(@scout_tool), status: :created
     else
       render json: { error: @scout_tool.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
   end
 
   def update
-    if @scout_tool.update(tool_params)
-      render json: @scout_tool
+    tp = tool_params
+    auth_hdrs = tp.delete(:auth_headers)
+    @scout_tool.assign_attributes(tp)
+    @scout_tool.apply_credentials_update(auth_hdrs) if auth_hdrs.present?
+
+    if @scout_tool.save
+      render json: format_tool_json(@scout_tool)
     else
       render json: { error: @scout_tool.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
@@ -41,6 +49,7 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
     executor = Custom::Scout::Tools::HttpRequestExecutor.new(
       endpoint_url: tp[:endpoint_url],
       http_method: tp[:http_method] || 'POST',
+      auth_type: tp[:auth_type] || 'none',
       auth_headers: tp[:auth_headers],
       response_template: tp[:response_template],
       payload: tp[:payload]
@@ -67,9 +76,13 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
     super(ScoutTool)
   end
 
+  def format_tool_json(tool)
+    tool.as_json.merge('auth_headers' => tool.masked_auth_headers)
+  end
+
   def tool_params
     src = params[:scout_tool].presence || params
-    permitted = src.permit(:name, :description, :endpoint_url, :http_method, :enabled, :response_template).to_h
+    permitted = src.permit(:name, :description, :endpoint_url, :http_method, :auth_type, :enabled, :response_template).to_h
 
     schema = extract_schema_param
     permitted[:parameter_schema] = schema.blank? ? {} : parse_nested_param(schema) if schema.present?
@@ -81,13 +94,15 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
   end
 
   def test_params
+    src = params[:scout_tool].presence || params
     headers = extract_headers_param
     payload = extract_payload_param
 
     {
-      endpoint_url: params[:endpoint_url].presence || params.dig(:scout_tool, :endpoint_url),
-      http_method: params[:http_method].presence || params.dig(:scout_tool, :http_method) || 'POST',
-      response_template: params[:response_template].presence || params.dig(:scout_tool, :response_template),
+      endpoint_url: src[:endpoint_url],
+      http_method: src[:http_method] || 'POST',
+      auth_type: src[:auth_type] || 'none',
+      response_template: src[:response_template],
       auth_headers: headers.present? ? parse_nested_param(headers) : nil,
       payload: payload.present? ? parse_nested_param(payload) : {}
     }

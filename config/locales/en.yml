@@ -670,4 +670,18 @@ en:
       reprocess_enqueued: '%{count} pending opportunities queued for resolution.'
       no_pending_or_disabled: 'No pending opportunities or campaign attribution is disabled.'
       not_connected_error: 'Campaign attribution cannot be reprocessed without an active Meta connection.'
+  activerecord:
+    errors:
+      models:
+        scout_tool:
+          attributes:
+            auth_type:
+              inclusion: 'is not included in the list of valid authentication types (none, bearer, basic, api_key)'
+            auth_headers:
+              bearer_token_required: 'must include a token for Bearer authentication'
+              basic_credentials_required: 'must include username and password for Basic authentication'
+              api_key_credentials_required: 'must include header_name and header_value for API Key authentication'
+            parameter_schema:
+              invalid_property_name: "contains invalid property name: '%{name}'. Only alphanumeric characters and underscores are allowed."
+              not_valid_json: 'is not valid JSON'
 

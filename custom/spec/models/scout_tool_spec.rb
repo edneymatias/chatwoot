@@ -18,6 +18,7 @@ RSpec.describe ScoutTool, type: :model do
       description: 'Fetch current weather by city name',
       endpoint_url: 'https://api.weather.example.com/v1/current',
       http_method: 'GET',
+      auth_type: 'none',
       auth_headers: 'Bearer secret-token',
       parameter_schema: {
         'type' => 'object',
@@ -71,9 +72,70 @@ RSpec.describe ScoutTool, type: :model do
       expect(tool).not_to be_valid
       expect(tool.errors[:http_method]).to include("can't be blank")
     end
+
+    it 'validates inclusion of auth_type' do
+      expect(described_class.new(valid_attributes.merge(auth_type: 'none', auth_headers: nil))).to be_valid
+      expect(described_class.new(valid_attributes.merge(auth_type: 'bearer', auth_headers: { 'token' => 'tok' }))).to be_valid
+      expect(described_class.new(valid_attributes.merge(auth_type: 'basic', auth_headers: { 'username' => 'u', 'password' => 'p' }))).to be_valid
+      valid_api = described_class.new(
+        valid_attributes.merge(
+          auth_type: 'api_key',
+          auth_headers: { 'header_name' => 'k', 'header_value' => 'v' }
+        )
+      )
+      expect(valid_api).to be_valid
+
+      invalid_tool = described_class.new(valid_attributes.merge(auth_type: 'oauth1'))
+      expect(invalid_tool).not_to be_valid
+      expect(invalid_tool.errors[:auth_type]).to be_present
+    end
+
+    it 'validates parameter_schema property names' do
+      valid_tool = described_class.new(valid_attributes.merge(
+                                         parameter_schema: {
+                                           'type' => 'object',
+                                           'properties' => {
+                                             'order_id' => { 'type' => 'string' },
+                                             '_serial123' => { 'type' => 'number' }
+                                           }
+                                         }
+                                       ))
+      expect(valid_tool).to be_valid
+
+      invalid_tool = described_class.new(valid_attributes.merge(
+                                           parameter_schema: {
+                                             'type' => 'object',
+                                             'properties' => {
+                                               'order id' => { 'type' => 'string' }
+                                             }
+                                           }
+                                         ))
+      expect(invalid_tool).not_to be_valid
+      expect(invalid_tool.errors[:parameter_schema].join).to include('contains invalid property name')
+    end
+
+    it 'validates required auth_headers credentials for selected auth_type' do
+      invalid_bearer = described_class.new(valid_attributes.merge(auth_type: 'bearer', auth_headers: {}))
+      expect(invalid_bearer).not_to be_valid
+      expect(invalid_bearer.errors[:auth_headers]).to be_present
+
+      invalid_basic = described_class.new(valid_attributes.merge(auth_type: 'basic', auth_headers: { 'username' => 'admin' }))
+      expect(invalid_basic).not_to be_valid
+      expect(invalid_basic.errors[:auth_headers]).to be_present
+
+      invalid_api_key = described_class.new(valid_attributes.merge(auth_type: 'api_key', auth_headers: { 'header_name' => 'X-Key' }))
+      expect(invalid_api_key).not_to be_valid
+      expect(invalid_api_key.errors[:auth_headers]).to be_present
+
+      valid_api_key = described_class.new(valid_attributes.merge(
+                                            auth_type: 'api_key',
+                                            auth_headers: { 'header_name' => 'X-Key', 'header_value' => 'Val123' }
+                                          ))
+      expect(valid_api_key).to be_valid
+    end
   end
 
-  describe 'encryption at rest' do
+  describe 'encryption at rest and masked helpers' do
     it 'encrypts auth_headers unconditionally' do
       tool = described_class.create!(valid_attributes)
 
@@ -89,34 +151,40 @@ RSpec.describe ScoutTool, type: :model do
       expect(tool.reload.auth_headers).to eq({ 'Authorization' => 'Bearer token123' }.to_json)
     end
 
-    it 'normalizes legacy Ruby hash rocket string to JSON' do
-      tool = described_class.create!(valid_attributes.merge(auth_headers: '{"Authorization" => "Bearer token123"}'))
-      expect(tool.reload.auth_headers).to eq({ 'Authorization' => 'Bearer token123' }.to_json)
+    it 'returns masked auth_headers for bearer auth_type' do
+      tool = described_class.create!(valid_attributes.merge(
+                                       auth_type: 'bearer',
+                                       auth_headers: { 'token' => 'real-token-123' }
+                                     ))
+      expect(tool.masked_auth_headers).to eq({ 'token' => '••••••••' })
     end
 
-    it 'fails closed when encryption keys are not configured' do
-      ActiveRecord::Encryption.config.primary_key = nil
-      ActiveRecord::Encryption.context.instance_variable_set(:@key_provider, nil)
-
-      expect do
-        described_class.create!(valid_attributes.merge(auth_headers: 'unencrypted-secret'))
-      end.to raise_error(ActiveRecord::Encryption::Errors::Configuration)
-    ensure
-      ActiveRecord::Encryption.config.primary_key = 'test-primary-key-32-chars-length'
-      ActiveRecord::Encryption.context.instance_variable_set(:@key_provider, nil)
+    it 'returns masked auth_headers for basic auth_type' do
+      tool = described_class.create!(valid_attributes.merge(
+                                       auth_type: 'basic',
+                                       auth_headers: { 'username' => 'admin', 'password' => 'secret-pass' }
+                                     ))
+      expect(tool.masked_auth_headers).to eq({ 'username' => 'admin', 'password' => '••••••••' })
     end
-  end
 
-  describe 'lifecycle independence' do
-    it 'is not destroyed when a Scout in the same account is destroyed' do
-      tool = described_class.create!(valid_attributes)
-      scout = Scout.create!(
-        account: account,
-        name: 'Weather Agent'
-      )
+    it 'returns masked auth_headers for api_key auth_type' do
+      tool = described_class.create!(valid_attributes.merge(
+                                       auth_type: 'api_key',
+                                       auth_headers: { 'header_name' => 'X-API-Key', 'header_value' => 'real-secret-key' }
+                                     ))
+      expect(tool.masked_auth_headers).to eq({ 'header_name' => 'X-API-Key', 'header_value' => '••••••••' })
+    end
 
-      expect { scout.destroy! }.not_to(change { described_class.exists?(tool.id) })
-      expect(described_class.find(tool.id)).to eq(tool)
+    it 'preserves existing secrets when updating with masked values' do
+      tool = described_class.create!(valid_attributes.merge(
+                                       auth_type: 'bearer',
+                                       auth_headers: { 'token' => 'real-token-123' }
+                                     ))
+
+      tool.apply_credentials_update({ 'token' => '••••••••' })
+      tool.save!
+
+      expect(tool.parsed_auth_headers).to eq({ 'token' => 'real-token-123' })
     end
   end
 

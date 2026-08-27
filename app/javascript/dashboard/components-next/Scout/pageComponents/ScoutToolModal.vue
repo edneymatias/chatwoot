@@ -7,6 +7,7 @@ import Input from 'dashboard/components-next/input/Input.vue';
 import TextArea from 'dashboard/components-next/textarea/TextArea.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 
 const props = defineProps({
   tool: {
@@ -18,23 +19,60 @@ const props = defineProps({
 const emit = defineEmits(['saved']);
 const { t } = useI18n();
 
+const IDENTIFIER_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
 const dialogRef = ref(null);
 const name = ref('');
 const description = ref('');
 const endpointUrl = ref('');
 const httpMethod = ref('POST');
-const headersJson = ref('{}');
-const schemaJson = ref('{}');
+const authType = ref('none');
 const responseTemplate = ref('');
 
+// Auth credential states
+const bearerToken = ref('');
+const basicUsername = ref('');
+const basicPassword = ref('');
+const apiKeyHeaderName = ref('');
+const apiKeyHeaderValue = ref('');
+
+// Visual Parameter Builder State
+const parameters = ref([]);
+
 const isSubmitting = ref(false);
-const jsonError = ref('');
+const formError = ref('');
 
 // Test Playground State
-const testPayloadJson = ref('{}');
+const testPayloadJson = ref('');
 const isTesting = ref(false);
 const testResult = ref(null);
 const testError = ref('');
+
+const isEditing = computed(() => !!props.tool);
+
+const methodOptions = [
+  { value: 'POST', label: 'POST' },
+  { value: 'GET', label: 'GET' },
+  { value: 'PUT', label: 'PUT' },
+  { value: 'PATCH', label: 'PATCH' },
+  { value: 'DELETE', label: 'DELETE' },
+];
+
+const authTypeOptions = computed(() => [
+  { value: 'none', label: t('SCOUT.TOOLS.MODAL.AUTH_TYPES.NONE') },
+  { value: 'bearer', label: t('SCOUT.TOOLS.MODAL.AUTH_TYPES.BEARER') },
+  { value: 'basic', label: t('SCOUT.TOOLS.MODAL.AUTH_TYPES.BASIC') },
+  { value: 'api_key', label: t('SCOUT.TOOLS.MODAL.AUTH_TYPES.API_KEY') },
+]);
+
+const paramTypeOptions = computed(() => [
+  { value: 'string', label: t('SCOUT.TOOLS.MODAL.PARAM_TYPES.STRING') },
+  { value: 'number', label: t('SCOUT.TOOLS.MODAL.PARAM_TYPES.NUMBER') },
+  { value: 'integer', label: t('SCOUT.TOOLS.MODAL.PARAM_TYPES.INTEGER') },
+  { value: 'boolean', label: t('SCOUT.TOOLS.MODAL.PARAM_TYPES.BOOLEAN') },
+  { value: 'array', label: t('SCOUT.TOOLS.MODAL.PARAM_TYPES.ARRAY') },
+  { value: 'object', label: t('SCOUT.TOOLS.MODAL.PARAM_TYPES.OBJECT') },
+]);
 
 const rawPreview = computed(() => {
   return testResult.value?.raw_body || '—';
@@ -49,48 +87,202 @@ const formattedPreview = computed(() => {
   return fr || '—';
 });
 
-const isEditing = computed(() => !!props.tool);
-const methodOptions = [
-  { value: 'POST', label: 'POST' },
-  { value: 'GET', label: 'GET' },
-  { value: 'PUT', label: 'PUT' },
-  { value: 'PATCH', label: 'PATCH' },
-  { value: 'DELETE', label: 'DELETE' },
-];
-
-const getSamplePayload = schema => {
-  if (!schema || typeof schema !== 'object' || !schema.properties) {
-    return '{}';
-  }
+const generateSamplePayloadObject = () => {
   const sample = {};
-  Object.keys(schema.properties).forEach(key => {
-    const prop = schema.properties[key] || {};
-    if (prop.type === 'integer' || prop.type === 'number') {
-      sample[key] = prop.default !== undefined ? prop.default : 1;
-    } else if (prop.type === 'boolean') {
-      sample[key] = prop.default !== undefined ? prop.default : true;
-    } else if (prop.type === 'array') {
-      sample[key] = prop.default !== undefined ? prop.default : [];
-    } else if (prop.type === 'object') {
-      sample[key] = prop.default !== undefined ? prop.default : {};
+  parameters.value.forEach(p => {
+    const trimmedName = p.name.trim();
+    if (!trimmedName) return;
+
+    if (p.type === 'number' || p.type === 'integer') {
+      sample[trimmedName] = 1;
+    } else if (p.type === 'boolean') {
+      sample[trimmedName] = true;
+    } else if (p.type === 'array') {
+      sample[trimmedName] = [];
+    } else if (p.type === 'object') {
+      sample[trimmedName] = {};
     } else {
-      sample[key] = prop.default !== undefined ? prop.default : '';
+      sample[trimmedName] = '';
     }
   });
-  return JSON.stringify(sample, null, 2);
+  return sample;
 };
 
 const testPayloadPlaceholder = computed(() => {
-  try {
-    const parsed = JSON.parse(schemaJson.value || '{}');
-    if (parsed && typeof parsed === 'object' && parsed.properties) {
-      return getSamplePayload(parsed);
-    }
-  } catch {
-    // Ignore JSON parse error in draft schema
+  if (parameters.value.length > 0) {
+    return JSON.stringify(generateSamplePayloadObject(), null, 2);
   }
   return '{\n  "key": "value"\n}';
 });
+
+const handleAddParameter = () => {
+  parameters.value.push({
+    id: `param_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    name: '',
+    type: 'string',
+    description: '',
+    required: false,
+  });
+};
+
+const handleRemoveParameter = index => {
+  parameters.value.splice(index, 1);
+};
+
+const handleMoveParameterUp = index => {
+  if (index <= 0) return;
+  const item = parameters.value.splice(index, 1)[0];
+  parameters.value.splice(index - 1, 0, item);
+};
+
+const handleMoveParameterDown = index => {
+  if (index >= parameters.value.length - 1) return;
+  const item = parameters.value.splice(index, 1)[0];
+  parameters.value.splice(index + 1, 0, item);
+};
+
+const decompileParameterSchema = schema => {
+  if (!schema || typeof schema !== 'object') return [];
+  const properties = schema.properties || {};
+  const requiredList = Array.isArray(schema.required) ? schema.required : [];
+
+  return Object.keys(properties).map(key => {
+    const prop = properties[key] || {};
+    return {
+      id: `param_${key}_${Date.now()}`,
+      name: key,
+      type: prop.type || 'string',
+      description: prop.description || '',
+      required: requiredList.includes(key),
+    };
+  });
+};
+
+const detectAuthFromLegacy = (headers, storedAuthType) => {
+  if (storedAuthType && storedAuthType !== 'none') return storedAuthType;
+  if (!headers) return 'none';
+
+  if (typeof headers === 'object') {
+    if (headers.token || headers.Authorization?.startsWith('Bearer')) {
+      return 'bearer';
+    }
+    if (headers.username || headers.password) {
+      return 'basic';
+    }
+    if (headers.header_name && headers.header_value) {
+      return 'api_key';
+    }
+  }
+  if (typeof headers === 'string') {
+    if (headers.startsWith('Bearer')) return 'bearer';
+  }
+  return 'none';
+};
+
+const compileAuthHeaders = () => {
+  switch (authType.value) {
+    case 'bearer':
+      return { token: bearerToken.value.trim() };
+    case 'basic':
+      return {
+        username: basicUsername.value.trim(),
+        password: basicPassword.value.trim(),
+      };
+    case 'api_key':
+      return {
+        header_name: apiKeyHeaderName.value.trim(),
+        header_value: apiKeyHeaderValue.value.trim(),
+      };
+    default:
+      return {};
+  }
+};
+
+const compileParameterSchema = () => {
+  const properties = {};
+  const required = [];
+
+  parameters.value.forEach(p => {
+    const trimmedName = p.name.trim();
+    if (!trimmedName) return;
+
+    properties[trimmedName] = {
+      type: p.type || 'string',
+      description: p.description?.trim() || undefined,
+    };
+    if (p.required) {
+      required.push(trimmedName);
+    }
+  });
+
+  return {
+    type: 'object',
+    properties,
+    ...(required.length ? { required } : {}),
+  };
+};
+
+const validateForm = () => {
+  formError.value = '';
+
+  if (!name.value.trim()) {
+    formError.value = t('SCOUT.TOOLS.MODAL.ERRORS.TOOL_NAME_EMPTY');
+    return false;
+  }
+  if (!endpointUrl.value.trim()) {
+    formError.value = t('SCOUT.TOOLS.MODAL.ERRORS.ENDPOINT_URL_EMPTY');
+    return false;
+  }
+
+  // Validate Authentication credentials
+  if (authType.value === 'bearer' && !bearerToken.value.trim()) {
+    formError.value = t('SCOUT.TOOLS.MODAL.ERRORS.AUTH_BEARER_EMPTY');
+    return false;
+  }
+  if (
+    authType.value === 'basic' &&
+    (!basicUsername.value.trim() || !basicPassword.value.trim())
+  ) {
+    formError.value = t('SCOUT.TOOLS.MODAL.ERRORS.AUTH_BASIC_EMPTY');
+    return false;
+  }
+  if (
+    authType.value === 'api_key' &&
+    (!apiKeyHeaderName.value.trim() || !apiKeyHeaderValue.value.trim())
+  ) {
+    formError.value = t('SCOUT.TOOLS.MODAL.ERRORS.AUTH_API_KEY_EMPTY');
+    return false;
+  }
+
+  // Validate parameters
+  const seenNames = new Set();
+  for (let i = 0; i < parameters.value.length; i += 1) {
+    const p = parameters.value[i];
+    const trimmedName = p.name.trim();
+
+    if (!trimmedName) {
+      formError.value = t('SCOUT.TOOLS.MODAL.ERRORS.PARAM_NAME_EMPTY');
+      return false;
+    }
+
+    if (!IDENTIFIER_REGEX.test(trimmedName)) {
+      formError.value = t('SCOUT.TOOLS.MODAL.ERRORS.PARAM_NAME_INVALID', {
+        name: trimmedName,
+      });
+      return false;
+    }
+
+    if (seenNames.has(trimmedName)) {
+      formError.value = t('SCOUT.TOOLS.MODAL.ERRORS.PARAM_NAME_DUPLICATE', {
+        name: trimmedName,
+      });
+      return false;
+    }
+    seenNames.add(trimmedName);
+  }
+
+  return true;
+};
 
 watch(
   () => props.tool,
@@ -100,45 +292,41 @@ watch(
       description.value = newVal.description || '';
       endpointUrl.value = newVal.endpoint_url || newVal.url || '';
       httpMethod.value = newVal.http_method || 'POST';
-
-      if (
-        typeof newVal.auth_headers === 'object' &&
-        newVal.auth_headers !== null
-      ) {
-        headersJson.value = JSON.stringify(newVal.auth_headers, null, 2);
-      } else if (newVal.auth_headers) {
-        try {
-          const parsed = JSON.parse(newVal.auth_headers);
-          if (typeof parsed === 'object' && parsed !== null) {
-            headersJson.value = JSON.stringify(parsed, null, 2);
-          } else {
-            headersJson.value = newVal.auth_headers;
-          }
-        } catch {
-          headersJson.value = newVal.auth_headers;
-        }
-      } else if (newVal.headers) {
-        headersJson.value = JSON.stringify(newVal.headers, null, 2);
-      } else {
-        headersJson.value = '{}';
-      }
-
-      const rawSchema = newVal.parameter_schema ||
-        newVal.parameters_schema || { type: 'object', properties: {} };
-      schemaJson.value = JSON.stringify(rawSchema, null, 2);
       responseTemplate.value = newVal.response_template || '';
+
+      const detectedAuth = detectAuthFromLegacy(
+        newVal.auth_headers,
+        newVal.auth_type
+      );
+      authType.value = detectedAuth;
+
+      const rawHeaders = newVal.auth_headers || {};
+      bearerToken.value = rawHeaders.token || '••••••••';
+      basicUsername.value = rawHeaders.username || '';
+      basicPassword.value = rawHeaders.password || '••••••••';
+      apiKeyHeaderName.value = rawHeaders.header_name || '';
+      apiKeyHeaderValue.value = rawHeaders.header_value || '••••••••';
+
+      const rawSchema =
+        newVal.parameter_schema || newVal.parameters_schema || {};
+      parameters.value = decompileParameterSchema(rawSchema);
       testPayloadJson.value = '';
     } else {
       name.value = '';
       description.value = '';
       endpointUrl.value = '';
       httpMethod.value = 'POST';
-      headersJson.value = '{}';
-      schemaJson.value = '{\n  "type": "object",\n  "properties": {}\n}';
+      authType.value = 'none';
       responseTemplate.value = '';
+      bearerToken.value = '';
+      basicUsername.value = '';
+      basicPassword.value = '';
+      apiKeyHeaderName.value = '';
+      apiKeyHeaderValue.value = '';
+      parameters.value = [];
       testPayloadJson.value = '';
     }
-    jsonError.value = '';
+    formError.value = '';
     testResult.value = null;
     testError.value = '';
   },
@@ -146,34 +334,14 @@ watch(
 );
 
 const openModal = () => {
-  jsonError.value = '';
+  formError.value = '';
   testResult.value = null;
   testError.value = '';
   dialogRef.value?.open();
 };
 
 const handleSave = async () => {
-  jsonError.value = '';
-  if (!name.value.trim() || !endpointUrl.value.trim()) return;
-
-  let parsedHeaders = {};
-  let parsedSchema = {};
-
-  try {
-    parsedHeaders = headersJson.value.trim().startsWith('{')
-      ? JSON.parse(headersJson.value || '{}')
-      : headersJson.value.trim();
-  } catch (e) {
-    jsonError.value = t('SCOUT.TOOLS.MODAL.INVALID_HEADERS_JSON');
-    return;
-  }
-
-  try {
-    parsedSchema = JSON.parse(schemaJson.value || '{}');
-  } catch (e) {
-    jsonError.value = t('SCOUT.TOOLS.MODAL.INVALID_SCHEMA_JSON');
-    return;
-  }
+  if (!validateForm()) return;
 
   isSubmitting.value = true;
   try {
@@ -182,8 +350,9 @@ const handleSave = async () => {
       description: description.value.trim(),
       endpoint_url: endpointUrl.value.trim(),
       http_method: httpMethod.value,
-      auth_headers: parsedHeaders,
-      parameter_schema: parsedSchema,
+      auth_type: authType.value,
+      auth_headers: compileAuthHeaders(),
+      parameter_schema: compileParameterSchema(),
       response_template: responseTemplate.value.trim() || null,
     };
 
@@ -196,7 +365,7 @@ const handleSave = async () => {
     dialogRef.value?.close();
     emit('saved');
   } catch (error) {
-    jsonError.value =
+    formError.value =
       error.response?.data?.error ||
       error.message ||
       t('SCOUT.ERROR_GENERIC_MESSAGE');
@@ -211,25 +380,16 @@ const handleTest = async () => {
 
   if (!endpointUrl.value.trim()) return;
 
-  let parsedHeaders = {};
   let parsedTestPayload = {};
-
-  try {
-    parsedHeaders = headersJson.value.trim().startsWith('{')
-      ? JSON.parse(headersJson.value || '{}')
-      : headersJson.value.trim();
-  } catch (e) {
-    testError.value = t('SCOUT.TOOLS.MODAL.INVALID_HEADERS_JSON');
-    return;
-  }
-
-  try {
-    parsedTestPayload = testPayloadJson.value.trim().length
-      ? JSON.parse(testPayloadJson.value)
-      : {};
-  } catch (e) {
-    testError.value = t('SCOUT.TOOLS.MODAL.INVALID_PAYLOAD_JSON');
-    return;
+  if (testPayloadJson.value.trim().length) {
+    try {
+      parsedTestPayload = JSON.parse(testPayloadJson.value);
+    } catch {
+      testError.value = t('SCOUT.TOOLS.MODAL.INVALID_PAYLOAD_JSON');
+      return;
+    }
+  } else {
+    parsedTestPayload = generateSamplePayloadObject();
   }
 
   isTesting.value = true;
@@ -237,7 +397,8 @@ const handleTest = async () => {
     const testPayload = {
       endpoint_url: endpointUrl.value.trim(),
       http_method: httpMethod.value,
-      auth_headers: parsedHeaders,
+      auth_type: authType.value,
+      auth_headers: compileAuthHeaders(),
       response_template: responseTemplate.value.trim() || null,
       payload: parsedTestPayload,
     };
@@ -277,7 +438,10 @@ defineExpose({
     width="2xl"
     @confirm="handleSave"
   >
-    <form class="flex flex-col gap-4 py-2" @submit.prevent="handleSave">
+    <div
+      class="flex flex-col gap-4 py-2 max-h-[65vh] overflow-y-auto pr-2 -mr-1"
+    >
+      <!-- Tool Name & Method -->
       <div class="grid grid-cols-3 gap-4">
         <div class="col-span-2">
           <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
@@ -302,16 +466,18 @@ defineExpose({
         </div>
       </div>
 
+      <!-- Endpoint URL -->
       <div>
         <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
           {{ `${t('SCOUT.TOOLS.MODAL.URL_LABEL')} *` }}
         </label>
         <Input
           v-model="endpointUrl"
-          placeholder="https://api.empresa.com/orders/{{order_id}}/status"
+          placeholder="https://api.example.com/orders/{{ order_id }}"
         />
       </div>
 
+      <!-- Description for LLM -->
       <div>
         <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
           {{ t('SCOUT.TOOLS.MODAL.DESCRIPTION_LABEL') }}
@@ -323,28 +489,185 @@ defineExpose({
         />
       </div>
 
-      <div>
-        <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
-          {{ `${t('SCOUT.TOOLS.MODAL.HEADERS_LABEL')} (JSON)` }}
-        </label>
-        <textarea
-          v-model="headersJson"
-          rows="2"
-          class="w-full p-3 font-mono text-xs rounded-lg border border-n-weak bg-n-surface-1 text-n-slate-12 focus:outline-none focus:border-n-brand"
-        />
+      <!-- Authentication Type Selection -->
+      <div
+        class="flex flex-col gap-3 p-3.5 rounded-xl border border-n-weak bg-n-alpha-1"
+      >
+        <div>
+          <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
+            {{ t('SCOUT.TOOLS.MODAL.AUTH_TYPE_LABEL') }}
+          </label>
+          <Select
+            v-model="authType"
+            class="!w-full [&>select]:w-full"
+            :options="authTypeOptions"
+          />
+        </div>
+
+        <!-- Bearer Token Input -->
+        <div v-if="authType === 'bearer'">
+          <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
+            {{ `${t('SCOUT.TOOLS.MODAL.TOKEN_LABEL')} *` }}
+          </label>
+          <Input
+            v-model="bearerToken"
+            type="password"
+            :placeholder="t('SCOUT.TOOLS.MODAL.TOKEN_PLACEHOLDER')"
+          />
+        </div>
+
+        <!-- Basic Auth Inputs -->
+        <div v-else-if="authType === 'basic'" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
+              {{ `${t('SCOUT.TOOLS.MODAL.USERNAME_LABEL')} *` }}
+            </label>
+            <Input
+              v-model="basicUsername"
+              :placeholder="t('SCOUT.TOOLS.MODAL.USERNAME_PLACEHOLDER')"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
+              {{ `${t('SCOUT.TOOLS.MODAL.PASSWORD_LABEL')} *` }}
+            </label>
+            <Input
+              v-model="basicPassword"
+              type="password"
+              :placeholder="t('SCOUT.TOOLS.MODAL.PASSWORD_PLACEHOLDER')"
+            />
+          </div>
+        </div>
+
+        <!-- API Key Inputs -->
+        <div v-else-if="authType === 'api_key'" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
+              {{ `${t('SCOUT.TOOLS.MODAL.HEADER_NAME_LABEL')} *` }}
+            </label>
+            <Input
+              v-model="apiKeyHeaderName"
+              :placeholder="t('SCOUT.TOOLS.MODAL.HEADER_NAME_PLACEHOLDER')"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
+              {{ `${t('SCOUT.TOOLS.MODAL.HEADER_VALUE_LABEL')} *` }}
+            </label>
+            <Input
+              v-model="apiKeyHeaderValue"
+              type="password"
+              :placeholder="t('SCOUT.TOOLS.MODAL.HEADER_VALUE_PLACEHOLDER')"
+            />
+          </div>
+        </div>
       </div>
 
-      <div>
-        <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
-          {{ `${t('SCOUT.TOOLS.MODAL.SCHEMA_LABEL')} (JSON Schema)` }}
-        </label>
-        <textarea
-          v-model="schemaJson"
-          rows="3"
-          class="w-full p-3 font-mono text-xs rounded-lg border border-n-weak bg-n-surface-1 text-n-slate-12 focus:outline-none focus:border-n-brand"
-        />
+      <!-- Parameters Section (Visual Parameter Builder) -->
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="block text-xs font-semibold text-n-slate-12">
+              {{ t('SCOUT.TOOLS.MODAL.PARAMETERS_LABEL') }}
+            </label>
+            <p class="text-[11px] text-n-slate-11">
+              {{ t('SCOUT.TOOLS.MODAL.PARAMETERS_DESC') }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Parameter Cards List -->
+        <div v-if="parameters.length > 0" class="flex flex-col gap-3">
+          <div
+            v-for="(param, index) in parameters"
+            :key="param.id"
+            class="flex flex-col gap-2.5 p-3 rounded-xl border border-n-weak bg-n-solid-2"
+          >
+            <!-- Parameter Name, Type, Reorder & Delete -->
+            <div class="flex items-center gap-2">
+              <div class="flex-1">
+                <Input
+                  v-model="param.name"
+                  :placeholder="t('SCOUT.TOOLS.MODAL.PARAM_NAME_PLACEHOLDER')"
+                />
+              </div>
+
+              <div class="w-36">
+                <Select
+                  v-model="param.type"
+                  class="!w-full [&>select]:w-full"
+                  :options="paramTypeOptions"
+                />
+              </div>
+
+              <!-- Reorder Controls -->
+              <div class="flex items-center gap-0.5">
+                <Button
+                  icon="i-lucide-chevron-up"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :disabled="index === 0"
+                  :title="t('SCOUT.TOOLS.MODAL.PARAM_MOVE_UP')"
+                  @click="handleMoveParameterUp(index)"
+                />
+                <Button
+                  icon="i-lucide-chevron-down"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :disabled="index === parameters.length - 1"
+                  :title="t('SCOUT.TOOLS.MODAL.PARAM_MOVE_DOWN')"
+                  @click="handleMoveParameterDown(index)"
+                />
+                <Button
+                  icon="i-lucide-trash-2"
+                  variant="ghost"
+                  color="ruby"
+                  size="xs"
+                  :title="t('SCOUT.TOOLS.MODAL.PARAM_DELETE')"
+                  @click="handleRemoveParameter(index)"
+                />
+              </div>
+            </div>
+
+            <!-- Parameter Description -->
+            <div>
+              <TextArea
+                v-model="param.description"
+                rows="2"
+                :placeholder="t('SCOUT.TOOLS.MODAL.PARAM_DESC_PLACEHOLDER')"
+                auto-height
+              />
+            </div>
+
+            <!-- Required Checkbox -->
+            <div class="flex items-center gap-2">
+              <Checkbox v-model="param.required" />
+              <span
+                class="text-xs text-n-slate-12 cursor-pointer select-none"
+                @click="param.required = !param.required"
+              >
+                {{ t('SCOUT.TOOLS.MODAL.PARAM_REQUIRED_LABEL') }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Parameter Action Button -->
+        <div class="flex items-center justify-start">
+          <Button
+            :label="t('SCOUT.TOOLS.MODAL.ADD_PARAMETER')"
+            variant="link"
+            color="blue"
+            size="sm"
+            icon="i-lucide-plus"
+            @click="handleAddParameter"
+          />
+        </div>
       </div>
 
+      <!-- Response Template (Optional) -->
       <div>
         <div class="flex items-center justify-between mb-1.5">
           <label class="block text-xs font-medium text-n-slate-11">
@@ -486,9 +809,10 @@ defineExpose({
         </div>
       </div>
 
-      <p v-if="jsonError" class="text-xs text-n-ruby-9 font-medium">
-        {{ jsonError }}
+      <!-- Form Error Message -->
+      <p v-if="formError" class="text-xs text-n-ruby-9 font-medium">
+        {{ formError }}
       </p>
-    </form>
+    </div>
   </Dialog>
 </template>

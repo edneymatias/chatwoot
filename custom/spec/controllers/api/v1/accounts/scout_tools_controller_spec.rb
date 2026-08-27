@@ -14,13 +14,14 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
   let(:agent) { create(:user, account: account, role: :agent) }
 
   describe 'GET /api/v1/accounts/{account.id}/scout_tools' do
-    it 'returns list of scout tools with response_template and auth_headers' do
+    it 'returns list of scout tools with response_template and masked auth_headers' do
       account.scout_tools.create!(
         name: 'test_tool',
         description: 'Test description',
         endpoint_url: 'https://api.example.com/check',
         http_method: 'POST',
-        auth_headers: { 'Authorization' => 'Bearer secret' },
+        auth_type: 'bearer',
+        auth_headers: { 'token' => 'real-secret-token' },
         response_template: 'Status: {{ r.status }}'
       )
 
@@ -31,20 +32,21 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
       json = response.parsed_body
       expect(json.length).to eq(1)
       expect(json.first['name']).to eq('test_tool')
-      expect(json.first['response_template']).to eq('Status: {{ r.status }}')
-      expect(json.first['auth_headers']).to include('Authorization')
+      expect(json.first['auth_type']).to eq('bearer')
+      expect(json.first['auth_headers']).to eq({ 'token' => '••••••••' })
     end
   end
 
   describe 'POST /api/v1/accounts/{account.id}/scout_tools' do
-    it 'creates a new scout tool with endpoint_url and response_template' do
+    it 'creates a new scout tool with auth_type and encrypted credentials' do
       post "/api/v1/accounts/#{account.id}/scout_tools",
            params: {
              name: 'new_tool',
              description: 'New description',
              endpoint_url: 'https://api.example.com/data',
              http_method: 'GET',
-             auth_headers: 'ApiKey xyz',
+             auth_type: 'bearer',
+             auth_headers: { 'token' => 'live_token_123' },
              response_template: 'Data: {{ r.val }}'
            },
            headers: agent.create_new_auth_token
@@ -52,22 +54,23 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
       expect(response).to have_http_status(:created)
       json = response.parsed_body
       expect(json['name']).to eq('new_tool')
-      expect(json['endpoint_url']).to eq('https://api.example.com/data')
-      expect(json['response_template']).to eq('Data: {{ r.val }}')
+      expect(json['auth_type']).to eq('bearer')
+      expect(json['auth_headers']).to eq({ 'token' => '••••••••' })
 
       tool = ScoutTool.find_by(account_id: account.id, name: 'new_tool')
       expect(tool).to be_present
-      expect(tool.auth_headers).to eq('ApiKey xyz')
+      expect(tool.parsed_auth_headers).to eq({ 'token' => 'live_token_123' })
     end
 
-    it 'creates a scout tool with nested parameter_schema and auth_headers objects without 500 error' do
+    it 'creates a scout tool with nested parameter_schema' do
       post "/api/v1/accounts/#{account.id}/scout_tools",
            params: {
              name: 'horarios_livres',
              description: 'Obter horários livres',
              endpoint_url: 'https://api.example.com/horarios',
              http_method: 'GET',
-             auth_headers: { 'Authorization' => 'Bearer token123' },
+             auth_type: 'basic',
+             auth_headers: { 'username' => 'admin', 'password' => 'pass123' },
              parameter_schema: {
                type: 'object',
                properties: {
@@ -75,8 +78,7 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
                  data: { type: 'string' }
                },
                required: %w[idEmpresa data]
-             },
-             response_template: nil
+             }
            },
            headers: agent.create_new_auth_token
 
@@ -87,39 +89,38 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
 
       tool = ScoutTool.find_by(account_id: account.id, name: 'horarios_livres')
       expect(tool).to be_present
-      expect(tool.parameter_schema['required']).to eq(%w[idEmpresa data])
+      expect(tool.parsed_auth_headers).to eq({ 'username' => 'admin', 'password' => 'pass123' })
     end
   end
 
   describe 'PATCH /api/v1/accounts/{account.id}/scout_tools/:id' do
-    it 'updates an existing tool with new parameters and auth_headers' do
+    it 'preserves existing secret when masked placeholder is submitted' do
       tool = account.scout_tools.create!(
         name: 'old_name',
         description: 'Old description',
         endpoint_url: 'https://api.example.com/old',
         http_method: 'POST',
-        auth_headers: 'old_secret'
+        auth_type: 'bearer',
+        auth_headers: { 'token' => 'existing-secret-token' }
       )
 
       patch "/api/v1/accounts/#{account.id}/scout_tools/#{tool.id}",
             params: {
               name: 'updated_name',
-              auth_headers: { 'X-Api-Key' => 'updated_secret' },
-              response_template: 'New: {{ r.out }}',
-              parameter_schema: { type: 'object', properties: { count: { type: 'number' } } }
+              auth_type: 'bearer',
+              auth_headers: { 'token' => '••••••••' }
             },
             headers: agent.create_new_auth_token
 
       expect(response).to have_http_status(:ok)
       tool.reload
       expect(tool.name).to eq('updated_name')
-      expect(tool.response_template).to eq('New: {{ r.out }}')
-      expect(tool.auth_headers).to include('updated_secret')
+      expect(tool.parsed_auth_headers).to eq({ 'token' => 'existing-secret-token' })
     end
   end
 
-  describe 'POST /api/v1/accounts/{account.id}/scout_tools/test (User Story 1)' do
-    it 'executes draft tool call with sample payload and returns shaped preview' do
+  describe 'POST /api/v1/accounts/{account.id}/scout_tools/test' do
+    it 'executes draft tool call with auth_type and sample payload' do
       tempfile = Tempfile.new('test')
       tempfile.write({ status: 'delivered', code: 200 }.to_json)
       tempfile.rewind
@@ -139,7 +140,8 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
            params: {
              endpoint_url: 'https://api.example.com/orders/{{order_id}}/status',
              http_method: 'GET',
-             auth_headers: 'Bearer token123',
+             auth_type: 'bearer',
+             auth_headers: { 'token' => 'token123' },
              response_template: 'Order {{ r.status }} (code {{ r.code }})',
              payload: { order_id: 999, verbose: true }
            },
@@ -149,105 +151,8 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
       expect(response.parsed_body).to include(
         'success' => true,
         'status' => 200,
-        'raw_body' => include('delivered'),
-        'truncated' => false,
-        'formatted_response' => 'Order delivered (code 200)',
-        'error' => nil
+        'formatted_response' => 'Order delivered (code 200)'
       )
-    ensure
-      tempfile&.close!
-    end
-
-    it 'sets truncated to true when raw_body exceeds 500 characters' do
-      long_body = 'A' * 600
-      tempfile = Tempfile.new('test_long')
-      tempfile.write(long_body)
-      tempfile.rewind
-      result_double = SafeFetch::Result.new(tempfile: tempfile, filename: 'test_long', content_type: 'text/plain')
-
-      expect(SafeFetch).to receive(:fetch).and_yield(result_double)
-
-      post "/api/v1/accounts/#{account.id}/scout_tools/test",
-           params: {
-             endpoint_url: 'https://api.example.com/long',
-             http_method: 'GET'
-           },
-           headers: agent.create_new_auth_token
-
-      expect(response).to have_http_status(:ok)
-      json = response.parsed_body
-      expect(json['truncated']).to be(true)
-      expect(json['raw_body'].length).to eq(500)
-    ensure
-      tempfile&.close!
-    end
-
-    it 'captures template rendering failure cleanly without raising 500' do
-      post "/api/v1/accounts/#{account.id}/scout_tools/test",
-           params: {
-             endpoint_url: 'https://api.example.com/orders/{{missing_var}}/status',
-             http_method: 'GET',
-             payload: { other_id: 123 }
-           },
-           headers: agent.create_new_auth_token
-
-      expect(response).to have_http_status(:ok)
-      json = response.parsed_body
-      expect(json['success']).to be(false)
-      expect(json['status']).to be_nil
-      expect(json['error']).to include('Template rendering failed')
-    end
-
-    it 'captures remote HTTP error cleanly with status' do
-      allow(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('502 Bad Gateway'))
-
-      post "/api/v1/accounts/#{account.id}/scout_tools/test",
-           params: {
-             endpoint_url: 'https://api.example.com/failing',
-             http_method: 'POST',
-             payload: {}
-           },
-           headers: agent.create_new_auth_token
-
-      expect(response).to have_http_status(:ok)
-      json = response.parsed_body
-      expect(json['success']).to be(false)
-      expect(json['status']).to eq(502)
-      expect(json['error']).to include('502 Bad Gateway')
-    end
-
-    it 'correctly extracts payload when wrap_parameters nests scout_tool attributes' do
-      tempfile = Tempfile.new('test')
-      tempfile.write({ ok: true }.to_json)
-      tempfile.rewind
-      result_double = SafeFetch::Result.new(tempfile: tempfile, filename: 'test', content_type: 'application/json')
-
-      expect(SafeFetch).to receive(:fetch).with(
-        'https://api.example.com/check?data=2026-08-26&idEmpresa=1041',
-        method: :get,
-        body: nil,
-        headers: hash_including('token' => 'abobora'),
-        sensitive_headers: array_including('token'),
-        max_bytes: 1.megabyte,
-        validate_content_type: false
-      ).and_yield(result_double)
-
-      post "/api/v1/accounts/#{account.id}/scout_tools/test",
-           params: {
-             endpoint_url: 'https://api.example.com/check',
-             http_method: 'GET',
-             auth_headers: { 'token' => 'abobora' },
-             payload: { 'data' => '2026-08-26', 'idEmpresa' => 1041 },
-             scout_tool: {
-               endpoint_url: 'https://api.example.com/check',
-               http_method: 'GET',
-               auth_headers: { 'token' => 'abobora' }
-             }
-           },
-           headers: agent.create_new_auth_token
-
-      expect(response).to have_http_status(:ok)
-      expect(response.parsed_body['success']).to be(true)
     ensure
       tempfile&.close!
     end

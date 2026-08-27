@@ -636,4 +636,18 @@ pt_BR:
       reprocess_enqueued: '%{count} oportunidades pendentes enviadas para resolução.'
       no_pending_or_disabled: 'Nenhuma oportunidade pendente ou a atribuição de campanhas está desativada.'
       not_connected_error: 'A atribuição de campanhas não pode ser reprocessada sem uma conexão ativa com a Meta.'
+  activerecord:
+    errors:
+      models:
+        scout_tool:
+          attributes:
+            auth_type:
+              inclusion: 'não está incluído na lista de tipos de autenticação válidos (none, bearer, basic, api_key)'
+            auth_headers:
+              bearer_token_required: 'deve incluir um token para autenticação Bearer'
+              basic_credentials_required: 'deve incluir usuário e senha para autenticação Basic'
+              api_key_credentials_required: 'deve incluir nome do cabeçalho e valor para autenticação API Key'
+            parameter_schema:
+              invalid_property_name: "contém nome de propriedade inválido: '%{name}'. Apenas caracteres alfanuméricos e sublinhados são permitidos."
+              not_valid_json: 'não é um JSON válido'
 

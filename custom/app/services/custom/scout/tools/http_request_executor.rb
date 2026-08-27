@@ -10,12 +10,13 @@ class Custom::Scout::Tools::HttpRequestExecutor
     def truncated?(limit = PREVIEW_TRUNCATE_LIMIT) = raw_body.present? && raw_body.length > limit
   end
 
-  def initialize(endpoint_url:, http_method: 'POST', auth_headers: nil, response_template: nil, payload: {})
+  def initialize(endpoint_url:, http_method: 'POST', **options)
     @endpoint_url = endpoint_url.to_s.strip
     @http_method = http_method.to_s.strip.presence || 'POST'
-    @auth_headers = auth_headers
-    @response_template = response_template.presence
-    @payload = normalize_payload(payload)
+    @auth_type = options[:auth_type].to_s.strip.presence || 'none'
+    @auth_headers = options[:auth_headers]
+    @response_template = options[:response_template].presence
+    @payload = normalize_payload(options[:payload])
   end
 
   def self.execute(...) = new(...).execute
@@ -24,6 +25,7 @@ class Custom::Scout::Tools::HttpRequestExecutor
     new(
       endpoint_url: tool.endpoint_url,
       http_method: tool.http_method,
+      auth_type: tool.auth_type,
       auth_headers: tool.auth_headers,
       response_template: tool.response_template,
       payload: payload
@@ -104,36 +106,10 @@ class Custom::Scout::Tools::HttpRequestExecutor
   end
 
   def build_request_headers
-    headers = parse_auth_headers(@auth_headers)
+    headers = Custom::Scout::Tools::AuthHeaderBuilder.build(auth_type: @auth_type, auth_headers: @auth_headers)
     method_upper = @http_method.to_s.upcase
     headers['Content-Type'] ||= 'application/json' if %w[POST PUT PATCH].include?(method_upper)
     headers
-  end
-
-  def parse_auth_headers(auth)
-    return {} if auth.blank?
-    return auth.to_unsafe_h.transform_keys(&:to_s) if auth.respond_to?(:to_unsafe_h)
-    return auth.transform_keys(&:to_s) if auth.is_a?(Hash)
-
-    parse_auth_header_string(auth.to_s.strip)
-  end
-
-  def parse_auth_header_string(auth_str)
-    return { 'Authorization' => auth_str } unless auth_str.start_with?('{') && auth_str.end_with?('}')
-
-    parse_json_or_yaml_headers(auth_str) || { 'Authorization' => auth_str }
-  end
-
-  def parse_json_or_yaml_headers(auth_str)
-    parsed = JSON.parse(auth_str)
-    return parsed.transform_keys(&:to_s) if parsed.is_a?(Hash)
-
-    nil
-  rescue JSON::ParserError
-    parsed = YAML.safe_load(auth_str.gsub('=>', ': '))
-    parsed.is_a?(Hash) ? parsed.transform_keys(&:to_s) : nil
-  rescue StandardError
-    nil
   end
 
   def perform_fetch(url, method_sym, request_body, headers)
@@ -171,17 +147,17 @@ class Custom::Scout::Tools::HttpRequestExecutor
     rendered
   end
 
-  def parse_json_response(response_body)
-    parsed = JSON.parse(response_body)
+  def parse_json_response(body)
+    parsed = JSON.parse(body)
     parsed.is_a?(Hash) ? parsed : { 'data' => parsed }
   rescue JSON::ParserError
-    { 'data' => response_body }
+    { 'data' => body }
   end
 
-  def parse_json_or_raw(response_body)
-    JSON.parse(response_body)
+  def parse_json_or_raw(body)
+    JSON.parse(body)
   rescue JSON::ParserError
-    response_body
+    body
   end
 
   def handle_execution_error(error)
@@ -193,8 +169,13 @@ class Custom::Scout::Tools::HttpRequestExecutor
 
   def handle_http_error(error)
     status_code = error.message[/^\d+/]&.to_i || 400
-    Result.new(success: false, status: status_code, raw_body: error.message, formatted_response: nil,
-               error: "External system returned error status: #{error.message}")
+    Result.new(
+      success: false,
+      status: status_code,
+      raw_body: error.message,
+      formatted_response: nil,
+      error: "External system returned error status: #{error.message}"
+    )
   end
 
   def build_error_message(error)
