@@ -32,7 +32,7 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
   let(:tool) { described_class.new(scout, conversation) }
 
   describe '#execute' do
-    context 'when creating opportunity with referral ad message' do
+    context 'when creating opportunity for contact with zero open deals (US3)' do
       let(:referral_data) do
         {
           'source_url' => 'https://facebook.com/ads/123?ad_id=987654321',
@@ -54,7 +54,7 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
         )
       end
 
-      it 'creates opportunity and populates referral attribution' do
+      it 'creates opportunity and populates referral attribution without private notes' do
         expect do
           result = tool.execute(action: 'create', title: 'Opp de Anúncio', estimated_value: 5000.0)
           expect(result).to include('successfully')
@@ -69,53 +69,138 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
           expect(opp.campaign_headline).to eq('Promoção Especial')
           expect(opp.campaign_thumbnail_url).to eq('https://example.com/thumb.png')
         end
+
+        expect(conversation.messages.where(private: true)).to be_empty
       end
     end
 
-    context 'when updating existing opportunity' do
-      let!(:opportunity) do
+    context 'when continuing an existing open deal with declared opportunity_id (US1)' do
+      let(:past_conversation) { create(:conversation, account: account, inbox: inbox, contact: contact) }
+      let!(:existing_opportunity) do
         Opportunity.create!(
           account: account,
           contact: contact,
-          origin_conversation: conversation,
+          origin_conversation: past_conversation,
           pipeline_stage: stage1,
-          title: 'Opp Existente',
+          status: :open,
+          title: 'Negócio Anterior',
+          value: 3000.0,
           campaign_platform: 'facebook',
           campaign_headline: 'Headline Original'
         )
       end
 
-      it 'updates fields without modifying existing campaign attribution when stage_id is absent' do
-        result = tool.execute(action: 'update', title: 'Opp Atualizada', estimated_value: 8000.0)
-        expect(result).to include('successfully')
+      it 'updates existing opportunity in place and does not create duplicate' do
+        expect do
+          result = tool.execute(
+            action: 'create',
+            opportunity_id: existing_opportunity.id,
+            title: 'Negócio Atualizado',
+            estimated_value: 8000.0
+          )
+          expect(result).to include('successfully')
+        end.not_to change(Opportunity, :count)
 
-        opportunity.reload
+        existing_opportunity.reload
         aggregate_failures 'updated fields' do
-          expect(opportunity.title).to eq('Opp Atualizada')
-          expect(opportunity.value).to eq(8000.0)
-          expect(opportunity.campaign_platform).to eq('facebook')
-          expect(opportunity.campaign_headline).to eq('Headline Original')
-          expect(opportunity.pipeline_stage_id).to eq(stage1.id)
+          expect(existing_opportunity.title).to eq('Negócio Atualizado')
+          expect(existing_opportunity.value).to eq(8000.0)
+          expect(existing_opportunity.campaign_platform).to eq('facebook')
+          expect(existing_opportunity.campaign_headline).to eq('Headline Original')
+          expect(existing_opportunity.pipeline_stage_id).to eq(stage1.id)
         end
       end
 
       it 'delegates stage transition to OpportunityStageTransitionService when stage_id is present' do
-        result = tool.execute(action: 'update', title: 'Opp com Stage', stage_id: stage2.id, estimated_value: 10_000.0)
+        result = tool.execute(
+          action: 'update',
+          opportunity_id: existing_opportunity.id,
+          stage_id: stage2.id,
+          estimated_value: 10_000.0
+        )
         expect(result).to include('successfully')
 
-        opportunity.reload
-        expect(opportunity.title).to eq('Opp com Stage')
-        expect(opportunity.value).to eq(10_000.0)
-        expect(opportunity.pipeline_stage_id).to eq(stage2.id)
+        existing_opportunity.reload
+        expect(existing_opportunity.value).to eq(10_000.0)
+        expect(existing_opportunity.pipeline_stage_id).to eq(stage2.id)
       end
 
       it 'returns descriptive failure message without crashing when stage required field is missing' do
         stage2.required_custom_attribute_definitions << attr_budget
 
-        result = tool.execute(action: 'update', stage_id: stage2.id)
+        result = tool.execute(action: 'update', opportunity_id: existing_opportunity.id, stage_id: stage2.id)
         expect(result).to include('Cannot move to stage Negotiation')
         expect(result).to include('Budget')
-        expect(opportunity.reload.pipeline_stage_id).to eq(stage1.id)
+        expect(existing_opportunity.reload.pipeline_stage_id).to eq(stage1.id)
+      end
+    end
+
+    context 'when continuity is ambiguous (US2)' do
+      let!(:opp1) do
+        Opportunity.create!(
+          account: account,
+          contact: contact,
+          pipeline_stage: stage1,
+          status: :open,
+          title: 'Plano 1'
+        )
+      end
+      let!(:opp2) do
+        Opportunity.create!(
+          account: account,
+          contact: contact,
+          pipeline_stage: stage1,
+          status: :open,
+          title: 'Plano 2'
+        )
+      end
+      let(:other_contact) { create(:contact, account: account) }
+      let!(:other_opp) do
+        Opportunity.create!(
+          account: account,
+          contact: other_contact,
+          pipeline_stage: stage1,
+          status: :open,
+          title: 'Outro Contato'
+        )
+      end
+
+      it 'does not create or modify deals when contact has multiple open deals and no opportunity_id is passed' do
+        expect do
+          result = tool.execute(action: 'create', title: 'Nova Tentativa')
+          expect(result).to include('deferred')
+        end.not_to change(Opportunity, :count)
+
+        expect(opp1.reload.title).to eq('Plano 1')
+        expect(opp2.reload.title).to eq('Plano 2')
+
+        private_note = conversation.messages.where(private: true).last
+        expect(private_note).to be_present
+        expect(private_note.content).to include('⚠️ [Continuidade de Oportunidade]')
+        expect(private_note.content).to include('2 open opportunity candidate(s)')
+      end
+
+      it 'rejects and flags declared opportunity_id belonging to another contact' do
+        expect do
+          result = tool.execute(action: 'create', opportunity_id: other_opp.id, title: 'Tentativa Inválida')
+          expect(result).to include('deferred')
+        end.not_to change(Opportunity, :count)
+
+        private_note = conversation.messages.where(private: true).last
+        expect(private_note).to be_present
+        expect(private_note.content).to include('⚠️ [Continuidade de Oportunidade]')
+        expect(private_note.content).to include(other_opp.id.to_s)
+      end
+
+      it 'rejects and flags non-existent declared opportunity_id' do
+        expect do
+          result = tool.execute(action: 'update', opportunity_id: 999_999)
+          expect(result).to include('deferred')
+        end.not_to change(Opportunity, :count)
+
+        private_note = conversation.messages.where(private: true).last
+        expect(private_note).to be_present
+        expect(private_note.content).to include('⚠️ [Continuidade de Oportunidade]')
       end
     end
   end

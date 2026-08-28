@@ -59,6 +59,11 @@ RSpec.describe Custom::Scout::SystemPromptsService do
       expect(prompt).to include('handover_to_human')
     end
 
+    it 'includes commercial intent guideline instructing manage_opportunity' do
+      expect(prompt).to include('Intenção Comercial:')
+      expect(prompt).to include('manage_opportunity')
+    end
+
     it 'wraps operator custom instructions in subordinate tags with override prohibition' do
       expect(prompt).to include('[Instruções Personalizadas da Conta]')
       expect(prompt).to include('<account_custom_instructions>')
@@ -229,6 +234,71 @@ RSpec.describe Custom::Scout::SystemPromptsService do
 
         it 'omits the entire funnel section cleanly' do
           expect(prompt).not_to include('[Funil de Vendas e Qualificação]')
+        end
+      end
+    end
+
+    describe 'open_opportunities_section' do
+      let(:stage) { PipelineStage.create!(account: account, name: 'Proposta Enviada', position: 1) }
+
+      context 'when contact has open opportunities' do
+        let!(:opp1) do
+          Opportunity.create!(
+            account: account,
+            contact: contact,
+            pipeline_stage: stage,
+            status: :open,
+            title: 'Plano Empresarial'
+          )
+        end
+        let!(:opp2) do
+          Opportunity.create!(
+            account: account,
+            contact: contact,
+            pipeline_stage: stage,
+            status: :open,
+            title: 'Upgrade de Plano'
+          )
+        end
+
+        it 'renders structured list of open opportunities and instructions alongside contact narrative context' do
+          expect(prompt).to include('Contexto do Contato:')
+          expect(prompt).to include('Maria Silva')
+          expect(prompt).to include('[Oportunidades Abertas do Contato]')
+          expect(prompt).to include("- ID: #{opp1.id} | Título: Plano Empresarial | Estágio: Proposta Enviada")
+          expect(prompt).to include("- ID: #{opp2.id} | Título: Upgrade de Plano | Estágio: Proposta Enviada")
+          expect(prompt).to include('informe o `opportunity_id` correspondente ao chamar `manage_opportunity`')
+        end
+      end
+
+      context 'when contact has only won or lost opportunities' do
+        before do
+          Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, status: :won, title: 'Ganho')
+          Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, status: :lost, title: 'Perdido')
+        end
+
+        it 'omits the open opportunities section cleanly' do
+          expect(prompt).not_to include('[Oportunidades Abertas do Contato]')
+        end
+      end
+
+      context 'when contact has no opportunities' do
+        it 'omits the open opportunities section cleanly' do
+          expect(prompt).not_to include('[Oportunidades Abertas do Contato]')
+        end
+      end
+
+      context 'when contact is nil' do
+        subject(:prompt_without_contact) do
+          described_class.build(
+            scout: scout,
+            contact: nil,
+            inbox: inbox
+          )
+        end
+
+        it 'omits the open opportunities section cleanly' do
+          expect(prompt_without_contact).not_to include('[Oportunidades Abertas do Contato]')
         end
       end
     end

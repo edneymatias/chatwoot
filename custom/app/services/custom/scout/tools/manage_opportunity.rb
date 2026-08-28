@@ -8,31 +8,44 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
   param :stage_id, type: :integer, desc: 'Target pipeline stage ID', required: false
   param :estimated_value, type: :number, desc: 'Estimated deal value', required: false
   param :custom_attributes, type: :hash, desc: 'Key-value map of qualification fields', required: false
+  param :opportunity_id, type: :integer, desc: 'ID of an existing open Opportunity to continue', required: false
 
   def name
     'manage_opportunity'
   end
 
-  def execute(action: 'create', title: nil, stage_id: nil, estimated_value: nil, custom_attributes: nil)
+  def execute(action: 'create', opportunity_id: nil, **params)
     if playground?
-      payload = { title: title, stage_id: stage_id, value: estimated_value, custom_attributes: custom_attributes }.compact
+      payload = params.merge(opportunity_id: opportunity_id).compact
       return "[Simulado] Oportunidade gerenciada (#{action}): #{payload.to_json}"
     end
 
-    opportunity = Opportunity.find_by(origin_conversation_id: conversation.id)
+    decision = Custom::Opportunities::ContinuityResolverService.new(
+      account: account,
+      contact: contact,
+      declared_opportunity_id: opportunity_id
+    ).call
 
-    if action == 'update' && opportunity.present?
-      update_opportunity(opportunity, title, stage_id, estimated_value, custom_attributes)
-    else
-      create_opportunity(opportunity, title, stage_id, estimated_value, custom_attributes)
+    case decision.outcome
+    when :reuse
+      update_opportunity(decision.opportunity, **params)
+    when :create_new
+      create_opportunity(**params)
+    when :ambiguous
+      handle_ambiguity(decision)
     end
   end
 
   private
 
-  def create_opportunity(existing_opp, title, stage_id, estimated_value, custom_attrs)
-    return update_opportunity(existing_opp, title, stage_id, estimated_value, custom_attrs) if existing_opp.present?
+  def handle_ambiguity(decision)
+    note_content = "⚠️ [Continuidade de Oportunidade]: Não foi possível vincular automaticamente. Motivo: #{decision.reason}"
+    Messages::MessageBuilder.new(nil, conversation, { content: note_content, private: true }).perform
 
+    "Opportunity management deferred: #{decision.reason}. A private note was added for human review."
+  end
+
+  def create_opportunity(title: nil, stage_id: nil, estimated_value: nil, custom_attributes: nil, **)
     resolved_stage_id = stage_id.presence || scout.default_pipeline_stage_id || account.pipeline_stages.first&.id
     resolved_title = title.presence || "Oportunidade ##{conversation.display_id}"
 
@@ -43,7 +56,7 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
       pipeline_stage_id: resolved_stage_id,
       title: resolved_title,
       value: estimated_value,
-      custom_attributes: custom_attrs || {},
+      custom_attributes: custom_attributes || {},
       status: :open
     )
 
@@ -53,10 +66,12 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
     "Opportunity created successfully (ID: #{opp.id}, Stage: #{resolved_stage_id})."
   end
 
-  def update_opportunity(opp, title, stage_id, estimated_value, custom_attrs)
-    opp.title = title if title.present?
-    opp.value = estimated_value if estimated_value.present?
-    opp.custom_attributes = (opp.custom_attributes || {}).merge(custom_attrs) if custom_attrs.is_a?(Hash)
+  def update_opportunity(opp, stage_id: nil, **params)
+    opp.attach_conversation!(conversation)
+
+    opp.title = params[:title] if params[:title].present?
+    opp.value = params[:estimated_value] if params[:estimated_value].present?
+    opp.custom_attributes = (opp.custom_attributes || {}).merge(params[:custom_attributes]) if params[:custom_attributes].is_a?(Hash)
 
     if stage_id.present?
       Custom::Scout::OpportunityStageTransitionService.new(

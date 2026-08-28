@@ -73,6 +73,7 @@ class Custom::Scout::SystemPromptsService
       [Diretrizes de Segurança e Resposta]
       - Anti-alucinação: Nunca invente informações e não utilize conhecimento prévio de treinamento para assumir dados sobre preços, planos, produtos, regras ou políticas da empresa. Responda estritamente com base no contexto fornecido e nas ferramentas disponíveis.
       - Anti-falsa-promessa: Não prometa trabalhos ou ações futuras que devam acontecer após esta resposta (como "vou verificar e te aviso", "entraremos em contato amanhã", "enviaremos um email depois" ou "vou registrar seu pedido"). Realize a ação imediatamente caso haja uma ferramenta disponível para isso agora ou, caso não seja possível resolver no momento, utilize a ferramenta de transferência para atendente humano.
+      - Intenção Comercial: Ao identificar interesse de compra ou necessidade comercial em qualquer momento da conversa, utilize a ferramenta `manage_opportunity` para criar ou atualizar a oportunidade.
       - Esclarecimento: Quando houver ambiguidade ou dados faltantes, faça perguntas curtas e diretas para esclarecer em vez de assumir premissas.
       - Fallback para humano: Se você não souber a resposta, se o contexto for insuficiente ou se o lead solicitar atendimento humano, utilize a ferramenta `handover_to_human`.
       - Idioma e Estilo: Detecte o idioma do lead e responda sempre no mesmo idioma, mantendo um tom natural, cordial, profissional e conciso.
@@ -84,11 +85,28 @@ class Custom::Scout::SystemPromptsService
     parts << @catalog_instructions if @catalog_instructions.present?
     parts << knowledge_tool_instruction if @knowledge_available
     parts << "Contexto do Contato:\n#{@contact.to_llm_text}" if @contact.present?
+    parts << open_opportunities_section if open_opportunities_section.present?
     parts << out_of_office_notice if @inbox&.out_of_office?
 
     return nil if parts.empty?
 
     parts.join("\n\n")
+  end
+
+  def open_opportunities_section
+    return nil unless @contact.present? && @scout.account.present?
+
+    open_opportunities = Opportunity.where(account_id: @scout.account.id, contact_id: @contact.id, status: :open)
+                                    .includes(:pipeline_stage).order(id: :asc)
+    return nil if open_opportunities.empty?
+
+    lines = ['[Oportunidades Abertas do Contato]']
+    open_opportunities.each do |opp|
+      lines << "- ID: #{opp.id} | Título: #{opp.title} | Estágio: #{opp.pipeline_stage&.name || 'Sem estágio'}"
+    end
+    lines << "\nSe a conversa atual continuar um destes negócios, informe o `opportunity_id` correspondente ao chamar `manage_opportunity`. " \
+             'Caso contrário, ou se não tiver certeza, não informe `opportunity_id`.'
+    lines.join("\n")
   end
 
   def knowledge_tool_instruction
@@ -104,31 +122,22 @@ class Custom::Scout::SystemPromptsService
   def funnel_section
     stages = @scout.account&.pipeline_stages&.includes(:required_custom_attribute_definitions)&.order(:position) || []
     global_reqs = @scout.required_custom_attribute_definitions.to_a
-
     return nil if stages.empty? && global_reqs.empty?
 
     lines = ['[Funil de Vendas e Qualificação]']
     lines.concat(build_stages_lines(stages)) if stages.any?
     lines.concat(build_global_reqs_lines(global_reqs)) if global_reqs.any?
     lines.concat(build_funnel_guidelines_lines)
-
     lines.join("\n")
   end
 
   def build_stages_lines(stages)
-    lines = ['Estágios do Funil disponíveis para esta conta:']
-    stages.each do |stage|
-      lines << format_stage(stage)
-    end
-    lines
+    ['Estágios do Funil disponíveis para esta conta:', *stages.map { |stage| format_stage(stage) }]
   end
 
   def build_global_reqs_lines(global_reqs)
-    lines = ["\nRequisitos Globais de Qualificação (obrigatórios para mover para o estágio de qualificação):"]
-    global_reqs.each do |definition|
-      lines << format_attribute_definition(definition)
-    end
-    lines
+    ["\nRequisitos Globais de Qualificação (obrigatórios para mover para o estágio de qualificação):",
+     *global_reqs.map { |definition| format_attribute_definition(definition) }]
   end
 
   def build_funnel_guidelines_lines
@@ -142,46 +151,29 @@ class Custom::Scout::SystemPromptsService
   end
 
   def format_stage(stage)
-    role = stage_role_label(stage)
-    stage_lines = ["- ID: #{stage.id} | Nome: #{stage.name}#{role}"]
-    stage_lines << "  Descrição do estágio: #{stage.description.strip}" if stage.description.present?
-
+    lines = ["- ID: #{stage.id} | Nome: #{stage.name}#{stage_role_label(stage)}"]
+    lines << "  Descrição do estágio: #{stage.description.strip}" if stage.description.present?
     if stage.required_custom_attribute_definitions.any?
-      stage_lines << '  Campos obrigatórios para avançar para este estágio:'
-      stage.required_custom_attribute_definitions.each do |definition|
-        stage_lines << "    #{format_attribute_definition(definition)}"
-      end
+      lines << '  Campos obrigatórios para avançar para este estágio:'
+      stage.required_custom_attribute_definitions.each { |defn| lines << "    #{format_attribute_definition(defn)}" }
     end
-
-    stage_lines.join("\n")
+    lines.join("\n")
   end
 
   def stage_role_label(stage)
-    if stage.id == @scout.default_pipeline_stage_id
-      ' (Estágio Inicial/Padrão)'
-    elsif stage.id == @scout.qualified_stage_id
-      ' (Estágio Qualificado)'
-    elsif stage.id == @scout.unqualified_stage_id
-      ' (Estágio Desqualificado / Revisão Humana)'
-    else
-      ''
+    case stage.id
+    when @scout.default_pipeline_stage_id then ' (Estágio Inicial/Padrão)'
+    when @scout.qualified_stage_id then ' (Estágio Qualificado)'
+    when @scout.unqualified_stage_id then ' (Estágio Desqualificado / Revisão Humana)'
+    else ''
     end
   end
 
   def format_attribute_definition(definition)
     type_info = definition.attribute_display_type
-    values_info = if definition.list? && definition.attribute_values.present?
-                    ", Valores permitidos: #{Array(definition.attribute_values).join(', ')}"
-                  else
-                    ''
-                  end
+    values_info = ", Valores permitidos: #{Array(definition.attribute_values).join(', ')}" if definition.list? && definition.attribute_values.present?
     base_info = "- #{definition.attribute_display_name} (Chave: #{definition.attribute_key}, Tipo: #{type_info}#{values_info})"
-
-    if definition.attribute_description.present?
-      "#{base_info}\n    Descrição: #{definition.attribute_description.strip}"
-    else
-      base_info
-    end
+    definition.attribute_description.present? ? "#{base_info}\n    Descrição: #{definition.attribute_description.strip}" : base_info
   end
 
   def custom_instructions_section
