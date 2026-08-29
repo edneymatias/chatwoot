@@ -78,16 +78,13 @@ RSpec.describe Custom::Scout::OpportunityStageTransitionService do
       end
 
       context 'when global qualification requirements are missing' do
-        it 'rejects transition, returns missing attribute names, and does not trigger handoff' do
-          handoff_service = instance_double(Custom::Scout::HandoffService)
-          allow(Custom::Scout::HandoffService).to receive(:new).and_return(handoff_service)
-
+        it 'rejects transition, returns missing attribute names, and does not flag handoff as needed' do
           result = service.call(stage_id: stage_qualified.id)
           expect(result).to include('Cannot move to the qualified stage')
           expect(result).to include('Budget')
           expect(result).to include('Timeline')
           expect(opportunity.reload.pipeline_stage_id).to eq(stage1.id)
-          expect(Custom::Scout::HandoffService).not_to have_received(:new)
+          expect(service.handoff_needed).to be false
         end
       end
 
@@ -96,25 +93,21 @@ RSpec.describe Custom::Scout::OpportunityStageTransitionService do
           opportunity.update!(custom_attributes: { 'budget' => 5000, 'timeline' => 'Immediate' })
         end
 
-        it 'persists stage change and triggers automatic handoff exactly once' do
-          handoff_service = instance_double(Custom::Scout::HandoffService, perform: true)
-          allow(Custom::Scout::HandoffService).to receive(:new).with(scout: scout, conversation: conversation).and_return(handoff_service)
+        it 'persists stage change and flags handoff as needed, without triggering it synchronously' do
+          expect(Custom::Scout::HandoffService).not_to receive(:new)
 
           result = service.call(stage_id: stage_qualified.id)
           expect(result).to include('Opportunity moved to stage Qualified successfully.')
           expect(opportunity.reload.pipeline_stage_id).to eq(stage_qualified.id)
-          expect(handoff_service).to have_received(:perform).once
+          expect(service.handoff_needed).to be true
         end
 
-        it 'does not re-trigger handoff on subsequent redundant stage-move calls' do
+        it 'does not flag handoff as needed on subsequent redundant stage-move calls' do
           opportunity.update!(pipeline_stage: stage_qualified)
-
-          handoff_service = instance_double(Custom::Scout::HandoffService)
-          allow(Custom::Scout::HandoffService).to receive(:new).and_return(handoff_service)
 
           result = service.call(stage_id: stage_qualified.id)
           expect(result).to include('Opportunity moved to stage Qualified successfully.')
-          expect(Custom::Scout::HandoffService).not_to have_received(:new)
+          expect(service.handoff_needed).to be false
         end
       end
     end
@@ -180,15 +173,12 @@ RSpec.describe Custom::Scout::OpportunityStageTransitionService do
     end
 
     context 'when moving to unqualified stage (User Story 5)' do
-      it 'moves stage to unqualified, leaves status open, and does not trigger handoff' do
-        handoff_service = instance_double(Custom::Scout::HandoffService)
-        allow(Custom::Scout::HandoffService).to receive(:new).and_return(handoff_service)
-
+      it 'moves stage to unqualified, leaves status open, and does not flag handoff as needed' do
         result = service.call(stage_id: stage_unqualified.id)
         expect(result).to include('Opportunity moved to stage Unqualified successfully.')
         expect(opportunity.reload.pipeline_stage_id).to eq(stage_unqualified.id)
         expect(opportunity.status).to eq('open')
-        expect(Custom::Scout::HandoffService).not_to have_received(:new)
+        expect(service.handoff_needed).to be false
       end
     end
   end

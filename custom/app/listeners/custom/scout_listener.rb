@@ -7,9 +7,7 @@ class Custom::ScoutListener < BaseListener
     return unless message.incoming? && !message.private?
 
     inbox = message.inbox
-    return unless inbox&.channel_type == 'Channel::Whatsapp'
-
-    scout = inbox.scout
+    scout = inbox&.scout
     return unless scout&.enabled?
 
     conversation = message.conversation

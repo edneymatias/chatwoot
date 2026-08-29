@@ -6,7 +6,8 @@ RSpec.describe Custom::ScoutListener do
   let(:account) { create(:account) }
   let(:whatsapp_channel) { create(:channel_whatsapp, account: account, sync_templates: false) }
   let(:whatsapp_inbox) { create(:inbox, account: account, channel: whatsapp_channel) }
-  let(:email_inbox) { create(:inbox, account: account) }
+  let(:email_inbox) { create(:inbox, :with_email, account: account) }
+  let(:widget_inbox) { create(:inbox, account: account) }
   let(:contact) { create(:contact, account: account) }
   let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: whatsapp_inbox) }
   let(:conversation) do
@@ -15,7 +16,7 @@ RSpec.describe Custom::ScoutListener do
   let(:scout) do
     Scout.create!(
       account: account,
-      name: 'WhatsApp SDR',
+      name: 'Test SDR',
       enabled: true
     )
   end
@@ -35,6 +36,42 @@ RSpec.describe Custom::ScoutListener do
       expect(Custom::Scout::ProcessMessageJob).to have_received(:enqueue_debounced).with(conversation, scout)
     end
 
+    it 'enqueues debounced message job for incoming non-WhatsApp (Email) messages on enabled Scout inboxes' do
+      ScoutInbox.create!(scout: scout, inbox: email_inbox)
+      email_contact_inbox = create(:contact_inbox, contact: contact, inbox: email_inbox)
+      email_conv = create(
+        :conversation,
+        account: account,
+        inbox: email_inbox,
+        contact: contact,
+        contact_inbox: email_contact_inbox,
+        status: :pending
+      )
+      message = create(:message, account: account, inbox: email_inbox, conversation: email_conv, message_type: :incoming, private: false)
+      event = Events::Base.new('message.created', Time.current, message: message)
+
+      described_class.instance.message_created(event)
+      expect(Custom::Scout::ProcessMessageJob).to have_received(:enqueue_debounced).with(email_conv, scout)
+    end
+
+    it 'enqueues debounced message job for incoming WebWidget messages on enabled Scout inboxes' do
+      ScoutInbox.create!(scout: scout, inbox: widget_inbox)
+      widget_contact_inbox = create(:contact_inbox, contact: contact, inbox: widget_inbox)
+      widget_conv = create(
+        :conversation,
+        account: account,
+        inbox: widget_inbox,
+        contact: contact,
+        contact_inbox: widget_contact_inbox,
+        status: :pending
+      )
+      message = create(:message, account: account, inbox: widget_inbox, conversation: widget_conv, message_type: :incoming, private: false)
+      event = Events::Base.new('message.created', Time.current, message: message)
+
+      described_class.instance.message_created(event)
+      expect(Custom::Scout::ProcessMessageJob).to have_received(:enqueue_debounced).with(widget_conv, scout)
+    end
+
     it 'ignores private messages' do
       message = create(:message, account: account, inbox: whatsapp_inbox, conversation: conversation, message_type: :incoming, private: true)
       event = Events::Base.new('message.created', Time.current, message: message)
@@ -43,9 +80,16 @@ RSpec.describe Custom::ScoutListener do
       expect(Custom::Scout::ProcessMessageJob).not_to have_received(:enqueue_debounced)
     end
 
-    it 'ignores non-WhatsApp inboxes' do
+    it 'ignores inboxes without a Scout attached' do
       email_contact_inbox = create(:contact_inbox, contact: contact, inbox: email_inbox)
-      email_conv = create(:conversation, account: account, inbox: email_inbox, contact: contact, contact_inbox: email_contact_inbox, status: :pending)
+      email_conv = create(
+        :conversation,
+        account: account,
+        inbox: email_inbox,
+        contact: contact,
+        contact_inbox: email_contact_inbox,
+        status: :pending
+      )
       message = create(:message, account: account, inbox: email_inbox, conversation: email_conv, message_type: :incoming, private: false)
       event = Events::Base.new('message.created', Time.current, message: message)
 

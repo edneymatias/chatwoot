@@ -77,7 +77,7 @@ RSpec.describe Custom::Scout::Tools::MoveOpportunityStage do
       end
 
       it 'delegates transition to Custom::Scout::OpportunityStageTransitionService' do
-        transition_service = instance_double(Custom::Scout::OpportunityStageTransitionService, call: 'Transition executed')
+        transition_service = instance_double(Custom::Scout::OpportunityStageTransitionService, call: 'Transition executed', handoff_needed: false)
         allow(Custom::Scout::OpportunityStageTransitionService).to receive(:new).with(
           scout: scout,
           conversation: conversation,
@@ -87,6 +87,21 @@ RSpec.describe Custom::Scout::Tools::MoveOpportunityStage do
         result = tool.execute(stage_id: stage2.id)
         expect(result).to eq('Transition executed')
         expect(transition_service).to have_received(:call).with(stage_id: stage2.id)
+      end
+
+      context 'when the target stage is the scout qualified stage' do
+        let(:stage_qualified) { PipelineStage.create!(account: account, name: 'Qualified', position: 4) }
+
+        before { scout.update!(qualified_stage: stage_qualified) }
+
+        it 'flags handoff_needed on the tool instance without triggering it synchronously' do
+          expect(Custom::Scout::HandoffService).not_to receive(:new)
+
+          result = tool.execute(stage_id: stage_qualified.id)
+
+          expect(result).to include('successfully')
+          expect(tool.handoff_needed).to be true
+        end
       end
     end
   end

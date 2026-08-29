@@ -39,8 +39,19 @@ RSpec.describe Custom::Scout::HandoffService do
       expect(conversation.status).to eq('open')
       expect(conversation.assignee_id).to eq(user.id)
       expect(conversation.team_id).to eq(team.id)
+      expect(conversation.messages.where(private: false, message_type: :outgoing).last.content).to eq(I18n.t('conversations.scout.handoff'))
       expect(conversation.messages.where(private: true).last.content).to include('Transferência para atendimento humano: Qualified lead')
       expect(memory_service).to have_received(:generate_and_update_notes)
+    end
+
+    it 'creates public transfer message before bot_handoff! is called' do
+      allow(conversation).to receive(:bot_handoff!).and_wrap_original do |original_method, *args|
+        expect(conversation.messages.where(private: false, message_type: :outgoing).last&.content).to eq(I18n.t('conversations.scout.handoff'))
+        original_method.call(*args)
+      end
+
+      service.perform(reason: 'Qualified lead')
+      expect(conversation.reload.status).to eq('open')
     end
 
     it 'uses explicit team_id when passed over scout handover_team_id' do
@@ -49,10 +60,24 @@ RSpec.describe Custom::Scout::HandoffService do
       expect(conversation.team_id).to eq(other_team.id)
     end
 
-    it 'omits private note creation when reason is blank' do
+    it 'sends public handoff notice and a private note with a default reason when reason is blank' do
       expect do
         service.perform
-      end.not_to(change { conversation.messages.where(private: true).count })
+      end.to change { conversation.messages.where(private: false, message_type: :outgoing).count }.by(1)
+         .and(change { conversation.messages.where(private: true).count }.by(1))
+
+      expect(conversation.messages.where(private: false, message_type: :outgoing).last.content).to eq(I18n.t('conversations.scout.handoff'))
+      expect(conversation.messages.where(private: true).last.content).to include('motivo não informado pelo modelo')
+    end
+
+    it 'sends the public handoff notice in the conversation language when set, over the account locale' do
+      conversation.update!(additional_attributes: { 'conversation_language' => 'pt_BR' })
+      account.update!(locale: :en)
+
+      service.perform
+
+      expect(conversation.messages.where(private: false, message_type: :outgoing).last.content)
+        .to eq(I18n.t('conversations.scout.handoff', locale: 'pt_BR'))
     end
 
     context 'when scout feature_memory is false' do
@@ -68,9 +93,12 @@ RSpec.describe Custom::Scout::HandoffService do
     context 'when conversation is not pending' do
       before { conversation.update!(status: :open) }
 
-      it 'does not call bot_handoff! but still updates assignments' do
+      it 'does not call bot_handoff! or send public notice but still updates assignments' do
         allow(conversation).to receive(:bot_handoff!)
-        service.perform(assignee_id: user.id)
+        expect do
+          service.perform(assignee_id: user.id)
+        end.not_to(change { conversation.messages.where(private: false, message_type: :outgoing).count })
+
         expect(conversation).not_to have_received(:bot_handoff!)
         expect(conversation.reload.assignee_id).to eq(user.id)
       end

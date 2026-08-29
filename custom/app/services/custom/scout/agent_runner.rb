@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Custom::Scout::AgentRunner
+  include Integrations::LlmInstrumentation
+
   attr_reader :scout, :conversation, :account, :inbox, :contact
 
   def initialize(scout:, conversation:)
@@ -29,6 +31,10 @@ class Custom::Scout::AgentRunner
 
   private
 
+  def conversation_locale
+    @conversation.language.presence || @account.locale.presence || I18n.default_locale.to_s
+  end
+
   def conversation_pending?
     status = Conversation.uncached { Conversation.where(id: @conversation.id).pick(:status) }
     status == 'pending' || status == Conversation.statuses[:pending]
@@ -44,12 +50,12 @@ class Custom::Scout::AgentRunner
   def perform_fail_safe_handoff(reason = nil)
     return unless conversation_pending?
 
+    handoff_params = { content: I18n.t('conversations.scout.handoff', locale: conversation_locale), message_type: 'outgoing', private: false }
+    Messages::MessageBuilder.new(nil, @conversation, handoff_params).perform
+
     @conversation.bot_handoff!
-    alert_content = if reason.present?
-                      "⚠️ [IA Pausada]: A conversa foi transferida para atendimento humano. Motivo: #{reason}"
-                    else
-                      '⚠️ [IA Pausada]: A conversa foi transferida para atendimento humano devido a esgotamento de saldo/limite de API.'
-                    end
+    alert_suffix = reason.present? ? ". Motivo: #{reason}" : ' devido a esgotamento de saldo/limite de API.'
+    alert_content = "⚠️ [IA Pausada]: A conversa foi transferida para atendimento humano#{alert_suffix}"
     Messages::MessageBuilder.new(nil, @conversation, { content: alert_content, private: true }).perform
 
     Custom::Scout::ContactNotesService.new(@scout, @conversation).generate_and_update_notes if @scout.feature_memory?
@@ -58,6 +64,7 @@ class Custom::Scout::AgentRunner
   def generate_and_process_response
     tools, handover_tool = build_tools
     chat = @scout.llm_chat
+    chat = chat.with_schema(Custom::Scout::ResponseSchema)
     chat.with_instructions(build_system_instructions)
     tools.each { |tool| chat = chat.with_tool(tool) }
 
@@ -66,10 +73,10 @@ class Custom::Scout::AgentRunner
     add_history_to_chat(chat, history_messages, last_user_message)
 
     response = execute_chat(chat, last_user_message)
-    process_response(response, handover_tool)
+    process_response(response, handover_tool, tools)
   end
 
-  def process_response(response, handover_tool)
+  def process_response(response, handover_tool, tools)
     return if handover_tool.handoff_executed
     return unless conversation_pending?
 
@@ -80,6 +87,16 @@ class Custom::Scout::AgentRunner
     end
 
     dispatch_outgoing_reply(parsed[:response])
+    trigger_qualification_handoff if qualification_handoff_needed?(tools)
+  end
+
+  def qualification_handoff_needed?(tools)
+    tools.any? { |tool| tool.respond_to?(:handoff_needed) && tool.handoff_needed }
+  end
+
+  def trigger_qualification_handoff
+    service = Custom::Scout::HandoffService.new(scout: @scout, conversation: @conversation)
+    service.perform(reason: 'Oportunidade movida para o estágio qualificado')
   end
 
   def parse_structured_response(content)
@@ -88,7 +105,25 @@ class Custom::Scout::AgentRunner
       return nil
     end
 
-    sanitized = content.strip.sub(/\A```(?:\w*)\s*\n?/, '').sub(/\n?\s*```\s*\z/, '').strip
+    return parse_structured_hash(content) if content.is_a?(Hash)
+
+    parse_structured_json_string(content)
+  end
+
+  def parse_structured_hash(hash)
+    response_text = hash['response'] || hash[:response]
+    if response_text.blank?
+      Rails.logger.warn "[Scout AgentRunner] Structured response missing 'response' key: #{hash.inspect}"
+      return nil
+    end
+
+    reasoning_text = hash['reasoning'] || hash[:reasoning]
+    Rails.logger.info "[Scout AgentRunner] reasoning: #{reasoning_text}"
+    { response: response_text }
+  end
+
+  def parse_structured_json_string(content)
+    sanitized = content.to_s.strip.sub(/\A```(?:\w*)\s*\n?/, '').sub(/\n?\s*```\s*\z/, '').strip
     json = JSON.parse(sanitized)
     if json['response'].blank?
       Rails.logger.warn "[Scout AgentRunner] Structured response missing 'response' key: #{sanitized}"
@@ -103,15 +138,16 @@ class Custom::Scout::AgentRunner
   end
 
   def build_tools
-    manage_opp = Custom::Scout::Tools::ManageOpportunity.new(@scout, @conversation)
-    move_stage = Custom::Scout::Tools::MoveOpportunityStage.new(@scout, @conversation)
-    update_contact = Custom::Scout::Tools::UpdateContact.new(@scout, @conversation)
-    create_note = Custom::Scout::Tools::CreatePrivateNote.new(@scout, @conversation)
-    handover = Custom::Scout::Tools::HandoverToHuman.new(@scout, @conversation)
-    call_custom_api = Custom::Scout::Tools::CallCustomApi.new(@scout, @conversation)
-    search_kb = Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, @conversation)
-
-    [[manage_opp, move_stage, update_contact, create_note, handover, call_custom_api, search_kb], handover]
+    tools = [
+      Custom::Scout::Tools::ManageOpportunity.new(@scout, @conversation),
+      Custom::Scout::Tools::MoveOpportunityStage.new(@scout, @conversation),
+      Custom::Scout::Tools::UpdateContact.new(@scout, @conversation),
+      Custom::Scout::Tools::CreatePrivateNote.new(@scout, @conversation),
+      (handover = Custom::Scout::Tools::HandoverToHuman.new(@scout, @conversation)),
+      Custom::Scout::Tools::CallCustomApi.new(@scout, @conversation),
+      Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, @conversation)
+    ]
+    [tools, handover]
   end
 
   def build_system_instructions
@@ -131,10 +167,7 @@ class Custom::Scout::AgentRunner
   end
 
   def conversation_messages
-    @conversation.messages
-                 .where(private: false, message_type: %i[incoming outgoing])
-                 .reorder(created_at: :asc, id: :asc)
-                 .to_a
+    @conversation.messages.where(private: false, message_type: %i[incoming outgoing]).reorder(created_at: :asc, id: :asc).to_a
   end
 
   def add_history_to_chat(chat, messages, last_message)
@@ -150,30 +183,37 @@ class Custom::Scout::AgentRunner
   def execute_chat(chat, last_message)
     prompt_text = last_message&.content.presence || 'Mensagem recebida.'
     attachments = extract_attachment_urls(last_message)
+    params = instrumentation_params(chat, prompt_text)
 
-    if attachments.any?
-      chat.ask(prompt_text, with: attachments)
-    else
-      chat.ask(prompt_text)
+    instrument_agent_session(params) do
+      instrument_llm_call(params) do
+        attachments.any? ? chat.ask(prompt_text, with: attachments) : chat.ask(prompt_text)
+      end
     end
+  end
+
+  def instrumentation_params(chat, prompt_text)
+    messages = chat.respond_to?(:messages) && chat.messages.present? ? chat.messages.map { |m| { role: m.role.to_s, content: m.content.to_s } } : []
+    messages << { role: 'user', content: prompt_text.to_s }
+    config = ScoutAccountConfig.find_by(account_id: @scout.account_id)
+
+    {
+      span_name: 'llm.scout.agent_runner', account: @account, account_id: @account.id, conversation_id: @conversation.id,
+      feature_name: 'scout_agent_runner', model: config&.model_name || 'gemini-2.0-flash', messages: messages,
+      metadata: { scout_id: @scout.id, channel_type: @inbox&.channel_type }.compact
+    }
   end
 
   def extract_attachment_urls(message)
     return [] if message.blank?
 
     message.attachments.where(file_type: %i[image audio]).filter_map do |attachment|
-      attachment.download_url.presence ||
-        attachment.external_url.presence ||
-        (attachment.file.attached? ? attachment.file_url : nil)
+      attachment.download_url.presence || attachment.external_url.presence || (attachment.file.attached? ? attachment.file_url : nil)
     end
   end
 
   def dispatch_outgoing_reply(reply_content)
-    params = { content: reply_content, message_type: 'outgoing', private: false }
-    Messages::MessageBuilder.new(nil, @conversation, params).perform
-
-    @scout.with_lock do
-      @scout.update!(responses_consumed: @scout.responses_consumed + 1)
-    end
+    Messages::MessageBuilder.new(nil, @conversation, { content: reply_content, message_type: 'outgoing', private: false }).perform
+    @scout.with_lock { @scout.update!(responses_consumed: @scout.responses_consumed + 1) }
   end
 end

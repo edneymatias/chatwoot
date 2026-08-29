@@ -5,6 +5,7 @@ require 'rails_helper'
 RSpec.describe Custom::Message do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
+  let(:email_inbox) { create(:inbox, :with_email, account: account) }
   let(:conversation) { create(:conversation, account: account, inbox: inbox, status: :pending) }
   let(:scout) { Scout.create!(account: account, name: 'SDR Bot', enabled: true) }
 
@@ -18,6 +19,14 @@ RSpec.describe Custom::Message do
         create(:message, message_type: :outgoing, conversation: conversation, private: false)
 
         expect(conversation.reload.open?).to be true
+      end
+
+      it 'marks the pending conversation as open on a non-WhatsApp (Email) inbox' do
+        ScoutInbox.create!(scout: scout, inbox: email_inbox)
+        email_conversation = create(:conversation, account: account, inbox: email_inbox, status: :pending)
+        create(:message, message_type: :outgoing, conversation: email_conversation, private: false)
+
+        expect(email_conversation.reload.open?).to be true
       end
 
       it 'does not mark the conversation as open when the outgoing message is a private note' do

@@ -36,13 +36,14 @@ RSpec.describe Custom::Scout::AgentRunner do
   let(:runner) { described_class.new(scout: scout, conversation: conversation) }
 
   describe '#perform' do
-    let(:fake_chat) { instance_double(RubyLLM::Chat) }
+    let(:fake_chat) { instance_double(RubyLLM::Chat, messages: []) }
     let(:valid_json_content) { { reasoning: 'Lead perguntou sobre planos.', response: 'Olá! Como posso ajudar você hoje?' }.to_json }
     let(:fake_response) { instance_double(RubyLLM::Message, content: valid_json_content) }
 
     before do
       account_config
       allow(scout).to receive(:llm_chat).and_return(fake_chat)
+      allow(fake_chat).to receive(:with_schema).and_return(fake_chat)
       allow(fake_chat).to receive(:with_instructions).and_return(fake_chat)
       allow(fake_chat).to receive(:with_tool).and_return(fake_chat)
       allow(fake_chat).to receive(:add_message).and_return(fake_chat)
@@ -130,6 +131,69 @@ RSpec.describe Custom::Scout::AgentRunner do
         outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
         expect(outgoing.content).to eq('Olá! Como posso ajudar você hoje?')
       end
+
+      it 'configures LLM chat with Custom::Scout::ResponseSchema' do
+        expect(fake_chat).to receive(:with_schema).with(Custom::Scout::ResponseSchema).and_return(fake_chat)
+
+        runner.perform
+      end
+
+      it 'extracts response and reasoning when RubyLLM returns an already-parsed Hash (schema mode)' do
+        allow(fake_response).to receive(:content).and_return(
+          { 'reasoning' => 'Lead quer saber preços', 'response' => 'Nossos planos começam em R$ 99.' }
+        )
+
+        expect do
+          runner.perform
+        end.to change { scout.reload.responses_consumed }.by(1)
+
+        outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
+        expect(outgoing).to be_present
+        expect(outgoing.content).to eq('Nossos planos começam em R$ 99.')
+        expect(outgoing.content).not_to include('reasoning')
+        expect(conversation.reload.status).to eq('pending')
+      end
+
+      it 'registers schema alongside tool configuration during conversation execution' do
+        expect(fake_chat).to receive(:with_schema).with(Custom::Scout::ResponseSchema).and_return(fake_chat)
+        expect(fake_chat).to receive(:with_tool).with(an_instance_of(Custom::Scout::Tools::ManageOpportunity)).and_return(fake_chat)
+
+        runner.perform
+      end
+
+      it 'dispatches the model final reply before triggering a deferred qualification handoff' do
+        captured_manage_opportunity = nil
+        allow(fake_chat).to receive(:with_tool) do |tool|
+          captured_manage_opportunity = tool if tool.is_a?(Custom::Scout::Tools::ManageOpportunity)
+          fake_chat
+        end
+        # Simulates manage_opportunity having qualified the opportunity mid-turn
+        # (Custom::Scout::OpportunityStageTransitionService flags this, it does not
+        # trigger the handoff itself — see research.md for the race this avoids).
+        allow(fake_chat).to receive(:ask) do
+          allow(captured_manage_opportunity).to receive(:handoff_needed).and_return(true)
+          fake_response
+        end
+
+        handoff_service = instance_double(Custom::Scout::HandoffService)
+        allow(Custom::Scout::HandoffService).to receive(:new).with(scout: scout, conversation: conversation).and_return(handoff_service)
+        allow(handoff_service).to receive(:perform) do |**|
+          expect(conversation.messages.where(private: false, message_type: :outgoing).count).to eq(1)
+          'Conversation transferred to human queue successfully.'
+        end
+
+        runner.perform
+
+        outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
+        expect(outgoing.content).to eq('Olá! Como posso ajudar você hoje?')
+        expect(handoff_service).to have_received(:perform).with(reason: 'Oportunidade movida para o estágio qualificado').once
+      end
+
+      it 'does not trigger a qualification handoff when no tool flags handoff_needed' do
+        expect(Custom::Scout::HandoffService).not_to receive(:new)
+
+        runner.perform
+      end
     end
 
     context 'when model returns unparseable or invalid structured output (fail-closed)' do
@@ -143,33 +207,53 @@ RSpec.describe Custom::Scout::AgentRunner do
         )
       end
 
-      it 'fails closed on plain text without JSON syntax' do
+      it 'fails closed on plain text without JSON syntax and sends public handoff notice' do
         allow(fake_response).to receive(:content).and_return('Texto simples sem JSON')
 
         runner.perform
 
         expect(conversation.reload.status).to eq('open')
-        expect(conversation.messages.where(private: false, message_type: :outgoing)).to be_empty
+        expect(conversation.messages.where(private: false, message_type: :outgoing).last.content).to eq(I18n.t('conversations.scout.handoff'))
         expect(conversation.messages.where(private: true).last.content).to include('⚠️ [IA Pausada]')
       end
 
-      it 'fails closed when json response field is blank' do
+      it 'fails closed when json response field is blank and sends public handoff notice' do
         allow(fake_response).to receive(:content).and_return({ reasoning: 'justificativa', response: '' }.to_json)
 
         runner.perform
 
         expect(conversation.reload.status).to eq('open')
-        expect(conversation.messages.where(private: false, message_type: :outgoing)).to be_empty
+        expect(conversation.messages.where(private: false, message_type: :outgoing).last.content).to eq(I18n.t('conversations.scout.handoff'))
         expect(conversation.messages.where(private: true).last.content).to include('⚠️ [IA Pausada]')
       end
 
-      it 'fails closed when content is nil' do
+      it 'fails closed when content is nil and sends public handoff notice' do
         allow(fake_response).to receive(:content).and_return(nil)
 
         runner.perform
 
         expect(conversation.reload.status).to eq('open')
-        expect(conversation.messages.where(private: false, message_type: :outgoing)).to be_empty
+        expect(conversation.messages.where(private: false, message_type: :outgoing).last.content).to eq(I18n.t('conversations.scout.handoff'))
+        expect(conversation.messages.where(private: true).last.content).to include('⚠️ [IA Pausada]')
+      end
+
+      it 'fails closed when parsed Hash is missing response key and sends public handoff notice' do
+        allow(fake_response).to receive(:content).and_return({ 'reasoning' => 'Sem resposta' })
+
+        runner.perform
+
+        expect(conversation.reload.status).to eq('open')
+        expect(conversation.messages.where(private: false, message_type: :outgoing).last.content).to eq(I18n.t('conversations.scout.handoff'))
+        expect(conversation.messages.where(private: true).last.content).to include('⚠️ [IA Pausada]')
+      end
+
+      it 'fails closed when parsed Hash response is blank and sends public handoff notice' do
+        allow(fake_response).to receive(:content).and_return({ 'reasoning' => 'Sem resposta', 'response' => '   ' })
+
+        runner.perform
+
+        expect(conversation.reload.status).to eq('open')
+        expect(conversation.messages.where(private: false, message_type: :outgoing).last.content).to eq(I18n.t('conversations.scout.handoff'))
         expect(conversation.messages.where(private: true).last.content).to include('⚠️ [IA Pausada]')
       end
     end
@@ -179,12 +263,33 @@ RSpec.describe Custom::Scout::AgentRunner do
         scout.update!(responses_quota: 0)
       end
 
-      it 'hands over conversation to human with alert note without calling LLM' do
+      it 'hands over conversation to human with alert note and public handoff notice without calling LLM' do
         runner.perform
 
         expect(conversation.reload.status).to eq('open')
+        expect(conversation.messages.where(private: false, message_type: :outgoing).last.content).to eq(I18n.t('conversations.scout.handoff'))
         expect(conversation.messages.where(private: true).last.content).to include('⚠️ [IA Pausada]')
         expect(fake_chat).not_to have_received(:ask)
+      end
+
+      it 'creates public transfer message before bot_handoff! is called' do
+        allow(conversation).to receive(:bot_handoff!).and_wrap_original do |original_method, *args|
+          expect(conversation.messages.where(private: false, message_type: :outgoing).last&.content).to eq(I18n.t('conversations.scout.handoff'))
+          original_method.call(*args)
+        end
+
+        runner.perform
+        expect(conversation.reload.status).to eq('open')
+      end
+
+      it 'sends the public handoff notice in the conversation language when set, over the account locale' do
+        conversation.update!(additional_attributes: { 'conversation_language' => 'pt_BR' })
+        account.update!(locale: :en)
+
+        runner.perform
+
+        expect(conversation.messages.where(private: false, message_type: :outgoing).last.content)
+          .to eq(I18n.t('conversations.scout.handoff', locale: 'pt_BR'))
       end
     end
 
@@ -200,10 +305,11 @@ RSpec.describe Custom::Scout::AgentRunner do
         allow(fake_chat).to receive(:ask).and_raise(StandardError.new('Provider 500'))
       end
 
-      it 'rescues error, triggers fail-safe handoff and alert note' do
+      it 'rescues error, triggers fail-safe handoff, public notice and alert note' do
         runner.perform
 
         expect(conversation.reload.status).to eq('open')
+        expect(conversation.messages.where(private: false, message_type: :outgoing).last.content).to eq(I18n.t('conversations.scout.handoff'))
         expect(conversation.messages.where(private: true).last.content).to include('⚠️ [IA Pausada]')
       end
     end
@@ -219,6 +325,83 @@ RSpec.describe Custom::Scout::AgentRunner do
       it 'triggers contact memory generation on fail-safe handoff' do
         runner.perform
         expect(memory_service).to have_received(:generate_and_update_notes)
+      end
+    end
+
+    context 'when observability / OpenTelemetry is configured' do
+      before do
+        conversation.messages.create!(
+          account: account,
+          inbox: inbox,
+          sender: contact,
+          message_type: :incoming,
+          content: 'Quero conhecer os planos'
+        )
+      end
+
+      context 'when otel is enabled' do
+        before do
+          allow(ChatwootApp).to receive(:otel_enabled?).and_return(true)
+        end
+
+        it 'wraps LLM chat execution in instrument_agent_session and instrument_llm_call' do
+          expect(runner).to receive(:instrument_agent_session).with(
+            hash_including(
+              span_name: 'llm.scout.agent_runner',
+              account_id: account.id,
+              conversation_id: conversation.id,
+              feature_name: 'scout_agent_runner'
+            )
+          ).and_call_original
+
+          expect(runner).to receive(:instrument_llm_call).with(
+            hash_including(
+              span_name: 'llm.scout.agent_runner',
+              account_id: account.id,
+              conversation_id: conversation.id,
+              feature_name: 'scout_agent_runner'
+            )
+          ).and_call_original
+
+          mock_span = instance_double(OpenTelemetry::Trace::Span)
+          allow(mock_span).to receive(:set_attribute)
+          mock_tracer = instance_double(OpenTelemetry::Trace::Tracer)
+          allow(runner).to receive(:tracer).and_return(mock_tracer)
+          allow(mock_tracer).to receive(:in_span).and_yield(mock_span)
+
+          runner.perform
+
+          outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
+          expect(outgoing.content).to eq('Olá! Como posso ajudar você hoje?')
+        end
+
+        it 'completes conversation and dispatches reply normally even if tracing raises error mid-conversation' do
+          mock_tracer = instance_double(OpenTelemetry::Trace::Tracer)
+          allow(runner).to receive(:tracer).and_return(mock_tracer)
+          allow(mock_tracer).to receive(:in_span).and_raise(StandardError.new('Langfuse unreachable'))
+
+          runner.perform
+
+          outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
+          expect(outgoing).to be_present
+          expect(outgoing.content).to eq('Olá! Como posso ajudar você hoje?')
+          expect(conversation.reload.status).to eq('pending')
+        end
+      end
+
+      context 'when otel is disabled' do
+        before do
+          allow(ChatwootApp).to receive(:otel_enabled?).and_return(false)
+        end
+
+        it 'behaves identically without invoking tracing tracer or crashing' do
+          expect(runner).not_to receive(:tracer)
+
+          runner.perform
+
+          outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
+          expect(outgoing.content).to eq('Olá! Como posso ajudar você hoje?')
+        end
       end
     end
   end

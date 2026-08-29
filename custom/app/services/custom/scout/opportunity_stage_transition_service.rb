@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
 class Custom::Scout::OpportunityStageTransitionService
+  attr_reader :handoff_needed
+
   def initialize(scout:, conversation:, opportunity:)
     @scout = scout
     @conversation = conversation
     @opportunity = opportunity
+    @handoff_needed = false
   end
 
   def call(stage_id:)
@@ -46,7 +49,12 @@ class Custom::Scout::OpportunityStageTransitionService
     return unless @opportunity.saved_change_to_pipeline_stage_id?
     return unless @opportunity.pipeline_stage_id == @scout.qualified_stage_id
 
-    Custom::Scout::HandoffService.new(scout: @scout, conversation: @conversation).perform
+    # The actual handoff (public message + bot_handoff!) is deferred to
+    # AgentRunner, which triggers it only after the model's own final reply
+    # has been dispatched — see Custom::Scout::AgentRunner#process_response.
+    # Triggering it here, mid-tool-call, would race the conversation out of
+    # `pending` before the model's closing message could ever be delivered.
+    @handoff_needed = true
   end
 
   def format_save_failure_message(stage)

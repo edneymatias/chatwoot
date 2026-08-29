@@ -72,10 +72,67 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
 
         expect(conversation.messages.where(private: true)).to be_empty
       end
+
+      context 'when custom_attributes arrives malformed from the model' do
+        it 'ignores a string value instead of corrupting the jsonb column' do
+          result = tool.execute(action: 'create', title: 'Lead Malformado', custom_attributes: '{"budget":5000}')
+          expect(result).to include('successfully')
+
+          opp = Opportunity.find_by(origin_conversation_id: conversation.id)
+          expect(opp.custom_attributes).to eq({})
+        end
+
+        it 'strips keys that are not real custom attribute definitions (e.g. a char-indexed hash)' do
+          attr_budget
+          garbled = { '0' => '{', '1' => '"', 'budget' => 4000 }
+          result = tool.execute(action: 'create', title: 'Lead Malformado', custom_attributes: garbled)
+          expect(result).to include('successfully')
+
+          opp = Opportunity.find_by(origin_conversation_id: conversation.id)
+          expect(opp.custom_attributes).to eq('budget' => 4000)
+        end
+      end
+
+      context 'when creating directly with a stage_id targeting the scout qualified stage' do
+        let(:stage_qualified) { PipelineStage.create!(account: account, name: 'Qualified', position: 2) }
+
+        before { scout.update!(qualified_stage: stage_qualified) }
+
+        it 'flags handoff_needed instead of bypassing the qualification gate' do
+          expect(Custom::Scout::HandoffService).not_to receive(:new)
+
+          result = tool.execute(action: 'create', title: 'Lead Quente', stage_id: stage_qualified.id)
+
+          expect(result).to include('successfully')
+          expect(tool.handoff_needed).to be true
+          opp = Opportunity.find_by(origin_conversation_id: conversation.id)
+          expect(opp.pipeline_stage_id).to eq(stage_qualified.id)
+        end
+
+        it 'rejects the direct qualified-stage placement when required fields are missing' do
+          scout.required_custom_attribute_definitions << attr_budget
+
+          result = tool.execute(action: 'create', title: 'Lead Quente', stage_id: stage_qualified.id)
+
+          expect(result).to include('Cannot move to the qualified stage')
+          expect(tool.handoff_needed).to be false
+          opp = Opportunity.find_by(origin_conversation_id: conversation.id)
+          expect(opp.pipeline_stage_id).to eq(stage1.id)
+        end
+      end
     end
 
     context 'when continuing an existing open deal with declared opportunity_id (US1)' do
       let(:past_conversation) { create(:conversation, account: account, inbox: inbox, contact: contact) }
+      let(:attr_timeline) do
+        CustomAttributeDefinition.create!(
+          account: account,
+          attribute_key: 'timeline',
+          attribute_display_name: 'Timeline',
+          attribute_display_type: 'text',
+          attribute_model: 'opportunity_attribute'
+        )
+      end
       let!(:existing_opportunity) do
         Opportunity.create!(
           account: account,
@@ -132,6 +189,50 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
         expect(result).to include('Cannot move to stage Negotiation')
         expect(result).to include('Budget')
         expect(existing_opportunity.reload.pipeline_stage_id).to eq(stage1.id)
+      end
+
+      it 'persists title, value and custom_attributes even when the stage transition is rejected' do
+        stage2.required_custom_attribute_definitions << attr_budget
+        attr_timeline
+
+        result = tool.execute(
+          action: 'update',
+          opportunity_id: existing_opportunity.id,
+          stage_id: stage2.id,
+          title: 'Negócio Atualizado',
+          estimated_value: 9000.0,
+          custom_attributes: { 'timeline' => 'Q4' }
+        )
+        expect(result).to include('Cannot move to stage Negotiation')
+
+        existing_opportunity.reload
+        expect(existing_opportunity.title).to eq('Negócio Atualizado')
+        expect(existing_opportunity.value).to eq(9000.0)
+        expect(existing_opportunity.custom_attributes).to include('timeline' => 'Q4')
+        expect(existing_opportunity.pipeline_stage_id).to eq(stage1.id)
+      end
+
+      context 'when the target stage is the scout qualified stage' do
+        let(:stage_qualified) { PipelineStage.create!(account: account, name: 'Qualified', position: 3) }
+
+        before { scout.update!(qualified_stage: stage_qualified) }
+
+        it 'flags handoff_needed on the tool instance without triggering it synchronously' do
+          expect(Custom::Scout::HandoffService).not_to receive(:new)
+
+          result = tool.execute(action: 'update', opportunity_id: existing_opportunity.id, stage_id: stage_qualified.id)
+
+          expect(result).to include('successfully')
+          expect(tool.handoff_needed).to be true
+        end
+
+        it 'resets handoff_needed to false on a fresh call that does not qualify' do
+          tool.execute(action: 'update', opportunity_id: existing_opportunity.id, stage_id: stage_qualified.id)
+          expect(tool.handoff_needed).to be true
+
+          tool.execute(action: 'update', opportunity_id: existing_opportunity.id, title: 'Só um ajuste de título')
+          expect(tool.handoff_needed).to be false
+        end
       end
     end
 
