@@ -75,4 +75,28 @@ RSpec.describe Custom::Scout::Tools::BaseTool do
       end
     end
   end
+
+  describe '#coerce_hash_param' do
+    it 'returns a Hash argument unchanged' do
+      expect(tool.send(:coerce_hash_param, { 'a' => 1 })).to eq({ 'a' => 1 })
+    end
+
+    it 'parses a JSON-encoded String into a Hash (observed OpenAI function-calling behavior for hash-typed params)' do
+      expect(tool.send(:coerce_hash_param, '{"origem_da_oportunidade":"Orgânico","interesse":"Outros"}'))
+        .to eq({ 'origem_da_oportunidade' => 'Orgânico', 'interesse' => 'Outros' })
+    end
+
+    it 'returns an empty Hash for a malformed JSON String instead of raising' do
+      expect(tool.send(:coerce_hash_param, '{not valid json')).to eq({})
+    end
+
+    it 'returns an empty Hash for nil' do
+      expect(tool.send(:coerce_hash_param, nil)).to eq({})
+    end
+
+    it 'converts an ActionController::Parameters-like argument via to_unsafe_h' do
+      params_like = ActionController::Parameters.new({ 'a' => 1 })
+      expect(tool.send(:coerce_hash_param, params_like)).to eq({ 'a' => 1 })
+    end
+  end
 end

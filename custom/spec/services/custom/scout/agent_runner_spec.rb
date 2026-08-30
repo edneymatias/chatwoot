@@ -161,7 +161,7 @@ RSpec.describe Custom::Scout::AgentRunner do
         runner.perform
       end
 
-      it 'dispatches the model final reply before triggering a deferred qualification handoff' do
+      it 'discards the model drafted reply and only triggers the qualification handoff when handoff_needed is flagged' do
         captured_manage_opportunity = nil
         allow(fake_chat).to receive(:with_tool) do |tool|
           captured_manage_opportunity = tool if tool.is_a?(Custom::Scout::Tools::ManageOpportunity)
@@ -178,14 +178,15 @@ RSpec.describe Custom::Scout::AgentRunner do
         handoff_service = instance_double(Custom::Scout::HandoffService)
         allow(Custom::Scout::HandoffService).to receive(:new).with(scout: scout, conversation: conversation).and_return(handoff_service)
         allow(handoff_service).to receive(:perform) do |**|
-          expect(conversation.messages.where(private: false, message_type: :outgoing).count).to eq(1)
+          expect(conversation.messages.where(private: false, message_type: :outgoing).count).to eq(0)
           'Conversation transferred to human queue successfully.'
         end
 
-        runner.perform
+        expect do
+          runner.perform
+        end.not_to(change { scout.reload.responses_consumed })
 
-        outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
-        expect(outgoing.content).to eq('Olá! Como posso ajudar você hoje?')
+        expect(conversation.messages.where(private: false, message_type: :outgoing, content: 'Olá! Como posso ajudar você hoje?')).not_to exist
         expect(handoff_service).to have_received(:perform).with(reason: 'Oportunidade movida para o estágio qualificado').once
       end
 
@@ -402,6 +403,193 @@ RSpec.describe Custom::Scout::AgentRunner do
           outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
           expect(outgoing.content).to eq('Olá! Como posso ajudar você hoje?')
         end
+      end
+    end
+
+    context 'when response auditor feature flag is enabled vs disabled (US1)' do
+      let(:false_claim_content) do
+        { reasoning: 'Atualizando oportunidade.', response: 'Já atualizei sua oportunidade para Ganho com sucesso!' }.to_json
+      end
+      let(:false_claim_response) { instance_double(RubyLLM::Message, content: false_claim_content) }
+
+      before do
+        conversation.messages.create!(
+          account: account,
+          inbox: inbox,
+          sender: contact,
+          message_type: :incoming,
+          content: 'Pode atualizar meu negócio para Ganho?'
+        )
+        allow(fake_chat).to receive(:ask).and_return(false_claim_response)
+      end
+
+      context 'when feature_response_auditor is false (default)' do
+        before do
+          scout.update!(feature_response_auditor: false)
+        end
+
+        it 'delivers reply unchanged without instantiating ResponseAuditor or calling extra LLM checks' do
+          expect(Custom::Scout::ResponseAuditor).not_to receive(:new)
+
+          expect do
+            runner.perform
+          end.to change { scout.reload.responses_consumed }.by(1)
+
+          outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
+          expect(outgoing.content).to eq('Já atualizei sua oportunidade para Ganho com sucesso!')
+        end
+      end
+
+      context 'when feature_response_auditor is true' do
+        let(:auditor_double) { instance_double(Custom::Scout::ResponseAuditor) }
+
+        before do
+          scout.update!(feature_response_auditor: true)
+          allow(Custom::Scout::ResponseAuditor).to receive(:new).with(scout: scout, conversation: conversation).and_return(auditor_double)
+        end
+
+        it 'replaces reply with repaired reply when auditor corrects it' do
+          allow(auditor_double).to receive(:audit).and_return({ action: :proceed, reply: 'Ainda não atualizei, vou verificar.' })
+
+          expect do
+            runner.perform
+          end.to change { scout.reload.responses_consumed }.by(1)
+
+          outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
+          expect(outgoing.content).to eq('Ainda não atualizei, vou verificar.')
+        end
+
+        it 'escalates to fail-safe handoff when auditor returns escalate' do
+          allow(auditor_double).to receive(:audit).and_return({ action: :escalate, reason: 'Resposta inconsistente com as ações executadas.' })
+
+          expect do
+            runner.perform
+          end.not_to(change { scout.reload.responses_consumed })
+
+          expect(conversation.reload.status).to eq('open')
+          handoff_msg = conversation.messages.where(private: false, message_type: :outgoing).last
+          expect(handoff_msg.content).to eq(I18n.t('conversations.scout.handoff', locale: 'en'))
+          alert_msg = conversation.messages.where(private: true).last
+          expect(alert_msg.content).to include('⚠️ [IA Pausada]')
+          expect(alert_msg.content).to include('Resposta inconsistente com as ações executadas.')
+        end
+
+        it 'excludes the system instructions message from the message_history passed to the auditor' do
+          system_message = instance_double(
+            RubyLLM::Message, role: :system, content: '[Identidade e Escopo]\nFallback para humano: utilize handover_to_human'
+          )
+          user_message = instance_double(RubyLLM::Message, role: :user, content: 'fachada.')
+          assistant_message = instance_double(RubyLLM::Message, role: :assistant, content: 'Perfeito, obrigado!')
+          allow(fake_chat).to receive(:messages).and_return([system_message, user_message, assistant_message])
+
+          allow(auditor_double).to receive(:audit) do |**kwargs|
+            expect(kwargs[:message_history]).not_to include(a_hash_including(role: 'system'))
+            expect(kwargs[:message_history]).to eq([{ role: 'user', content: 'fachada.' }, { role: 'assistant', content: 'Perfeito, obrigado!' }])
+            { action: :proceed, reply: 'Perfeito, obrigado!' }
+          end
+
+          runner.perform
+        end
+      end
+    end
+
+    context 'when handoff and broken promise handling executes (US2)' do
+      let(:auditor_double) { instance_double(Custom::Scout::ResponseAuditor) }
+
+      before do
+        conversation.messages.create!(
+          account: account,
+          inbox: inbox,
+          sender: contact,
+          message_type: :incoming,
+          content: 'Quero falar com uma pessoa real.'
+        )
+      end
+
+      context 'when feature_response_auditor is true' do
+        before do
+          scout.update!(feature_response_auditor: true)
+          allow(Custom::Scout::ResponseAuditor).to receive(:new).with(scout: scout, conversation: conversation).and_return(auditor_double)
+        end
+
+        it 'handles explicit handoff returned by auditor without dispatching extra reply' do
+          allow(auditor_double).to receive(:audit).and_return({ action: :handoff })
+
+          expect do
+            runner.perform
+          end.not_to(change { scout.reload.responses_consumed })
+
+          expect(conversation.messages.where(private: false, message_type: :outgoing)).to be_empty
+        end
+
+        it 'handles broken future promise escalation' do
+          allow(auditor_double).to receive(:audit).and_return({ action: :escalate, reason: 'Promessa de ação futura não cumprida.' })
+
+          runner.perform
+
+          expect(conversation.reload.status).to eq('open')
+          alert_msg = conversation.messages.where(private: true).last
+          expect(alert_msg.content).to include('Promessa de ação futura não cumprida.')
+        end
+      end
+
+      context 'when feature_response_auditor is false' do
+        before do
+          scout.update!(feature_response_auditor: false)
+        end
+
+        it 'does not trigger proactive handoff via ResponseAuditor' do
+          expect(Custom::Scout::ResponseAuditor).not_to receive(:new)
+
+          runner.perform
+        end
+      end
+    end
+
+    context 'when evaluating operator safety net flag (US3)' do
+      let(:plain_reply_content) { { reasoning: 'Ajuda comum.', response: 'Como posso ajudar?' }.to_json }
+      let(:plain_response) { instance_double(RubyLLM::Message, content: plain_reply_content) }
+
+      before do
+        allow(fake_chat).to receive(:ask).and_return(plain_response)
+        conversation.messages.create!(
+          account: account,
+          inbox: inbox,
+          sender: contact,
+          message_type: :incoming,
+          content: 'Olá, bom dia!'
+        )
+      end
+
+      it 'never instantiates ResponseAuditor or calls classifiers when feature_response_auditor is false' do
+        scout.update!(feature_response_auditor: false)
+        expect(Custom::Scout::ResponseAuditor).not_to receive(:new)
+        expect(Custom::Scout::ActionClassifierService).not_to receive(:new)
+        expect(Custom::Scout::ClaimConsistencyService).not_to receive(:new)
+
+        expect do
+          runner.perform
+        end.to change { scout.reload.responses_consumed }.by(1)
+
+        outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
+        expect(outgoing.content).to eq('Como posso ajudar?')
+      end
+
+      it 'delivers original reply unchanged and increments responses_consumed by exactly 1 on a safe turn when flag is true' do
+        scout.update!(feature_response_auditor: true)
+        action_service = instance_double(Custom::Scout::ActionClassifierService, classify: { 'action' => 'continue', 'action_reason' => nil })
+        claim_service = instance_double(Custom::Scout::ClaimConsistencyService, check: { 'decision' => 'safe', 'reason' => 'Safe conversation' })
+        allow(Custom::Scout::ActionClassifierService).to receive(:new).and_return(action_service)
+        allow(Custom::Scout::ClaimConsistencyService).to receive(:new).and_return(claim_service)
+
+        expect do
+          runner.perform
+        end.to change { scout.reload.responses_consumed }.by(1)
+
+        expect(conversation.reload.status).to eq('pending')
+        outgoing = conversation.messages.where(private: false, message_type: :outgoing).last
+        expect(outgoing.content).to eq('Como posso ajudar?')
+        expect(conversation.messages.where(private: false, message_type: :outgoing).count).to eq(1)
       end
     end
   end

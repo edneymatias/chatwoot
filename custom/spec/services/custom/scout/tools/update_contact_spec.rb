@@ -34,5 +34,22 @@ RSpec.describe Custom::Scout::Tools::UpdateContact do
       expect(contact.custom_attributes['budget']).to eq('10000')
       expect(contact.custom_attributes['decision_maker']).to be(true)
     end
+
+    it 'parses a JSON-encoded String custom_attributes into a Hash instead of dropping it (observed OpenAI function-calling behavior)' do
+      result = tool.execute(custom_attributes: '{"budget":"10000","decision_maker":true}')
+
+      expect(result).to include('successfully')
+      contact.reload
+      expect(contact.custom_attributes['budget']).to eq('10000')
+      expect(contact.custom_attributes['decision_maker']).to be(true)
+    end
+
+    it 'ignores a String custom_attributes value that is not valid JSON instead of raising' do
+      result = tool.execute(custom_attributes: '{not valid json')
+
+      expect(result).to include('successfully')
+      contact.reload
+      expect(contact.custom_attributes).to eq({})
+    end
   end
 end

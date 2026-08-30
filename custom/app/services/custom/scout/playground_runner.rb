@@ -1,13 +1,14 @@
 # frozen_string_literal: true
 
 class Custom::Scout::PlaygroundRunner
-  attr_reader :scout, :message, :message_history, :recorded_tool_calls
+  include Custom::Scout::Tools::CallRecorder
+
+  attr_reader :scout, :message, :message_history
 
   def initialize(scout:, message:, message_history: [])
     @scout = scout
     @message = message
     @message_history = message_history || []
-    @recorded_tool_calls = []
   end
 
   def perform
@@ -22,13 +23,13 @@ class Custom::Scout::PlaygroundRunner
 
     {
       reply: reply_text,
-      tool_calls: @recorded_tool_calls
+      tool_calls: recorded_tool_calls
     }
   rescue StandardError => e
     Rails.logger.error "[Scout PlaygroundRunner] Error: #{e.message}\n#{e.backtrace&.join("\n")}"
     {
       reply: "Erro ao executar simulação: #{e.message}",
-      tool_calls: @recorded_tool_calls,
+      tool_calls: recorded_tool_calls,
       error: e.message
     }
   end
@@ -64,32 +65,7 @@ class Custom::Scout::PlaygroundRunner
       Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, nil, playground: true)
     ]
 
-    raw_tools.map { |tool| wrap_tool(tool) }
-  end
-
-  def wrap_tool(tool)
-    original_execute = tool.method(:execute)
-    runner = self
-
-    tool.define_singleton_method(:execute) do |**args|
-      runner.send(:execute_and_record, tool.name, original_execute, args)
-    end
-
-    tool
-  end
-
-  def execute_and_record(tool_name, original_execute, args)
-    call_record = { tool_name: tool_name, arguments: args, simulated: tool_name != 'call_custom_api' }
-    begin
-      result = original_execute.call(**args)
-      call_record[:result] = result
-      result
-    rescue StandardError => e
-      call_record[:error] = e.message
-      raise e
-    ensure
-      @recorded_tool_calls << call_record
-    end
+    raw_tools.map { |tool| wrap_tool(tool, simulated: tool.name != 'call_custom_api') }
   end
 
   def build_system_instructions

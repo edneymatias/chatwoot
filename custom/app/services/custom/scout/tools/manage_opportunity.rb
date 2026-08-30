@@ -103,10 +103,11 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
   end
 
   def sanitize_custom_attributes(candidate)
-    return {} unless candidate.is_a?(Hash)
+    hash = coerce_hash_param(candidate)
+    return {} unless hash.is_a?(Hash)
 
     valid_keys = account.custom_attribute_definitions.where(attribute_model: :opportunity_attribute).pluck(:attribute_key)
-    candidate.stringify_keys.slice(*valid_keys)
+    hash.stringify_keys.slice(*valid_keys)
   end
 
   def find_referral_message

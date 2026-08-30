@@ -2,6 +2,7 @@
 
 class Custom::Scout::AgentRunner
   include Integrations::LlmInstrumentation
+  include Custom::Scout::Tools::CallRecorder
 
   attr_reader :scout, :conversation, :account, :inbox, :contact
 
@@ -14,8 +15,7 @@ class Custom::Scout::AgentRunner
   end
 
   def perform
-    return if @conversation.blank?
-    return unless conversation_pending?
+    return if @conversation.blank? || !conversation_pending?
 
     unless pre_call_checks_pass?
       perform_fail_safe_handoff('Quota esgotada ou chave de API ausente.')
@@ -41,53 +41,73 @@ class Custom::Scout::AgentRunner
   end
 
   def pre_call_checks_pass?
-    return false unless @scout.quota_available?
-
-    config = ScoutAccountConfig.find_by(account_id: @scout.account_id)
-    config&.api_key.present?
+    @scout.quota_available? && ScoutAccountConfig.find_by(account_id: @scout.account_id)&.api_key.present?
   end
 
   def perform_fail_safe_handoff(reason = nil)
     return unless conversation_pending?
 
-    handoff_params = { content: I18n.t('conversations.scout.handoff', locale: conversation_locale), message_type: 'outgoing', private: false }
-    Messages::MessageBuilder.new(nil, @conversation, handoff_params).perform
-
+    Messages::MessageBuilder.new(
+      nil, @conversation, { content: I18n.t('conversations.scout.handoff', locale: conversation_locale), message_type: 'outgoing', private: false }
+    ).perform
     @conversation.bot_handoff!
     alert_suffix = reason.present? ? ". Motivo: #{reason}" : ' devido a esgotamento de saldo/limite de API.'
-    alert_content = "⚠️ [IA Pausada]: A conversa foi transferida para atendimento humano#{alert_suffix}"
-    Messages::MessageBuilder.new(nil, @conversation, { content: alert_content, private: true }).perform
-
+    Messages::MessageBuilder.new(
+      nil, @conversation, { content: "⚠️ [IA Pausada]: A conversa foi transferida para atendimento humano#{alert_suffix}", private: true }
+    ).perform
     Custom::Scout::ContactNotesService.new(@scout, @conversation).generate_and_update_notes if @scout.feature_memory?
   end
 
   def generate_and_process_response
     tools, handover_tool = build_tools
-    chat = @scout.llm_chat
-    chat = chat.with_schema(Custom::Scout::ResponseSchema)
-    chat.with_instructions(build_system_instructions)
-    tools.each { |tool| chat = chat.with_tool(tool) }
-
-    history_messages = conversation_messages
-    last_user_message = history_messages.reverse.find(&:incoming?) || history_messages.last
-    add_history_to_chat(chat, history_messages, last_user_message)
-
+    chat = setup_chat(tools)
+    history = conversation_messages
+    last_user_message = history.reverse.find(&:incoming?) || history.last
+    add_history_to_chat(chat, history, last_user_message)
     response = execute_chat(chat, last_user_message)
-    process_response(response, handover_tool, tools)
+    process_response(response, handover_tool, tools, chat: chat)
   end
 
-  def process_response(response, handover_tool, tools)
-    return if handover_tool.handoff_executed
-    return unless conversation_pending?
+  def setup_chat(tools)
+    chat = @scout.llm_chat.with_schema(Custom::Scout::ResponseSchema).with_instructions(build_system_instructions)
+    tools.reduce(chat) { |c, tool| c.with_tool(tool) }
+  end
+
+  def process_response(response, handover_tool, tools, chat: nil)
+    return if handover_tool.handoff_executed || !conversation_pending?
 
     parsed = parse_structured_response(response&.content)
-    if parsed.blank?
-      perform_fail_safe_handoff('Falha ao interpretar resposta estruturada do modelo.')
-      return
+    return perform_fail_safe_handoff('Falha ao interpretar resposta estruturada do modelo.') if parsed.blank?
+
+    process_audited_reply(parsed[:response], tools, chat)
+  end
+
+  def process_audited_reply(reply_text, tools, chat)
+    if @scout.feature_response_auditor?
+      audit_result = Custom::Scout::ResponseAuditor.new(scout: @scout, conversation: @conversation).audit(
+        chat: chat, response_text: reply_text, message_history: audit_message_history(chat), recorded_tool_calls: recorded_tool_calls
+      )
+      return if handle_auditor_non_proceed(audit_result)
+
+      reply_text = audit_result[:reply]
     end
 
-    dispatch_outgoing_reply(parsed[:response])
-    trigger_qualification_handoff if qualification_handoff_needed?(tools)
+    # Mirrors Captain's create_handoff_message: discard the drafted reply on handoff so it can't
+    # ask a question and immediately transfer before the customer has a chance to answer.
+    return trigger_qualification_handoff if qualification_handoff_needed?(tools)
+
+    dispatch_outgoing_reply(reply_text)
+  end
+
+  def handle_auditor_non_proceed(audit_result)
+    return true if audit_result[:action] == :handoff
+
+    if audit_result[:action] == :escalate
+      perform_fail_safe_handoff(audit_result[:reason] || 'Resposta inconsistente com as ações executadas.')
+      return true
+    end
+
+    false
   end
 
   def qualification_handoff_needed?(tools)
@@ -95,75 +115,52 @@ class Custom::Scout::AgentRunner
   end
 
   def trigger_qualification_handoff
-    service = Custom::Scout::HandoffService.new(scout: @scout, conversation: @conversation)
-    service.perform(reason: 'Oportunidade movida para o estágio qualificado')
+    Custom::Scout::HandoffService.new(scout: @scout, conversation: @conversation).perform(
+      reason: 'Oportunidade movida para o estágio qualificado'
+    )
   end
 
   def parse_structured_response(content)
-    if content.blank?
-      Rails.logger.warn '[Scout AgentRunner] Structured response parsing failed: content is blank'
-      return nil
-    end
+    return nil if content.blank?
 
-    return parse_structured_hash(content) if content.is_a?(Hash)
+    hash = content.is_a?(Hash) ? content : parse_json(content)
+    return nil if hash.blank? || (hash['response'].blank? && hash[:response].blank?)
 
-    parse_structured_json_string(content)
+    text = hash['response'] || hash[:response]
+    Rails.logger.info "[Scout AgentRunner] reasoning: #{hash['reasoning'] || hash[:reasoning]}"
+    { response: text }
   end
 
-  def parse_structured_hash(hash)
-    response_text = hash['response'] || hash[:response]
-    if response_text.blank?
-      Rails.logger.warn "[Scout AgentRunner] Structured response missing 'response' key: #{hash.inspect}"
-      return nil
-    end
-
-    reasoning_text = hash['reasoning'] || hash[:reasoning]
-    Rails.logger.info "[Scout AgentRunner] reasoning: #{reasoning_text}"
-    { response: response_text }
-  end
-
-  def parse_structured_json_string(content)
+  def parse_json(content)
     sanitized = content.to_s.strip.sub(/\A```(?:\w*)\s*\n?/, '').sub(/\n?\s*```\s*\z/, '').strip
-    json = JSON.parse(sanitized)
-    if json['response'].blank?
-      Rails.logger.warn "[Scout AgentRunner] Structured response missing 'response' key: #{sanitized}"
-      return nil
-    end
-
-    Rails.logger.info "[Scout AgentRunner] reasoning: #{json['reasoning']}"
-    { response: json['response'] }
+    JSON.parse(sanitized)
   rescue JSON::ParserError => e
     Rails.logger.warn "[Scout AgentRunner] JSON parsing failed: #{e.message} | raw content: #{content}"
     nil
   end
 
   def build_tools
-    tools = [
+    handover = Custom::Scout::Tools::HandoverToHuman.new(@scout, @conversation)
+    raw_tools = [
       Custom::Scout::Tools::ManageOpportunity.new(@scout, @conversation),
       Custom::Scout::Tools::MoveOpportunityStage.new(@scout, @conversation),
       Custom::Scout::Tools::UpdateContact.new(@scout, @conversation),
       Custom::Scout::Tools::CreatePrivateNote.new(@scout, @conversation),
-      (handover = Custom::Scout::Tools::HandoverToHuman.new(@scout, @conversation)),
+      handover,
       Custom::Scout::Tools::CallCustomApi.new(@scout, @conversation),
       Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, @conversation)
     ]
-    [tools, handover]
+    [raw_tools.map { |tool| wrap_tool(tool, simulated: false) }, handover]
   end
 
   def build_system_instructions
+    catalog = if @scout.product_catalog.present? && @scout.product_catalog != {}
+                "Catálogo de Produtos e Ofertas:\n#{@scout.product_catalog.to_json}"
+              end
     Custom::Scout::SystemPromptsService.build(
-      scout: @scout,
-      contact: @contact,
-      inbox: @inbox,
-      catalog_instructions: build_catalog_instructions,
-      knowledge_available: @scout.scout_knowledge_sources.ready.exists?
+      scout: @scout, contact: @contact, inbox: @inbox,
+      catalog_instructions: catalog, knowledge_available: @scout.scout_knowledge_sources.ready.exists?
     )
-  end
-
-  def build_catalog_instructions
-    return if @scout.product_catalog.blank? || @scout.product_catalog == {}
-
-    "Catálogo de Produtos e Ofertas:\n#{@scout.product_catalog.to_json}"
   end
 
   def conversation_messages
@@ -171,12 +168,10 @@ class Custom::Scout::AgentRunner
   end
 
   def add_history_to_chat(chat, messages, last_message)
-    prior_messages = messages.reject { |m| m.id == last_message&.id }
-    prior_messages.each do |msg|
-      role = msg.incoming? ? :user : :assistant
+    messages.reject { |m| m.id == last_message&.id }.each do |msg|
       attachments = extract_attachment_urls(msg)
       content = attachments.any? ? RubyLLM::Content.new(msg.content.to_s, attachments) : msg.content.to_s
-      chat.add_message(role: role, content: content)
+      chat.add_message(role: msg.incoming? ? :user : :assistant, content: content)
     end
   end
 
@@ -186,15 +181,27 @@ class Custom::Scout::AgentRunner
     params = instrumentation_params(chat, prompt_text)
 
     instrument_agent_session(params) do
-      instrument_llm_call(params) do
-        attachments.any? ? chat.ask(prompt_text, with: attachments) : chat.ask(prompt_text)
-      end
+      instrument_llm_call(params) { attachments.any? ? chat.ask(prompt_text, with: attachments) : chat.ask(prompt_text) }
     end
   end
 
-  def instrumentation_params(chat, prompt_text)
+  def chat_message_history(chat, prompt_text = nil)
     messages = chat.respond_to?(:messages) && chat.messages.present? ? chat.messages.map { |m| { role: m.role.to_s, content: m.content.to_s } } : []
-    messages << { role: 'user', content: prompt_text.to_s }
+    messages << { role: 'user', content: prompt_text.to_s } if prompt_text.present?
+    messages
+  end
+
+  # The auditor's "conversation history" must only contain actual customer/assistant/tool turns —
+  # RubyLLM's chat.messages also carries the system instructions as a role: :system entry, and
+  # dumping the full system prompt (which itself discusses handoff criteria/stage descriptions) into
+  # the classifier/consistency-check prompt as if it were part of the conversation caused it to
+  # misread guardrail text as evidence of an actual handoff-related exchange.
+  def audit_message_history(chat)
+    chat_message_history(chat).reject { |m| m[:role] == 'system' }
+  end
+
+  def instrumentation_params(chat, prompt_text)
+    messages = chat_message_history(chat, prompt_text)
     config = ScoutAccountConfig.find_by(account_id: @scout.account_id)
 
     {
@@ -207,8 +214,8 @@ class Custom::Scout::AgentRunner
   def extract_attachment_urls(message)
     return [] if message.blank?
 
-    message.attachments.where(file_type: %i[image audio]).filter_map do |attachment|
-      attachment.download_url.presence || attachment.external_url.presence || (attachment.file.attached? ? attachment.file_url : nil)
+    message.attachments.where(file_type: %i[image audio]).filter_map do |a|
+      a.download_url.presence || a.external_url.presence || (a.file.attached? ? a.file_url : nil)
     end
   end
 

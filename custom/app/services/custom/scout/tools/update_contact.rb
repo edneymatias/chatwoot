@@ -24,8 +24,9 @@ class Custom::Scout::Tools::UpdateContact < Custom::Scout::Tools::BaseTool
     target_contact.name = name if name.present?
     target_contact.email = email if email.present?
     target_contact.phone_number = phone if phone.present?
-    if custom_attributes.present? && custom_attributes.is_a?(Hash)
-      target_contact.custom_attributes = (target_contact.custom_attributes || {}).merge(custom_attributes)
+    if custom_attributes.present?
+      coerced_attributes = coerce_hash_param(custom_attributes)
+      target_contact.custom_attributes = (target_contact.custom_attributes || {}).merge(coerced_attributes) if coerced_attributes.present?
     end
 
     target_contact.save!

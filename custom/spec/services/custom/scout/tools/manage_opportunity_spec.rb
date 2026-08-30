@@ -74,8 +74,17 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
       end
 
       context 'when custom_attributes arrives malformed from the model' do
-        it 'ignores a string value instead of corrupting the jsonb column' do
-          result = tool.execute(action: 'create', title: 'Lead Malformado', custom_attributes: '{"budget":5000}')
+        it 'parses a JSON-encoded String into a Hash instead of dropping it (observed OpenAI function-calling behavior)' do
+          attr_budget
+          result = tool.execute(action: 'create', title: 'Lead JSON String', custom_attributes: '{"budget":5000}')
+          expect(result).to include('successfully')
+
+          opp = Opportunity.find_by(origin_conversation_id: conversation.id)
+          expect(opp.custom_attributes).to eq('budget' => 5000)
+        end
+
+        it 'ignores a String value that is not valid JSON instead of raising or corrupting the jsonb column' do
+          result = tool.execute(action: 'create', title: 'Lead Malformado', custom_attributes: '{not valid json')
           expect(result).to include('successfully')
 
           opp = Opportunity.find_by(origin_conversation_id: conversation.id)
