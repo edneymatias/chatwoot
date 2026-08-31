@@ -80,6 +80,47 @@ Resposta (`12-response-auditor/spec78.md`, já implementada) foi desenhada para 
 `feature_response_auditor` foi ativado no Scout "Vitória" (`Scout.find(1)`) em 2026-08-29 como
 mitigação de curto prazo, independente do escopo desta fase.
 
+### Terceira evidência — handoff prematuro por crença equivocada de capacidade ausente
+
+Conversa real (conta 1, Scout "Vitória", conversation_id 48 / display_id 46, Oportunidade #36,
+2026-08-30 15:39–15:50 UTC): lead confirma interesse (Próteses/Protocolo), origem (Fachada) e
+horário de avaliação (quarta-feira 02/09, 09:30) — todos os campos obrigatórios da Fase 09 para o
+estágio qualificado (`origem_da_oportunidade`, `interesse`) já preenchidos. Em vez de chamar
+`manage_opportunity`/`move_opportunity_stage` com `stage_id: 4` e `custom_attributes:
+{data_do_agendamento: ...}`, o Scout transfere diretamente para humano:
+
+> Resposta ao cliente: *"Transferindo para que outro agente dê assistência."*
+> Nota privada gerada pelo próprio modelo (motivo passado ao chamar `handover_to_human`): *"O lead
+> escolheu um horário (...) para avaliação de Próteses (Protocolo). Precisa confirmação e
+> agendamento no sistema; não há ferramenta de criação de agendamento disponível no contexto."*
+
+A justificativa do modelo é **factualmente incorreta** — `manage_opportunity` aceita
+`custom_attributes` arbitrários (incluindo `data_do_agendamento`, tipo `date`, já cadastrado na
+conta) na mesma chamada que move o estágio; nunca existiu uma "ferramenta de agendamento"
+separada. Prova direta de que a capacidade não é o problema: a Oportunidade **#28**, mesma
+conta/Scout, cerca de 1h antes, chegou ao estágio qualificado com sucesso gravando
+`data_do_agendamento: "2026-08-31 14:30"` pelo mesmo mecanismo exato
+(`manage_opportunity`/`OpportunityStageTransitionService`). O mesmo caminho funciona numa conversa
+e falha noutra — comportamento estocástico do modelo, não lacuna de código ou de ferramenta.
+
+Investigação via log do Sidekiq confirmou que não é regressão de nenhuma mudança recente: (a) o
+gate de campos obrigatórios do estágio 4 exige só `origem_da_oportunidade`/`interesse`, ambos já
+preenchidos — não bloqueou nada; (b) nenhuma linha de log `[Scout AgentRunner] reasoning:` nem de
+`ActionClassifierService`/`ClaimConsistencyService` aparece neste turno, confirmando que o modelo
+chamou `handover_to_human` **diretamente durante o tool-calling**, antes de qualquer parsing de
+resposta estruturada — o Auditor de Resposta (Fase 12) nunca chega a rodar nesse caminho, então não
+é ele quem deveria (nem poderia) ter evitado isso; (c) nenhum guardrail em
+`SystemPromptsService`/`guardrails_section` menciona "ferramenta de agendamento" ou qualquer
+limitação nesse sentido — a crença é inteiramente uma inferência equivocada do próprio modelo a
+partir do fraseado passivo da descrição do estágio ("o sistema vai pedir que você preencha a Data
+do Agendamento..."), sem nenhuma instrução deixando explícito que preencher esse campo via
+`manage_opportunity` é a ação completa esperada, sem necessidade de nenhuma outra ferramenta.
+
+Mesma família da Fase 18 (desfecho não comparado corretamente contra o que a descrição do estágio
+pede), variante nova: em vez de silêncio (evidência original) ou afirmação falsa de ação concluída
+(segunda evidência), aqui o modelo abandona a ação certa e escala prematuramente, por acreditar
+(errado) que falta ferramenta.
+
 ## Causa raiz identificada
 
 `SystemPromptsService#funnel_section` (Fase 08) já inclui a descrição de cada estágio configurado
@@ -103,6 +144,9 @@ call correspondente — exatamente o padrão `false_completed_action` que a Fase
 de fato chamar `move_opportunity_stage` no reparo, ou escala para humano). Mas o auditor só age
 depois que o modelo já decidiu (erradamente) que a ação estava concluída — a causa raiz de o modelo
 nunca ter comparado o desfecho contra a descrição do estágio continua sem correção até a Fase 18.
+Na terceira evidência (conversation_id 48/display_id 46), o modelo chama `handover_to_human`
+diretamente durante o tool-calling, antes de qualquer resposta estruturada existir — o Auditor de
+Resposta nunca chega a rodar nesse caminho, então esta variante também só a Fase 18 resolve.
 
 ## Escopo preliminar (a confirmar na especificação completa)
 
@@ -119,6 +163,11 @@ nunca ter comparado o desfecho contra a descrição do estágio continua sem cor
 - Reavaliar se `stage.description` deveria ser sanitizado (hoje é HTML bruto vindo do editor rico,
   incluído no prompt via `.strip` apenas) antes de ir para o prompt — não é a causa raiz deste
   problema, mas é uma oportunidade de limpeza notada durante a investigação.
+- Nova diretriz cobrindo a terceira evidência: deixar explícito que `manage_opportunity`/
+  `move_opportunity_stage` aceitam qualquer campo de qualificação (incluindo campos de data) na
+  mesma chamada que move o estágio, e que não existe nem é necessária nenhuma ferramenta externa de
+  agendamento/calendário — o Scout nunca deve concluir que falta capacidade e escalar por esse
+  motivo quando os critérios do estágio já podem ser satisfeitos com as ferramentas disponíveis.
 
 ## Fora de escopo desta fase (preview)
 
@@ -144,6 +193,11 @@ nunca ter comparado o desfecho contra a descrição do estágio continua sem cor
   real ter acontecido.
 - Contas sem descrição configurada para nenhum estágio mantêm o comportamento atual (sem regressão,
   mesmo padrão de omissão gradual já estabelecido na Fase 09/FR-014).
+- Uma conversa onde todos os campos obrigatórios do estágio qualificado já estão preenchidos
+  (incluindo campos de data/agendamento fornecidos pelo lead) resulta em `manage_opportunity`/
+  `move_opportunity_stage` sendo chamado com esses dados — o Scout nunca escala para humano
+  alegando falta de ferramenta quando os dados já podem ser registrados com as ferramentas
+  disponíveis (terceira evidência).
 - Nenhuma regra específica de negócio (palavras-chave, frases) fica hardcoded no prompt ou no
   código — a diretriz é genérica e depende só da descrição que o operador já escreve hoje.
 

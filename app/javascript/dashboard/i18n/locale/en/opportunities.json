@@ -173,6 +173,7 @@
       "NAME_PLACEHOLDER": "Enter stage name",
       "DESC_LABEL": "Description",
       "DESC_PLACEHOLDER": "Enter stage description",
+      "DESC_HINT": "This description is also read by the AI to decide when to move a conversation into this stage — write it objectively (e.g. 'move here when the lead declines to schedule').",
       "DISPLAY_MODE_LABEL": "Column Total Display",
       "DISPLAY_MODE_VALUE": "Total value",
       "DISPLAY_MODE_COUNT": "Count",

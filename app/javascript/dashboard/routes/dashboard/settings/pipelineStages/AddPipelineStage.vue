@@ -71,6 +71,9 @@ const submit = async () => {
         <label class="text-sm font-medium text-n-slate-12">
           {{ $t('PIPELINE_STAGES_MGMT.FORM.DESC_LABEL') }}
         </label>
+        <p class="text-xs text-n-slate-11">
+          {{ $t('PIPELINE_STAGES_MGMT.FORM.DESC_HINT') }}
+        </p>
         <textarea
           v-model="description"
           rows="3"

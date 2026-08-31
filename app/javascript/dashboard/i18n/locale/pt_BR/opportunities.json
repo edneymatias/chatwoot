@@ -172,6 +172,7 @@
       "NAME_PLACEHOLDER": "Insira o nome do estágio",
       "DESC_LABEL": "Descrição",
       "DESC_PLACEHOLDER": "Insira a descrição do estágio",
+      "DESC_HINT": "Esta descrição também é usada pela IA para decidir quando mover uma conversa para este estágio — escreva de forma objetiva (ex: 'mover aqui quando o lead recusar agendar').",
       "DISPLAY_MODE_LABEL": "Exibição do Total da Coluna",
       "DISPLAY_MODE_VALUE": "Valor total",
       "DISPLAY_MODE_COUNT": "Contagem",

@@ -3,13 +3,7 @@
 class Custom::Scout::SystemPromptsService
   class << self
     def build(scout:, contact: nil, inbox: nil, catalog_instructions: nil, knowledge_available: false)
-      new(
-        scout: scout,
-        contact: contact,
-        inbox: inbox,
-        catalog_instructions: catalog_instructions,
-        knowledge_available: knowledge_available
-      ).build
+      new(scout: scout, contact: contact, inbox: inbox, catalog_instructions: catalog_instructions, knowledge_available: knowledge_available).build
     end
   end
 
@@ -73,9 +67,10 @@ class Custom::Scout::SystemPromptsService
       [Diretrizes de Segurança e Resposta]
       - Anti-alucinação: Nunca invente informações e não utilize conhecimento prévio de treinamento para assumir dados sobre preços, planos, produtos, regras ou políticas da empresa. Responda estritamente com base no contexto fornecido e nas ferramentas disponíveis.
       - Anti-falsa-promessa: Não prometa trabalhos ou ações futuras que devam acontecer após esta resposta (como "vou verificar e te aviso", "entraremos em contato amanhã", "enviaremos um email depois" ou "vou registrar seu pedido"). Realize a ação imediatamente caso haja uma ferramenta disponível para isso agora ou, caso não seja possível resolver no momento, utilize a ferramenta de transferência para atendente humano.
-      - Confirmação de ação: Sempre que executar com sucesso uma ferramenta de registro ou atualização (ex: `manage_opportunity`, `update_contact`), confirme brevemente ao cliente o que foi registrado antes de prosseguir com novas perguntas. Nunca execute uma ação e siga direto para a próxima pergunta sem informar ao cliente o que aconteceu.
+      - Confirmação de ação: Sempre que executar com sucesso uma ferramenta de registro ou atualização (ex: `manage_opportunity`, `update_contact`), confirme brevemente ao cliente o que foi registrado antes de prosseguir com novas perguntas. Nunca execute uma ação e siga direto para a próxima pergunta sem informar ao cliente o que aconteceu. Use linguagem natural e humana, sem expor identificadores internos (como IDs numéricos), nomes técnicos de atributos ou jargões de log de sistema. Nunca diga que "abriu um atendimento", "abriu uma oportunidade" ou "registrou um chamado" — narrar a ação de bastidores em si soa como um sistema, não como uma pessoa; confirme apenas o dado relevante para o cliente (ex: "Perfeito, anotei que seu interesse é em X!").
       - Intenção Comercial: Ao identificar interesse de compra ou necessidade comercial em qualquer momento da conversa, utilize a ferramenta `manage_opportunity` para criar ou atualizar a oportunidade.
-      - Esclarecimento: Quando houver ambiguidade ou dados faltantes, faça perguntas curtas e diretas para esclarecer em vez de assumir premissas.
+      - Esclarecimento: Quando houver ambiguidade ou dados faltantes, faça perguntas curtas e diretas para esclarecer em vez de assumir premissas. Ao solicitar um dado que possua lista de opções predefinidas, formule uma pergunta totalmente aberta (ex: "Como você nos encontrou?"), sem mencionar, exemplificar ou sugerir nenhum dos valores configurados na pergunta — nem mesmo entre parênteses como exemplo — mapeando a resposta livre do lead internamente para o valor correspondente.
+      - Ritmo e condução da conversa: Faça no máximo uma pergunta por resposta para não sobrecarregar o lead. Sempre que compartilhar informações relevantes, encerre a resposta com uma pergunta ou próximo passo objetivo para manter a conversa em movimento, exceto quando o lead tiver sinalizado pausa ou encerramento.
       - Respeito ao ritmo do lead: Quando o lead sinalizar que quer pausar ou encerrar a conversa por ora (ex: "vou ver e te aviso", "depois eu volto", "obrigado"), não reintroduza perguntas de qualificação pendentes nesse turno. Apenas confirme educadamente, deixe a porta aberta para o retorno e encerre o turno.
       - Fallback para humano: Se você não souber a resposta, se o contexto for insuficiente ou se o lead solicitar atendimento humano, utilize a ferramenta `handover_to_human`.
       - Idioma e Estilo: Detecte o idioma do lead e responda sempre no mesmo idioma, mantendo um tom natural, cordial, profissional e conciso.
@@ -148,7 +143,15 @@ class Custom::Scout::SystemPromptsService
       '- Ao mover a oportunidade para o estágio qualificado, a transferência (handoff) para a equipe humana é realizada ' \
       'automaticamente. Não execute `handover_to_human` separadamente ao qualificar.',
       '- O estágio de desqualificação representa uma fila de revisão humana, não o fechamento do negócio. Nunca marque a oportunidade ' \
-      'como perdida/ganha; se houver motivo de desqualificação, registre-o como nota interna via ferramenta apropriada.'
+      'como perdida/ganha; se houver motivo de desqualificação, registre-o como nota interna via ferramenta apropriada.',
+      '- Compare o resultado observável de cada turno com as descrições dos estágios disponíveis: se o desfecho da conversa corresponder ' \
+      'claramente ao critério descrito para um estágio (ex: recusa/adiamento correspondendo à desqualificação, ou confirmação com todos ' \
+      'os dados correspondendo à qualificação), mova a oportunidade para esse estágio no próprio turno. Havendo correspondência com mais ' \
+      'de um estágio, escolha a descrição mais específica ao desfecho. A transição automática por desfecho é estritamente progressiva: ' \
+      'nunca retorne uma oportunidade que já atingiu o estágio qualificado para estágios anteriores ou para desqualificação.',
+      '- Suas ferramentas de oportunidade (`manage_opportunity`, `move_opportunity_stage`) são suficientes para registrar qualquer dado ' \
+      'de qualificação fornecido pelo lead, incluindo datas, horários e agendamentos. Nunca conclua que falta uma ferramenta de ' \
+      'agendamento ou transfira para humano por esse motivo quando o lead já forneceu as informações necessárias.'
     ]
   end
 
@@ -175,6 +178,7 @@ class Custom::Scout::SystemPromptsService
     type_info = definition.attribute_display_type
     values_info = ", Valores permitidos: #{Array(definition.attribute_values).join(', ')}" if definition.list? && definition.attribute_values.present?
     base_info = "- #{definition.attribute_display_name} (Chave: #{definition.attribute_key}, Tipo: #{type_info}#{values_info})"
+    base_info += "\n    (uso interno; não cite nem exemplifique estes valores)" if definition.list? && definition.attribute_values.present?
     definition.attribute_description.present? ? "#{base_info}\n    Descrição: #{definition.attribute_description.strip}" : base_info
   end
 

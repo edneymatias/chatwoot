@@ -64,6 +64,31 @@ RSpec.describe Custom::Scout::SystemPromptsService do
       expect(prompt).to include('manage_opportunity')
     end
 
+    it 'includes action confirmation guardrails using natural language without internal IDs or technical field names' do
+      expect(prompt).to include('Confirmação de ação:')
+      expect(prompt).to include('Use linguagem natural e humana, sem expor identificadores internos')
+    end
+
+    it 'forbids narrating the backend action itself when confirming (e.g. "abri seu atendimento")' do
+      expect(prompt).to include('Nunca diga que "abriu um atendimento"')
+    end
+
+    it 'includes open-ended clarification guardrails avoiding multiple choice menus for list attributes' do
+      expect(prompt).to include('Esclarecimento:')
+      expect(prompt).to include('formule uma pergunta totalmente aberta')
+    end
+
+    it 'forbids mentioning or exemplifying allowed values inside the clarifying question itself' do
+      expect(prompt).to include('sem mencionar, exemplificar ou sugerir nenhum dos valores configurados na pergunta')
+    end
+
+    it 'includes conversational pacing guardrail restricting to one question per response and advancing flow' do
+      expect(prompt).to include('Ritmo e condução da conversa:')
+      expect(prompt).to include('Faça no máximo uma pergunta por resposta para não sobrecarregar o lead')
+      expect(prompt).to include('encerre a resposta com uma pergunta ou próximo passo objetivo')
+      expect(prompt).to include('exceto quando o lead tiver sinalizado pausa ou encerramento')
+    end
+
     it 'wraps operator custom instructions in subordinate tags with override prohibition' do
       expect(prompt).to include('[Instruções Personalizadas da Conta]')
       expect(prompt).to include('<account_custom_instructions>')
@@ -196,6 +221,10 @@ RSpec.describe Custom::Scout::SystemPromptsService do
         expect(prompt).to include('Tamanho da Equipe')
       end
 
+      it 'reminds the model inline, next to each list of allowed values, not to cite or exemplify them to the lead' do
+        expect(prompt).to match(/Valores permitidos: imediato, 30_dias, trimestre\)\s*\n\s*\(uso interno; não cite nem exemplifique estes valores\)/)
+      end
+
       it 'surfaces scout global qualification requirements distinctly' do
         expect(prompt).to include('Requisitos Globais de Qualificação')
         expect(prompt).to include('Orçamento Mensal')
@@ -210,6 +239,21 @@ RSpec.describe Custom::Scout::SystemPromptsService do
         expect(prompt).to include('Não execute `handover_to_human` separadamente ao qualificar')
         expect(prompt).to include('revisão humana')
         expect(prompt).to include('Nunca marque a oportunidade como perdida/ganha')
+        expect(prompt).to include('registre-o como nota interna via ferramenta apropriada')
+      end
+
+      it 'includes outcome-driven stage matching directive with tie-breaking and forward-only progression rules' do
+        expect(prompt).to include('Compare o resultado observável de cada turno com as descrições dos estágios disponíveis')
+        expect(prompt).to include('mova a oportunidade para esse estágio no próprio turno')
+        expect(prompt).to include('escolha a descrição mais específica ao desfecho')
+        expect(prompt).to include('transição automática por desfecho é estritamente progressiva')
+        expect(prompt).to include('nunca retorne uma oportunidade que já atingiu o estágio qualificado')
+      end
+
+      it 'includes tool-sufficiency directive confirming internal tools can record dates and qualification data' do
+        expect(prompt).to include('suficientes para registrar qualquer dado de qualificação fornecido pelo lead')
+        expect(prompt).to include('incluindo datas, horários e agendamentos')
+        expect(prompt).to include('Nunca conclua que falta uma ferramenta de agendamento')
       end
 
       context 'when stage or attribute has no description configured' do
