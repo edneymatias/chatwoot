@@ -207,6 +207,25 @@ RSpec.describe Custom::Scout::ResponseAuditor do
       expect(result).to eq({ action: :proceed, reply: original_reply })
     end
 
+    it 'confirms the initial handoff decision with a higher temperature so the second call is a genuinely independent draw' do
+      allow(action_service).to receive(:classify)
+        .with(message_history: message_history, temperature: 0.0)
+        .and_return({ 'action' => 'handoff', 'action_reason' => 'human_offer_accepted' })
+      allow(action_service).to receive(:classify)
+        .with(message_history: message_history, temperature: described_class::CONFIRMATION_TEMPERATURE)
+        .and_return({ 'action' => 'handoff', 'action_reason' => 'human_offer_accepted' })
+      expect(handoff_service).to receive(:perform).with(reason: 'human_offer_accepted')
+
+      result = auditor.audit(
+        chat: fake_chat,
+        response_text: original_reply,
+        message_history: message_history,
+        recorded_tool_calls: recorded_tool_calls
+      )
+
+      expect(result).to eq({ action: :handoff })
+    end
+
     it 'does not handoff when the confirmation call agrees on handoff but with a different reason' do
       expect(action_service).to receive(:classify).twice.and_return(
         { 'action' => 'handoff', 'action_reason' => 'human_offer_accepted' },

@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 class Custom::Scout::ResponseAuditor
+  # The confirmation call must run at a different temperature than the initial call (0.0). At
+  # temperature 0.0 the model is near-deterministic, so a second call with the identical prompt is
+  # not an independent draw — it reliably reproduces the same hallucination instead of catching it,
+  # defeating the whole point of requiring two calls to agree (see handoff_confirmed? below).
+  CONFIRMATION_TEMPERATURE = 0.7
+
   REPAIR_INSTRUCTION = <<~INSTRUCTION
     ATENÇÃO: Sua resposta anterior afirmou que uma ação foi concluída ou prometeu uma ação futura, mas a ação não foi executada com sucesso pelas ferramentas disponíveis.
     Por favor, reavalie: se a ferramenta adequada estiver disponível e couber executá-la agora, execute-a; caso contrário, responda ao cliente de forma transparente sem afirmar ou prometer ações que não foram realizadas.
@@ -52,11 +58,11 @@ class Custom::Scout::ResponseAuditor
   # A single classifier call is a stochastic draw and can hallucinate 'handoff' even with a
   # correctly-filtered prompt (observed in production on conversations with no real human-offer
   # content). Since handoff is irreversible and customer-facing, require a second independent
-  # call to agree on both the action and the exact reason before acting on it — this bounds the
-  # false-positive rate to roughly the square of the single-call hallucination rate instead of
-  # trusting one draw outright.
+  # call — at CONFIRMATION_TEMPERATURE, not the initial call's 0.0 — to agree on both the action
+  # and the exact reason before acting on it — this bounds the false-positive rate to roughly the
+  # square of the single-call hallucination rate instead of trusting one draw outright.
   def handoff_confirmed?(message_history, reason)
-    confirmation = check_action_classification(message_history)
+    confirmation = check_action_classification(message_history, temperature: CONFIRMATION_TEMPERATURE)
     return false unless action_handoff?(confirmation)
 
     (confirmation['action_reason'] || confirmation[:action_reason]) == reason
@@ -101,9 +107,9 @@ class Custom::Scout::ResponseAuditor
     { action: :proceed, reply: fallback_reply }
   end
 
-  def check_action_classification(message_history)
+  def check_action_classification(message_history, temperature: 0.0)
     Custom::Scout::ActionClassifierService.new(scout: @scout, conversation: @conversation).classify(
-      message_history: message_history
+      message_history: message_history, temperature: temperature
     )
   end
 

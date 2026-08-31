@@ -89,6 +89,14 @@ RSpec.describe Custom::Scout::SystemPromptsService do
       expect(prompt).to include('exceto quando o lead tiver sinalizado pausa ou encerramento')
     end
 
+    it 'instructs closing natural message and forbids questions when transferring to human in Fallback para humano' do
+      expect(prompt).to include('Fallback para humano:')
+      expect(prompt).to include('Sempre que um turno terminar em transferência (por chamada de ferramenta ou qualificação)')
+      expect(prompt).to include('sua resposta final deve ser uma mensagem natural de encerramento')
+      expect(prompt).to include('confirmando o que foi registrado e explicando que um atendente continuará o atendimento')
+      expect(prompt).to include('nunca faça perguntas ao transferir')
+    end
+
     it 'wraps operator custom instructions in subordinate tags with override prohibition' do
       expect(prompt).to include('[Instruções Personalizadas da Conta]')
       expect(prompt).to include('<account_custom_instructions>')

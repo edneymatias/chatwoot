@@ -27,30 +27,26 @@ RSpec.describe Custom::Scout::Tools::HandoverToHuman do
   end
 
   describe '#execute' do
-    it 'transfers conversation to human queue and records handoff' do
-      memory_service = instance_double(Custom::Scout::ContactNotesService, generate_and_update_notes: [])
-      allow(Custom::Scout::ContactNotesService).to receive(:new).with(scout, conversation).and_return(memory_service)
+    it 'flags handoff_needed and captures assignment params without invoking HandoffService' do
+      expect(Custom::Scout::HandoffService).not_to receive(:new)
 
-      result = tool.execute(assignee_id: user.id, reason: 'Cliente qualificado')
-      expect(result).to include('successfully')
-      expect(tool.handoff_executed).to be(true)
-
-      conversation.reload
-      expect(conversation.status).to eq('open')
-      expect(conversation.assignee_id).to eq(user.id)
-      expect(conversation.team_id).to eq(team.id)
-      expect(conversation.messages.where(private: true).last.content).to include('Transferência para atendimento humano')
-      expect(memory_service).to have_received(:generate_and_update_notes)
+      result = tool.execute(assignee_id: user.id, team_id: team.id, reason: 'Cliente qualificado')
+      expect(result).to eq(
+        'A transferência será confirmada após sua resposta final. Escreva agora uma mensagem natural de encerramento, sem perguntas.'
+      )
+      expect(tool.handoff_needed).to be(true)
+      expect(tool.handoff_assignee_id).to eq(user.id)
+      expect(tool.handoff_team_id).to eq(team.id)
+      expect(tool.handoff_reason).to eq('Cliente qualificado')
     end
 
-    it 'delegates to Custom::Scout::HandoffService and sets handoff_executed' do
-      handoff_service = instance_double(Custom::Scout::HandoffService, perform: 'Transferred')
-      allow(Custom::Scout::HandoffService).to receive(:new).with(scout: scout, conversation: conversation).and_return(handoff_service)
+    it 'returns simulated handoff message when running in playground mode' do
+      allow(tool).to receive(:playground?).and_return(true)
+      expect(Custom::Scout::HandoffService).not_to receive(:new)
 
-      result = tool.execute(assignee_id: user.id, team_id: team.id, reason: 'Test reason')
-      expect(result).to eq('Transferred')
-      expect(tool.handoff_executed).to be(true)
-      expect(handoff_service).to have_received(:perform).with(assignee_id: user.id, team_id: team.id, reason: 'Test reason')
+      result = tool.execute(assignee_id: user.id, reason: 'Teste no playground')
+      expect(result).to eq('[Simulado] Atendimento transferido para humano (Motivo: Teste no playground).')
+      expect(tool.handoff_needed).to be_nil
     end
   end
 end

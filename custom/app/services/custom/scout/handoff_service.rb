@@ -6,9 +6,9 @@ class Custom::Scout::HandoffService
     @conversation = conversation
   end
 
-  def perform(assignee_id: nil, team_id: nil, reason: nil)
+  def perform(assignee_id: nil, team_id: nil, reason: nil, message: nil)
     assign_team_and_user(assignee_id, team_id)
-    handed_off = perform_handoff
+    handed_off = perform_handoff(message: message)
     create_transfer_note(reason) if handed_off
     generate_contact_memory if @scout.feature_memory?
 
@@ -24,20 +24,21 @@ class Custom::Scout::HandoffService
     @conversation.save!
   end
 
-  def perform_handoff
+  def perform_handoff(message: nil)
     status = Conversation.uncached { Conversation.where(id: @conversation.id).pick(:status) }
     return false unless status == 'pending' || status == Conversation.statuses[:pending]
 
-    send_public_handoff_message
+    send_public_handoff_message(message: message)
     @conversation.bot_handoff!
     true
   end
 
-  def send_public_handoff_message
+  def send_public_handoff_message(message: nil)
+    content = message.presence || I18n.t('conversations.scout.handoff', locale: conversation_locale)
     Messages::MessageBuilder.new(
       nil,
       @conversation,
-      { content: I18n.t('conversations.scout.handoff', locale: conversation_locale), message_type: 'outgoing', private: false }
+      { content: content, message_type: 'outgoing', private: false }
     ).perform
   end
 

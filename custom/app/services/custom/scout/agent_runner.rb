@@ -59,13 +59,13 @@ class Custom::Scout::AgentRunner
   end
 
   def generate_and_process_response
-    tools, handover_tool = build_tools
+    tools = build_tools
     chat = setup_chat(tools)
     history = conversation_messages
     last_user_message = history.reverse.find(&:incoming?) || history.last
     add_history_to_chat(chat, history, last_user_message)
     response = execute_chat(chat, last_user_message)
-    process_response(response, handover_tool, tools, chat: chat)
+    process_response(response, tools, chat: chat)
   end
 
   def setup_chat(tools)
@@ -73,8 +73,8 @@ class Custom::Scout::AgentRunner
     tools.reduce(chat) { |c, tool| c.with_tool(tool) }
   end
 
-  def process_response(response, handover_tool, tools, chat: nil)
-    return if handover_tool.handoff_executed || !conversation_pending?
+  def process_response(response, tools, chat: nil)
+    return unless conversation_pending?
 
     parsed = parse_structured_response(response&.content)
     return perform_fail_safe_handoff('Falha ao interpretar resposta estruturada do modelo.') if parsed.blank?
@@ -92,9 +92,8 @@ class Custom::Scout::AgentRunner
       reply_text = audit_result[:reply]
     end
 
-    # Mirrors Captain's create_handoff_message: discard the drafted reply on handoff so it can't
-    # ask a question and immediately transfer before the customer has a chance to answer.
-    return trigger_qualification_handoff if qualification_handoff_needed?(tools)
+    tool = handoff_requested_tool(tools)
+    return trigger_handoff(tool, reply_text) if tool.present?
 
     dispatch_outgoing_reply(reply_text)
   end
@@ -110,14 +109,20 @@ class Custom::Scout::AgentRunner
     false
   end
 
-  def qualification_handoff_needed?(tools)
-    tools.any? { |tool| tool.respond_to?(:handoff_needed) && tool.handoff_needed }
+  def handoff_requested_tool(tools)
+    tools.find { |tool| tool.respond_to?(:handoff_needed) && tool.handoff_needed }
   end
 
-  def trigger_qualification_handoff
+  def trigger_handoff(tool, reply_text)
     Custom::Scout::HandoffService.new(scout: @scout, conversation: @conversation).perform(
-      reason: 'Oportunidade movida para o estágio qualificado'
+      message: reply_text, assignee_id: handoff_param(tool, :handoff_assignee_id),
+      team_id: handoff_param(tool, :handoff_team_id),
+      reason: handoff_param(tool, :handoff_reason) || 'Oportunidade movida para o estágio qualificado'
     )
+  end
+
+  def handoff_param(tool, method_name)
+    tool.public_send(method_name) if tool.respond_to?(method_name)
   end
 
   def parse_structured_response(content)
@@ -126,9 +131,8 @@ class Custom::Scout::AgentRunner
     hash = content.is_a?(Hash) ? content : parse_json(content)
     return nil if hash.blank? || (hash['response'].blank? && hash[:response].blank?)
 
-    text = hash['response'] || hash[:response]
     Rails.logger.info "[Scout AgentRunner] reasoning: #{hash['reasoning'] || hash[:reasoning]}"
-    { response: text }
+    { response: hash['response'] || hash[:response] }
   end
 
   def parse_json(content)
@@ -140,23 +144,19 @@ class Custom::Scout::AgentRunner
   end
 
   def build_tools
-    handover = Custom::Scout::Tools::HandoverToHuman.new(@scout, @conversation)
-    raw_tools = [
+    [
       Custom::Scout::Tools::ManageOpportunity.new(@scout, @conversation),
       Custom::Scout::Tools::MoveOpportunityStage.new(@scout, @conversation),
       Custom::Scout::Tools::UpdateContact.new(@scout, @conversation),
       Custom::Scout::Tools::CreatePrivateNote.new(@scout, @conversation),
-      handover,
+      Custom::Scout::Tools::HandoverToHuman.new(@scout, @conversation),
       Custom::Scout::Tools::CallCustomApi.new(@scout, @conversation),
       Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, @conversation)
-    ]
-    [raw_tools.map { |tool| wrap_tool(tool, simulated: false) }, handover]
+    ].map { |tool| wrap_tool(tool, simulated: false) }
   end
 
   def build_system_instructions
-    catalog = if @scout.product_catalog.present? && @scout.product_catalog != {}
-                "Catálogo de Produtos e Ofertas:\n#{@scout.product_catalog.to_json}"
-              end
+    catalog = "Catálogo de Produtos e Ofertas:\n#{@scout.product_catalog.to_json}" if @scout.product_catalog.present? && @scout.product_catalog != {}
     Custom::Scout::SystemPromptsService.build(
       scout: @scout, contact: @contact, inbox: @inbox,
       catalog_instructions: catalog, knowledge_available: @scout.scout_knowledge_sources.ready.exists?

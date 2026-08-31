@@ -60,6 +60,20 @@ RSpec.describe Custom::Scout::HandoffService do
       expect(conversation.team_id).to eq(other_team.id)
     end
 
+    it 'uses custom message as the public handoff message when present' do
+      service.perform(message: 'Perfeito! Anotei seus dados e vou transferir para nosso especialista continuar.')
+      conversation.reload
+      expect(conversation.messages.where(private: false, message_type: :outgoing).last.content)
+        .to eq('Perfeito! Anotei seus dados e vou transferir para nosso especialista continuar.')
+    end
+
+    it 'falls back to standard I18n handoff message when message is blank or whitespace' do
+      service.perform(message: '   ')
+      conversation.reload
+      expect(conversation.messages.where(private: false, message_type: :outgoing).last.content)
+        .to eq(I18n.t('conversations.scout.handoff'))
+    end
+
     it 'sends public handoff notice and a private note with a default reason when reason is blank' do
       expect do
         service.perform

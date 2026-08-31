@@ -9,11 +9,11 @@ class Custom::Scout::ActionClassifierService
     @account = conversation.account
   end
 
-  def classify(message_history:)
+  def classify(message_history:, temperature: 0.0)
     user_prompt = build_user_prompt(message_history)
 
-    response = instrument_llm_call(instrumentation_params(user_prompt)) do
-      @scout.llm_chat(temperature: 0.0)
+    response = instrument_llm_call(instrumentation_params(user_prompt, temperature)) do
+      @scout.llm_chat(temperature: temperature)
             .with_schema(Custom::Scout::ActionClassifierSchema)
             .with_instructions(system_instructions)
             .ask(user_prompt)
@@ -94,13 +94,13 @@ class Custom::Scout::ActionClassifierService
     }
   end
 
-  def instrumentation_params(user_prompt)
+  def instrumentation_params(user_prompt, temperature)
     config = ScoutAccountConfig.find_by(account_id: @scout.account_id)
 
     {
       span_name: 'llm.scout.action_classifier',
       model: config&.model_name || 'gemini-2.0-flash',
-      temperature: 0.0,
+      temperature: temperature,
       account: @conversation.account,
       account_id: @conversation.account_id,
       conversation_id: @conversation.id,

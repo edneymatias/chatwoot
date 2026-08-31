@@ -59,6 +59,13 @@ RSpec.describe Custom::Scout::ActionClassifierService do
       expect(result['action_reason']).to eq('explicit_human_request')
     end
 
+    it 'forwards a custom temperature to llm_chat instead of the 0.0 default' do
+      allow(scout).to receive(:llm_chat).with(temperature: 0.7).and_return(fake_chat)
+      expect(scout).to receive(:llm_chat).with(temperature: 0.7).and_return(fake_chat)
+
+      service.classify(message_history: message_history, temperature: 0.7)
+    end
+
     it 'normalizes continue response with omitted action_reason correctly' do
       continue_response = instance_double(RubyLLM::Message, content: { 'action' => 'continue' }.to_json)
       allow(fake_chat).to receive(:ask).and_return(continue_response)

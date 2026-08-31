@@ -161,33 +161,58 @@ RSpec.describe Custom::Scout::AgentRunner do
         runner.perform
       end
 
-      it 'discards the model drafted reply and only triggers the qualification handoff when handoff_needed is flagged' do
-        captured_manage_opportunity = nil
+      it 'triggers handoff with the model structured response text when handover_to_human tool sets handoff_needed' do
+        captured_handover = nil
         allow(fake_chat).to receive(:with_tool) do |tool|
-          captured_manage_opportunity = tool if tool.is_a?(Custom::Scout::Tools::ManageOpportunity)
+          captured_handover = tool if tool.is_a?(Custom::Scout::Tools::HandoverToHuman)
           fake_chat
         end
-        # Simulates manage_opportunity having qualified the opportunity mid-turn
-        # (Custom::Scout::OpportunityStageTransitionService flags this, it does not
-        # trigger the handoff itself — see research.md for the race this avoids).
+
         allow(fake_chat).to receive(:ask) do
-          allow(captured_manage_opportunity).to receive(:handoff_needed).and_return(true)
+          captured_handover.execute(reason: 'Lead pediu atendente humano', assignee_id: 123, team_id: 456)
           fake_response
         end
 
-        handoff_service = instance_double(Custom::Scout::HandoffService)
+        handoff_service = instance_double(Custom::Scout::HandoffService, perform: 'ok')
         allow(Custom::Scout::HandoffService).to receive(:new).with(scout: scout, conversation: conversation).and_return(handoff_service)
-        allow(handoff_service).to receive(:perform) do |**|
-          expect(conversation.messages.where(private: false, message_type: :outgoing).count).to eq(0)
-          'Conversation transferred to human queue successfully.'
-        end
 
         expect do
           runner.perform
         end.not_to(change { scout.reload.responses_consumed })
 
-        expect(conversation.messages.where(private: false, message_type: :outgoing, content: 'Olá! Como posso ajudar você hoje?')).not_to exist
-        expect(handoff_service).to have_received(:perform).with(reason: 'Oportunidade movida para o estágio qualificado').once
+        expect(handoff_service).to have_received(:perform).with(
+          message: 'Olá! Como posso ajudar você hoje?',
+          assignee_id: 123,
+          team_id: 456,
+          reason: 'Lead pediu atendente humano'
+        ).once
+      end
+
+      it 'triggers qualification handoff passing model structured response text as message and default reason' do
+        captured_manage_opportunity = nil
+        allow(fake_chat).to receive(:with_tool) do |tool|
+          captured_manage_opportunity = tool if tool.is_a?(Custom::Scout::Tools::ManageOpportunity)
+          fake_chat
+        end
+
+        allow(fake_chat).to receive(:ask) do
+          allow(captured_manage_opportunity).to receive(:handoff_needed).and_return(true)
+          fake_response
+        end
+
+        handoff_service = instance_double(Custom::Scout::HandoffService, perform: 'ok')
+        allow(Custom::Scout::HandoffService).to receive(:new).with(scout: scout, conversation: conversation).and_return(handoff_service)
+
+        expect do
+          runner.perform
+        end.not_to(change { scout.reload.responses_consumed })
+
+        expect(handoff_service).to have_received(:perform).with(
+          message: 'Olá! Como posso ajudar você hoje?',
+          assignee_id: nil,
+          team_id: nil,
+          reason: 'Oportunidade movida para o estágio qualificado'
+        ).once
       end
 
       it 'does not trigger a qualification handoff when no tool flags handoff_needed' do

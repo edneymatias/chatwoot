@@ -19,6 +19,13 @@ genérico do tipo `empty-meadow-50`. O Scout nunca questiona isso — trata o co
 simplesmente evita usar o nome), sem nunca perguntar como a pessoa se chama, mesmo quando isso
 seria natural por educação/cordialidade comercial.
 
+**Segunda ocorrência confirmada** (2026-08-31, `conversation_id` 53 / `display_id` 51): conversa de
+qualificação completa e handoff bem-sucedido (facetas, origem Google, agendamento confirmado), mas
+o contato permaneceu com o nome `polished-forest-561` (mesmo padrão Haikunator) do início ao fim —
+o Scout nunca perguntou o nome em nenhum momento da conversa, mesmo tendo espaço natural para isso
+durante a qualificação. Confirma que o gap não é um caso isolado; a evidência foi levantada de forma
+independente, sem relação com as Fases 18/20 recém-concluídas no mesmo ciclo.
+
 ### Causa raiz identificada
 
 `ContactInboxWithContactBuilder#contact_name` (`app/builders/contact_inbox_with_contact_builder.rb:62-65`,
