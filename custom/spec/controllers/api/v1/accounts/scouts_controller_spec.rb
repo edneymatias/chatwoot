@@ -73,6 +73,20 @@ RSpec.describe 'Api::V1::Accounts::Scouts', type: :request do
       expect(scout.reload.required_custom_attribute_definitions).to contain_exactly(attr1, attr2)
     end
 
+    it 'updates default_country_code and default_area_code' do
+      patch "/api/v1/accounts/#{account.id}/scouts/#{scout.id}",
+            params: { scout: { default_country_code: '+55', default_area_code: '41' } },
+            headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:success)
+      json = response.parsed_body
+      expect(json['default_country_code']).to eq('+55')
+      expect(json['default_area_code']).to eq('41')
+      scout.reload
+      expect(scout.default_country_code).to eq('+55')
+      expect(scout.default_area_code).to eq('41')
+    end
+
     it 'clears required custom attributes when empty array is passed' do
       scout.required_custom_attribute_definitions << attr1
 

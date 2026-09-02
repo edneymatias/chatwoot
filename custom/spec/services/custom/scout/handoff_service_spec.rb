@@ -94,6 +94,30 @@ RSpec.describe Custom::Scout::HandoffService do
         .to eq(I18n.t('conversations.scout.handoff', locale: 'pt_BR'))
     end
 
+    context 'when the conversation has an associated opportunity (any stage)' do
+      let(:stage) { PipelineStage.create!(account: account, name: 'Negotiation', position: 1) }
+      let!(:opportunity) do
+        Opportunity.create!(
+          account: account, contact: contact, origin_conversation: conversation,
+          pipeline_stage: stage, status: :open, title: 'Plano Enterprise'
+        )
+      end
+
+      it 'appends "#id - title" to the private transfer note' do
+        service.perform(reason: 'Qualified lead')
+
+        note = conversation.messages.where(private: true).last
+        expect(note.content).to include("Oportunidade ##{opportunity.id} - Plano Enterprise")
+      end
+    end
+
+    it 'does not append an opportunity reference when the conversation has no associated opportunity' do
+      service.perform(reason: 'Qualified lead')
+
+      note = conversation.messages.where(private: true).last
+      expect(note.content).not_to include('Oportunidade #')
+    end
+
     context 'when scout feature_memory is false' do
       before { scout.update!(feature_memory: false) }
 

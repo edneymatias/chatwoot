@@ -3,10 +3,11 @@
 class Custom::Scout::PlaygroundRunner
   include Custom::Scout::Tools::CallRecorder
 
-  attr_reader :scout, :message, :message_history
+  attr_reader :scout, :contact, :message, :message_history
 
-  def initialize(scout:, message:, message_history: [])
+  def initialize(scout:, message:, contact: nil, message_history: [])
     @scout = scout
+    @contact = contact
     @message = message
     @message_history = message_history || []
   end
@@ -71,6 +72,7 @@ class Custom::Scout::PlaygroundRunner
   def build_system_instructions
     Custom::Scout::SystemPromptsService.build(
       scout: @scout,
+      contact: @contact,
       catalog_instructions: build_catalog_instructions,
       knowledge_available: @scout.scout_knowledge_sources.ready.exists?
     )

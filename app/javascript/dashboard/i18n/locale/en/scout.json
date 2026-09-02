@@ -146,7 +146,15 @@
       "NO_TEAM_SELECTED": "None (keep current team)",
       "REQUIRED_FIELDS_TITLE": "Required Qualification Attributes",
       "REQUIRED_FIELDS_SUBTITLE": "Select contact and opportunity custom attributes that Scout must collect before qualifying.",
-      "NO_ATTRIBUTES_AVAILABLE": "No custom attributes configured in account settings."
+      "NO_ATTRIBUTES_AVAILABLE": "No custom attributes configured in account settings.",
+      "PHONE_DEFAULTS_TITLE": "Default Phone Locale",
+      "PHONE_DEFAULTS_SUBTITLE": "Used to complete phone numbers a lead gives without a country code or area code (e.g. \"999220122\").",
+      "COUNTRY_CODE_LABEL": "Default Country Code",
+      "COUNTRY_CODE_PLACEHOLDER": "e.g., +55",
+      "COUNTRY_CODE_HINT": "Prepended when the lead's number has no leading +.",
+      "AREA_CODE_LABEL": "Default Area Code",
+      "AREA_CODE_PLACEHOLDER": "e.g., 41",
+      "AREA_CODE_HINT": "Prepended when the lead's number has no area code (common when the lead is calling from the same city). Leave blank to require the area code instead of guessing it."
     },
     "TOOLS": {
       "TITLE": "Tools",

@@ -220,6 +220,35 @@ RSpec.describe Custom::Scout::AgentRunner do
 
         runner.perform
       end
+
+      it 'passes handoff_already_flagged: true to the auditor when a tool already flagged handoff_needed this turn ' \
+         '(prevents the action classifier from preempting a code-certain handoff with a hallucinated reason, e.g. ' \
+         'human_offer_accepted on a terse "17 horas" reply — see conversation #64/display_id 62)' do
+        scout.update!(feature_response_auditor: true)
+        auditor_double = instance_double(Custom::Scout::ResponseAuditor)
+        expect(Custom::Scout::ResponseAuditor).to receive(:new)
+          .with(scout: scout, conversation: conversation, handoff_already_flagged: true)
+          .and_return(auditor_double)
+
+        captured_manage_opportunity = nil
+        allow(fake_chat).to receive(:with_tool) do |tool|
+          captured_manage_opportunity = tool if tool.is_a?(Custom::Scout::Tools::ManageOpportunity)
+          fake_chat
+        end
+        allow(fake_chat).to receive(:ask) do
+          allow(captured_manage_opportunity).to receive(:handoff_needed).and_return(true)
+          fake_response
+        end
+
+        allow(auditor_double).to receive(:audit).and_return({ action: :proceed, reply: 'Olá! Como posso ajudar você hoje?' })
+
+        handoff_service = instance_double(Custom::Scout::HandoffService, perform: 'ok')
+        allow(Custom::Scout::HandoffService).to receive(:new).with(scout: scout, conversation: conversation).and_return(handoff_service)
+
+        runner.perform
+
+        expect(handoff_service).to have_received(:perform).once
+      end
     end
 
     context 'when model returns unparseable or invalid structured output (fail-closed)' do
@@ -470,7 +499,8 @@ RSpec.describe Custom::Scout::AgentRunner do
 
         before do
           scout.update!(feature_response_auditor: true)
-          allow(Custom::Scout::ResponseAuditor).to receive(:new).with(scout: scout, conversation: conversation).and_return(auditor_double)
+          allow(Custom::Scout::ResponseAuditor).to receive(:new)
+            .with(scout: scout, conversation: conversation, handoff_already_flagged: false).and_return(auditor_double)
         end
 
         it 'replaces reply with repaired reply when auditor corrects it' do
@@ -554,7 +584,8 @@ RSpec.describe Custom::Scout::AgentRunner do
       context 'when feature_response_auditor is true' do
         before do
           scout.update!(feature_response_auditor: true)
-          allow(Custom::Scout::ResponseAuditor).to receive(:new).with(scout: scout, conversation: conversation).and_return(auditor_double)
+          allow(Custom::Scout::ResponseAuditor).to receive(:new)
+            .with(scout: scout, conversation: conversation, handoff_already_flagged: false).and_return(auditor_double)
         end
 
         it 'handles explicit handoff returned by auditor without dispatching extra reply' do

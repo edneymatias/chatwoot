@@ -79,21 +79,58 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
 
   def update_opportunity(opp, stage_id: nil, **params)
     opp.attach_conversation!(conversation)
-
-    opp.title = params[:title] if params[:title].present?
-    opp.value = params[:estimated_value] if params[:estimated_value].present?
-    sanitized_attrs = sanitize_custom_attributes(params[:custom_attributes])
-    opp.custom_attributes = (opp.custom_attributes || {}).merge(sanitized_attrs)
+    sanitized_attrs = apply_opportunity_fields(opp, params)
 
     # Persist field updates before attempting any stage transition: a rejected
     # transition (missing required fields) must not discard data the model
     # legitimately provided in the same call.
     opp.save!
+    fields_changed = opportunity_fields_changed?(opp)
 
     reminder = scoped_confirmation_reminder(custom_attribute_labels(sanitized_attrs.keys, attribute_model: :opportunity_attribute))
-    return "Opportunity updated successfully (ID: #{opp.id}).#{reminder}" if stage_id.blank?
+    return apply_stage_transition(opp, stage_id, reminder) if stage_id.present?
+    return already_qualified_update_message(opp, reminder) if fields_changed && opp.pipeline_stage_id == scout.qualified_stage_id
 
-    apply_stage_transition(opp, stage_id, reminder)
+    "Opportunity updated successfully (ID: #{opp.id}).#{reminder}"
+  end
+
+  def apply_opportunity_fields(opp, params)
+    opp.title = params[:title] if params[:title].present?
+    opp.value = params[:estimated_value] if params[:estimated_value].present?
+    sanitized_attrs = sanitize_custom_attributes(params[:custom_attributes])
+    opp.custom_attributes = (opp.custom_attributes || {}).merge(sanitized_attrs)
+    sanitized_attrs
+  end
+
+  def opportunity_fields_changed?(opp)
+    opp.saved_change_to_title? || opp.saved_change_to_value? || opp.saved_change_to_custom_attributes?
+  end
+
+  # Closes the gap behind conversation #66/display_id 64: an already-qualified opportunity that
+  # gets fresh data (e.g. a new appointment time from a follow-up conversation merged into this
+  # contact) never triggers a stage-transition handoff, because Rails doesn't consider reassigning
+  # the same pipeline_stage_id a "change" — and the model has no reason to re-send stage_id when it
+  # isn't moving the deal anywhere. Without this, real new commitments on an already-qualified deal
+  # can silently overwrite prior data with nobody notified.
+  def already_qualified_update_message(opp, reminder)
+    @handoff_needed = true
+    create_requalified_update_note(opp)
+    "Opportunity updated successfully (ID: #{opp.id})." \
+      "#{reminder}#{Custom::Scout::OpportunityStageTransitionService::NO_QUESTION_CLOSING_INSTRUCTION}"
+  end
+
+  # Flags for human review that this isn't a routine stage-transition handoff: the deal was already
+  # qualified (possibly from an earlier, unrelated visit — e.g. a contact merge earlier in this same
+  # conversation) and just got overwritten with this conversation's data. The agent should confirm
+  # whether the prior data still applies before treating this as a fresh commitment.
+  def create_requalified_update_note(opp)
+    Messages::MessageBuilder.new(
+      nil, conversation,
+      { content: "ℹ️ Oportunidade ##{opp.id} - #{opp.title} já estava no estágio \"#{opp.pipeline_stage.name}\" e foi " \
+                 'atualizada com novos dados nesta conversa, sem mudança de estágio (pode ser continuidade legítima, ou ' \
+                 'uma visita/pedido diferente reaproveitando a mesma oportunidade — vale confirmar com o cliente).',
+        private: true }
+    ).perform
   end
 
   def apply_stage_transition(opp, stage_id, reminder)

@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 import ScoutAPI from 'dashboard/api/scout';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
+import Input from 'dashboard/components-next/input/Input.vue';
 
 const props = defineProps({
   scout: {
@@ -21,6 +22,8 @@ const defaultStageId = ref(props.scout.default_pipeline_stage_id ?? '');
 const qualifiedStageId = ref(props.scout.qualified_stage_id ?? '');
 const unqualifiedStageId = ref(props.scout.unqualified_stage_id ?? '');
 const handoverTeamId = ref(props.scout.handover_team_id ?? '');
+const defaultCountryCode = ref(props.scout.default_country_code ?? '');
+const defaultAreaCode = ref(props.scout.default_area_code ?? '');
 const selectedAttributeIds = ref(
   (props.scout.required_custom_attribute_definitions || []).map(a =>
     Number(a.id)
@@ -65,6 +68,8 @@ watch(
     qualifiedStageId.value = newVal.qualified_stage_id ?? '';
     unqualifiedStageId.value = newVal.unqualified_stage_id ?? '';
     handoverTeamId.value = newVal.handover_team_id ?? '';
+    defaultCountryCode.value = newVal.default_country_code ?? '';
+    defaultAreaCode.value = newVal.default_area_code ?? '';
     selectedAttributeIds.value = (
       newVal.required_custom_attribute_definitions || []
     ).map(a => Number(a.id));
@@ -105,6 +110,8 @@ const handleSave = async () => {
       handover_team_id: handoverTeamId.value
         ? Number(handoverTeamId.value)
         : null,
+      default_country_code: defaultCountryCode.value || null,
+      default_area_code: defaultAreaCode.value || null,
       required_custom_attribute_definition_ids: [...selectedAttributeIds.value],
     };
 
@@ -217,6 +224,46 @@ onMounted(async () => {
       <span class="text-[11px] text-n-slate-10 mt-1 block">
         {{ t('SCOUT.FUNNEL.HANDOVER_TEAM_HINT') }}
       </span>
+    </div>
+
+    <!-- Default Phone Locale -->
+    <div class="pt-4 border-t border-n-weak">
+      <div>
+        <h3 class="text-sm font-medium text-n-slate-12">
+          {{ t('SCOUT.FUNNEL.PHONE_DEFAULTS_TITLE') }}
+        </h3>
+        <p class="text-xs text-n-slate-11 mt-0.5">
+          {{ t('SCOUT.FUNNEL.PHONE_DEFAULTS_SUBTITLE') }}
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+        <div>
+          <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
+            {{ t('SCOUT.FUNNEL.COUNTRY_CODE_LABEL') }}
+          </label>
+          <Input
+            v-model="defaultCountryCode"
+            :placeholder="t('SCOUT.FUNNEL.COUNTRY_CODE_PLACEHOLDER')"
+          />
+          <span class="text-[11px] text-n-slate-10 mt-1 block">
+            {{ t('SCOUT.FUNNEL.COUNTRY_CODE_HINT') }}
+          </span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
+            {{ t('SCOUT.FUNNEL.AREA_CODE_LABEL') }}
+          </label>
+          <Input
+            v-model="defaultAreaCode"
+            :placeholder="t('SCOUT.FUNNEL.AREA_CODE_PLACEHOLDER')"
+          />
+          <span class="text-[11px] text-n-slate-10 mt-1 block">
+            {{ t('SCOUT.FUNNEL.AREA_CODE_HINT') }}
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- Required Qualification Custom Attributes -->

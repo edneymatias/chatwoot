@@ -83,8 +83,12 @@ class Custom::Scout::AgentRunner
   end
 
   def process_audited_reply(reply_text, tools, chat)
+    tool = handoff_requested_tool(tools)
+
     if @scout.feature_response_auditor?
-      audit_result = Custom::Scout::ResponseAuditor.new(scout: @scout, conversation: @conversation).audit(
+      audit_result = Custom::Scout::ResponseAuditor.new(
+        scout: @scout, conversation: @conversation, handoff_already_flagged: tool.present?
+      ).audit(
         chat: chat, response_text: reply_text, message_history: audit_message_history(chat), recorded_tool_calls: recorded_tool_calls,
         available_tool_names: tools.map(&:name)
       )
@@ -93,7 +97,6 @@ class Custom::Scout::AgentRunner
       reply_text = audit_result[:reply]
     end
 
-    tool = handoff_requested_tool(tools)
     return trigger_handoff(tool, reply_text) if tool.present?
 
     dispatch_outgoing_reply(reply_text)
@@ -101,13 +104,10 @@ class Custom::Scout::AgentRunner
 
   def handle_auditor_non_proceed(audit_result)
     return true if audit_result[:action] == :handoff
+    return false unless audit_result[:action] == :escalate
 
-    if audit_result[:action] == :escalate
-      perform_fail_safe_handoff(audit_result[:reason] || 'Resposta inconsistente com as ações executadas.')
-      return true
-    end
-
-    false
+    perform_fail_safe_handoff(audit_result[:reason] || 'Resposta inconsistente com as ações executadas.')
+    true
   end
 
   def handoff_requested_tool(tools)

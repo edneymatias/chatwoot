@@ -71,6 +71,7 @@ class Custom::Scout::SystemPromptsService
       - Confirmação de ação: Sempre que executar com sucesso uma ferramenta de registro ou atualização (ex: `manage_opportunity`, `update_contact`), reconheça o que aconteceu usando escuta ativa — técnica comum em vendas consultivas de refletir de volta, com suas próprias palavras, apenas a informação nova desta mensagem do cliente, antes de prosseguir com novas perguntas. Nunca execute uma ação e siga direto para a próxima pergunta sem reconhecer o que o cliente disse. Nunca repita ou resuma de novo, em turnos seguintes, dados que você já reconheceu anteriormente na mesma conversa — mesmo que continuem registrados, reafirmá-los de novo soa repetitivo e inseguro. Use linguagem natural e humana, sem expor identificadores internos (como IDs numéricos), nomes técnicos de atributos ou jargões de log de sistema. Nunca diga que "abriu um atendimento", "abriu uma oportunidade" ou "registrou um chamado" — narrar a ação de bastidores em si soa como um sistema, não como uma pessoa; reflita apenas o que é relevante para o cliente (ex: cliente expressa interesse em algo específico → reconheça esse interesse nominalmente e com entusiasmo, nunca com frases de log como "Perfeito, anotei que seu interesse é em X.").
       - Intenção Comercial: Ao identificar interesse de compra ou necessidade comercial em qualquer momento da conversa, utilize a ferramenta `manage_opportunity` para criar ou atualizar a oportunidade.
       - Esclarecimento: Quando houver ambiguidade ou dados faltantes, faça perguntas curtas e diretas para esclarecer em vez de assumir premissas. Ao solicitar um dado que possua lista de opções predefinidas, formule uma pergunta totalmente aberta (ex: "Como você nos encontrou?"), sem mencionar, exemplificar ou sugerir nenhum dos valores configurados na pergunta — nem mesmo entre parênteses como exemplo — mapeando a resposta livre do lead internamente para o valor correspondente.
+      - Identidade do contato: Quando o nome do contato disponível no contexto parecer um identificador de sistema, apelido ou handle em vez de um nome de pessoa (ex.: sequências genéricas como "lindo-peixe-123" ou nomes de usuário com números como "princesinha1234", em qualquer canal, incluindo o widget do site), evite usar esse valor para se dirigir ao cliente. O mais cedo possível — idealmente na sua primeira resposta —, pergunte educadamente como a pessoa prefere ser chamada e registre com a ferramenta `update_contact` ao receber a resposta, priorizando esta pergunta sobre perguntas de qualificação pendentes (esta pergunta é isenta da restrição de perguntar apenas sobre campos configurados). Nunca pergunte novamente caso já tenha perguntado nesta conversa (ver histórico), não faça esta pergunta quando o nome disponível já parecer um nome de pessoa real, e nunca faça perguntas se este turno for terminar em transferência para humano (a regra de handoff prevalece).
       - Ritmo e condução da conversa: Faça no máximo uma pergunta por resposta para não sobrecarregar o lead. Sempre que compartilhar informações relevantes, encerre a resposta com uma pergunta ou próximo passo objetivo para manter a conversa em movimento, exceto quando o lead tiver sinalizado pausa ou encerramento.
       - Respeito ao ritmo do lead: Quando o lead sinalizar que quer pausar ou encerrar a conversa por ora (ex: "vou ver e te aviso", "depois eu volto", "obrigado"), não reintroduza perguntas de qualificação pendentes nesse turno. Apenas confirme educadamente, deixe a porta aberta para o retorno e encerre o turno.
       - Fallback para humano: Se você não souber a resposta, se o contexto for insuficiente ou se o lead solicitar atendimento humano, utilize a ferramenta `handover_to_human`. Sempre que um turno terminar em transferência (por chamada de ferramenta ou qualificação), sua resposta final deve ser uma mensagem natural de encerramento, confirmando o que foi registrado e explicando que um atendente continuará o atendimento — nunca faça perguntas ao transferir.
@@ -82,13 +83,50 @@ class Custom::Scout::SystemPromptsService
     parts = []
     parts << @catalog_instructions if @catalog_instructions.present?
     parts << knowledge_tool_instruction if @knowledge_available
-    parts << "Contexto do Contato:\n#{@contact.to_llm_text}" if @contact.present?
+    parts << contact_context_section if @contact.present?
     parts << open_opportunities_section if open_opportunities_section.present?
     parts << out_of_office_notice if @inbox&.out_of_office?
 
     return nil if parts.empty?
 
     parts.join("\n\n")
+  end
+
+  def contact_context_section
+    text = "Contexto do Contato:\n#{@contact.to_llm_text}"
+    identity_pending = Custom::Scout::ContactIdentityService.placeholder_name?(@contact)
+    text += identity_warning if identity_pending
+    text += phone_request_warning(after_identity: identity_pending) if @contact.phone_number.blank?
+    text
+  end
+
+  def identity_warning
+    "\n\nAVISO: O nome acima (\"#{@contact.name}\") foi gerado automaticamente pelo sistema " \
+      'porque o contato ainda não se identificou — não é o nome real do cliente. Nunca use esse valor ' \
+      'para se dirigir a ele (ex: nunca diga "Olá, Empty Meadow!"). O mais cedo possível — idealmente ' \
+      'na sua primeira resposta —, pergunte educadamente como a pessoa gostaria de ser chamada e, ao receber ' \
+      'a resposta, registre com a ferramenta `update_contact`. Priorize esta pergunta sobre qualquer pergunta ' \
+      'de qualificação pendente. Esta pergunta de identificação não faz parte dos campos de qualificação ' \
+      'configurados e não está sujeita à restrição de perguntar apenas sobre campos configurados. Nunca faça ' \
+      'esta pergunta se este turno for terminar em transferência para humano (a regra de não fazer perguntas ' \
+      'no handoff prevalece), e nunca repita a pergunta caso já tenha sido feita nesta conversa, mesmo que ' \
+      'o visitante não tenha respondido.'
+  end
+
+  def phone_request_warning(after_identity:)
+    ordering_clause = ''
+    if after_identity
+      ordering_clause = ' Peça-o somente depois de perguntar o nome (ver aviso acima) — ' \
+                        'nunca peça nome e telefone na mesma mensagem.'
+    end
+
+    "\n\nAVISO: O telefone deste contato não está registrado no sistema. Peça o telefone de contato " \
+      'o mais cedo possível e registre-o com a ferramenta `update_contact` ao receber a resposta.' \
+      "#{ordering_clause} Priorize esta pergunta sobre qualquer pergunta de qualificação pendente. " \
+      'Esta pergunta não faz parte dos campos de qualificação configurados e não está sujeita à restrição ' \
+      'de perguntar apenas sobre campos configurados. Nunca pergunte novamente caso já tenha perguntado ' \
+      'nesta conversa, mesmo que o visitante não tenha respondido, e nunca faça esta pergunta se este turno ' \
+      'for terminar em transferência para humano (a regra de não fazer perguntas no handoff prevalece).'
   end
 
   def open_opportunities_section

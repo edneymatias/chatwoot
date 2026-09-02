@@ -14,7 +14,7 @@ RSpec.describe Custom::Scout::SystemPromptsService do
       enabled: true
     )
   end
-  let(:contact) { create(:contact, account: account, name: 'Maria Silva') }
+  let(:contact) { create(:contact, account: account, name: 'Maria Silva', phone_number: '+5511988887777') }
   let(:inbox) { create(:inbox, account: account, timezone: 'America/Sao_Paulo') }
 
   describe '.build' do
@@ -87,6 +87,21 @@ RSpec.describe Custom::Scout::SystemPromptsService do
     it 'includes open-ended clarification guardrails avoiding multiple choice menus for list attributes' do
       expect(prompt).to include('Esclarecimento:')
       expect(prompt).to include('formule uma pergunta totalmente aberta')
+    end
+
+    it 'includes contact identity guardrail instructing to ask real name on any channel, including the website widget, with immediacy and priority' do
+      expect(prompt).to include('Identidade do contato:')
+      expect(prompt).to include('Quando o nome do contato disponível no contexto parecer um identificador de sistema')
+      expect(prompt).to include('idealmente na sua primeira resposta')
+      expect(prompt).to include('priorizando esta pergunta sobre perguntas de qualificação pendentes')
+      expect(prompt).not_to include('canais que não sejam o widget do site')
+    end
+
+    it 'includes contact identity guardrail rules for field exemption, non-repetition, real names, and handoff precedence' do
+      expect(prompt).to include('esta pergunta é isenta da restrição de perguntar apenas sobre campos configurados')
+      expect(prompt).to include('Nunca pergunte novamente caso já tenha perguntado nesta conversa')
+      expect(prompt).to include('não faça esta pergunta quando o nome disponível já parecer um nome de pessoa real')
+      expect(prompt).to include('nunca faça perguntas se este turno for terminar em transferência para humano')
     end
 
     it 'forbids mentioning or exemplifying allowed values inside the clarifying question itself' do
@@ -375,6 +390,141 @@ RSpec.describe Custom::Scout::SystemPromptsService do
         it 'omits the open opportunities section cleanly' do
           expect(prompt_without_contact).not_to include('[Oportunidades Abertas do Contato]')
         end
+      end
+    end
+
+    describe 'contact_context_section (User Stories 1 & 2)' do
+      context 'when contact has a placeholder name' do
+        let(:placeholder_contact) { create(:contact, account: account, name: 'empty-meadow-50', phone_number: '+5511988887777') }
+        let(:prompt_with_placeholder) do
+          described_class.build(
+            scout: scout,
+            contact: placeholder_contact,
+            inbox: inbox
+          )
+        end
+
+        it 'appends the placeholder warning to the contact context section with immediacy and priority (FR-003, FR-012)' do
+          expect(prompt_with_placeholder).to include('AVISO: O nome acima ("empty-meadow-50") foi gerado automaticamente pelo sistema')
+          expect(prompt_with_placeholder).to include('não é o nome real do cliente')
+          expect(prompt_with_placeholder).to include('idealmente na sua primeira resposta')
+          expect(prompt_with_placeholder).to include('Priorize esta pergunta sobre qualquer pergunta de qualificação pendente')
+          expect(prompt_with_placeholder).to include('registre com a ferramenta `update_contact`')
+        end
+
+        it 'instructs exemption from configured-fields-only guidance and once-only asking bound (FR-005, FR-013)' do
+          expect(prompt_with_placeholder).to include(
+            'Esta pergunta de identificação não faz parte dos campos de qualificação configurados ' \
+            'e não está sujeita à restrição de perguntar apenas sobre campos configurados'
+          )
+          expect(prompt_with_placeholder).to include('a regra de não fazer perguntas no handoff prevalece')
+          expect(prompt_with_placeholder).to include(
+            'nunca repita a pergunta caso já tenha sido feita nesta conversa, mesmo que o visitante não tenha respondido'
+          )
+        end
+
+        it 'specifically instructs never to use the placeholder name to address the customer directly (FR-002)' do
+          expect(prompt_with_placeholder).to include('Nunca use esse valor para se dirigir a ele (ex: nunca diga "Olá, Empty Meadow!")')
+        end
+      end
+
+      context 'when contact has a real name' do
+        it 'omits the placeholder warning paragraph' do
+          expect(prompt).to include('Maria Silva')
+          expect(prompt).not_to include('AVISO: O nome acima')
+          expect(prompt).not_to include('foi gerado automaticamente pelo sistema')
+        end
+      end
+    end
+
+    describe 'contact_context_section — phone number request (channel-agnostic, follows Matias/#62 gap)' do
+      context 'when phone_number is blank and the name is already real' do
+        let(:no_phone_contact) { create(:contact, account: account, name: 'Maria Silva', phone_number: nil) }
+        let(:prompt_no_phone) do
+          described_class.build(scout: scout, contact: no_phone_contact, inbox: inbox)
+        end
+
+        it 'appends a phone-request warning with immediacy, priority, once-only bound, and no ordering clause' do
+          expect(prompt_no_phone).to include('AVISO: O telefone deste contato não está registrado no sistema')
+          expect(prompt_no_phone).to include('Peça o telefone de contato o mais cedo possível')
+          expect(prompt_no_phone).to include('registre-o com a ferramenta `update_contact`')
+          expect(prompt_no_phone).to include('Priorize esta pergunta sobre qualquer pergunta de qualificação pendente')
+          expect(prompt_no_phone).to include(
+            'não faz parte dos campos de qualificação configurados e não está sujeita à restrição ' \
+            'de perguntar apenas sobre campos configurados'
+          )
+          expect(prompt_no_phone).to include('nunca faça esta pergunta se este turno for terminar em transferência para humano')
+          expect(prompt_no_phone).not_to include('Peça-o somente depois de perguntar o nome')
+        end
+      end
+
+      context 'when phone_number is present' do
+        it 'omits the phone-request warning' do
+          expect(prompt).not_to include('AVISO: O telefone deste contato não está registrado')
+        end
+      end
+
+      context 'when both the name is a placeholder and phone_number is blank' do
+        let(:unidentified_contact) { create(:contact, account: account, name: 'empty-meadow-50', phone_number: nil) }
+        let(:prompt_unidentified) do
+          described_class.build(scout: scout, contact: unidentified_contact, inbox: inbox)
+        end
+
+        it 'includes both warnings and orders the phone request after the name question' do
+          expect(prompt_unidentified).to include('AVISO: O nome acima ("empty-meadow-50") foi gerado automaticamente pelo sistema')
+          expect(prompt_unidentified).to include('AVISO: O telefone deste contato não está registrado no sistema')
+          expect(prompt_unidentified).to include('Peça-o somente depois de perguntar o nome')
+          expect(prompt_unidentified).to include('nunca peça nome e telefone na mesma mensagem')
+        end
+      end
+    end
+
+    describe 'coexistence of identity warning, funnel guidance, and handoff closing reminder (Polish T016)' do
+      let(:placeholder_contact) { create(:contact, account: account, name: 'empty-meadow-50', phone_number: '+5511988887777') }
+      let!(:stage_new) { PipelineStage.create!(account: account, name: 'New', position: 1) }
+      let!(:stage_qualified) { PipelineStage.create!(account: account, name: 'Qualified', position: 2) }
+      let!(:attr_budget) do
+        CustomAttributeDefinition.create!(
+          account: account,
+          attribute_key: 'budget',
+          attribute_display_name: 'Orçamento Mensal',
+          attribute_display_type: 'currency',
+          attribute_model: 'opportunity_attribute'
+        )
+      end
+
+      before do
+        scout.update!(
+          default_pipeline_stage: stage_new,
+          qualified_stage: stage_qualified
+        )
+        scout.required_custom_attribute_definitions << attr_budget
+      end
+
+      it 'renders identity warning and funnel guidance simultaneously and unmodified' do
+        rendered_prompt = described_class.build(
+          scout: scout,
+          contact: placeholder_contact,
+          inbox: inbox
+        )
+
+        expect(rendered_prompt).to include('AVISO: O nome acima ("empty-meadow-50") foi gerado automaticamente pelo sistema')
+        expect(rendered_prompt).to include('[Funil de Vendas e Qualificação]')
+        expect(rendered_prompt).to include('Limite suas perguntas de qualificação aos campos configurados acima')
+        expect(rendered_prompt).to include('Não invente perguntas adicionais fora dos campos configurados')
+      end
+
+      it 'renders handoff closing reminder alongside identity warning' do
+        rendered_prompt = described_class.build(
+          scout: scout,
+          contact: placeholder_contact,
+          inbox: inbox
+        )
+
+        expect(rendered_prompt).to include('Fallback para humano:')
+        expect(rendered_prompt).to include('nunca faça perguntas ao transferir')
+        expect(rendered_prompt).to include('[Lembrete de Encerramento]')
+        expect(rendered_prompt).to include('sua resposta final não pode conter nenhuma pergunta ao cliente')
       end
     end
   end

@@ -58,5 +58,29 @@ RSpec.describe Custom::Scout::PlaygroundRunner do
 
       runner.perform
     end
+
+    it 'forwards contact to SystemPromptsService when provided' do
+      contact = create(:contact, account: account, name: 'empty-meadow-50')
+      runner_with_contact = described_class.new(
+        scout: scout,
+        contact: contact,
+        message: 'Olá',
+        message_history: []
+      )
+
+      expect(Custom::Scout::SystemPromptsService).to receive(:build).with(
+        hash_including(scout: scout, contact: contact)
+      ).and_call_original
+
+      runner_with_contact.perform
+    end
+
+    it 'calls SystemPromptsService with nil contact when contact is omitted' do
+      expect(Custom::Scout::SystemPromptsService).to receive(:build).with(
+        hash_including(scout: scout, contact: nil)
+      ).and_call_original
+
+      runner.perform
+    end
   end
 end

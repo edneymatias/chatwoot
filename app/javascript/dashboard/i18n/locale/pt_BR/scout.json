@@ -146,7 +146,15 @@
       "NO_TEAM_SELECTED": "Nenhum (manter equipe atual)",
       "REQUIRED_FIELDS_TITLE": "Campos Obrigatórios de Qualificação",
       "REQUIRED_FIELDS_SUBTITLE": "Selecione atributos personalizados de contato ou oportunidade que o Scout deve coletar antes de qualificar.",
-      "NO_ATTRIBUTES_AVAILABLE": "Nenhum atributo personalizado cadastrado nas configurações da conta."
+      "NO_ATTRIBUTES_AVAILABLE": "Nenhum atributo personalizado cadastrado nas configurações da conta.",
+      "PHONE_DEFAULTS_TITLE": "Padrão de Telefone",
+      "PHONE_DEFAULTS_SUBTITLE": "Usado para completar telefones que o lead informa sem DDI ou DDD (ex.: \"999220122\").",
+      "COUNTRY_CODE_LABEL": "DDI Padrão",
+      "COUNTRY_CODE_PLACEHOLDER": "ex: +55",
+      "COUNTRY_CODE_HINT": "Adicionado quando o número do lead não começa com +.",
+      "AREA_CODE_LABEL": "DDD Padrão",
+      "AREA_CODE_PLACEHOLDER": "ex: 41",
+      "AREA_CODE_HINT": "Adicionado quando o número do lead vem sem DDD (comum quando o lead liga da mesma cidade). Deixe em branco para exigir o DDD em vez de adivinhar."
     },
     "TOOLS": {
       "TITLE": "Ferramentas",

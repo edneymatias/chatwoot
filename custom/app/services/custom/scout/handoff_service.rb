@@ -50,8 +50,27 @@ class Custom::Scout::HandoffService
     Messages::MessageBuilder.new(
       nil,
       @conversation,
-      { content: "📋 Transferência para atendimento humano: #{reason.presence || 'motivo não informado pelo modelo'}", private: true }
+      { content: "📋 Transferência para atendimento humano: #{reason.presence || 'motivo não informado pelo modelo'}#{opportunity_reference}",
+        private: true }
     ).perform
+  end
+
+  # Every handoff path (tool-triggered, stage-transition, or the response auditor's own
+  # classifier-based path) funnels through here, so this is the single point that can tag ANY
+  # handoff with its opportunity — sparing the agent from hunting the Kanban board to find which
+  # deal a transferred conversation is about.
+  def opportunity_reference
+    opp = associated_opportunity
+    return '' if opp.blank?
+
+    " | Oportunidade ##{opp.id} - #{opp.title}"
+  end
+
+  def associated_opportunity
+    Opportunity.joins(:opportunity_conversations)
+               .where(opportunity_conversations: { conversation_id: @conversation.id })
+               .order(updated_at: :desc)
+               .first
   end
 
   def generate_contact_memory

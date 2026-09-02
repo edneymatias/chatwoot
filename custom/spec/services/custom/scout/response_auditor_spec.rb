@@ -300,4 +300,57 @@ RSpec.describe Custom::Scout::ResponseAuditor do
       expect(result).to eq({ action: :proceed, reply: original_reply })
     end
   end
+
+  describe '#audit (handoff_already_flagged: skips the classifier when a tool already deterministically flagged handoff)' do
+    let(:flagged_auditor) { described_class.new(scout: scout, conversation: conversation, handoff_already_flagged: true) }
+
+    before do
+      allow(claim_service).to receive(:check).and_return({ 'decision' => 'safe', 'reason' => 'All good' })
+    end
+
+    it 'never calls the action classifier and proceeds straight to claim consistency' do
+      expect(action_service).not_to receive(:classify)
+      expect(claim_service).to receive(:check).once
+
+      result = flagged_auditor.audit(
+        chat: fake_chat,
+        response_text: original_reply,
+        message_history: message_history,
+        recorded_tool_calls: recorded_tool_calls
+      )
+
+      expect(result).to eq({ action: :proceed, reply: original_reply })
+    end
+
+    it 'also skips the classifier during the repair/reverify path (does not re-evaluate handoff after a repair attempt)' do
+      allow(claim_service).to receive(:check).and_return(
+        { 'decision' => 'false_promise', 'reason' => 'Promised callback' },
+        { 'decision' => 'safe', 'reason' => 'Repaired' }
+      )
+      repaired_json = { 'response' => 'Registrei o horário escolhido.', 'reasoning' => 'Fixed promise' }.to_json
+      repaired_llm_message = instance_double(RubyLLM::Message, content: repaired_json)
+      allow(fake_chat).to receive(:ask).and_return(repaired_llm_message)
+      expect(action_service).not_to receive(:classify)
+
+      result = flagged_auditor.audit(
+        chat: fake_chat,
+        response_text: original_reply,
+        message_history: message_history,
+        recorded_tool_calls: recorded_tool_calls
+      )
+
+      expect(result).to eq({ action: :proceed, reply: 'Registrei o horário escolhido.' })
+    end
+
+    it 'defaults to false (existing behavior unchanged) when the keyword is omitted' do
+      expect(action_service).to receive(:classify).once.and_return({ 'action' => 'continue', 'action_reason' => nil })
+
+      auditor.audit(
+        chat: fake_chat,
+        response_text: original_reply,
+        message_history: message_history,
+        recorded_tool_calls: recorded_tool_calls
+      )
+    end
+  end
 end

@@ -12,10 +12,11 @@ class Custom::Scout::ResponseAuditor
     Por favor, reavalie: se a ferramenta adequada estiver disponível e couber executá-la agora, execute-a; caso contrário, responda ao cliente de forma transparente sem afirmar ou prometer ações que não foram realizadas.
   INSTRUCTION
 
-  def initialize(scout:, conversation:)
+  def initialize(scout:, conversation:, handoff_already_flagged: false)
     @scout = scout
     @conversation = conversation
     @account = conversation.account
+    @handoff_already_flagged = handoff_already_flagged
   end
 
   def audit(chat:, response_text:, message_history:, recorded_tool_calls:, available_tool_names: [])
@@ -42,8 +43,20 @@ class Custom::Scout::ResponseAuditor
     status == 'pending' || status == Conversation.statuses[:pending]
   end
 
+  # Skipping the classifier here (rather than just ignoring its output) when a tool has already
+  # deterministically flagged handoff_needed this turn — e.g. `move_opportunity_stage` reaching the
+  # qualified stage — matters because the classifier is a stochastic single-turn read of the raw
+  # transcript with no awareness of what tools actually ran. Observed in production: a customer
+  # picking one of several offered options (an appointment time, a referral-source word) in a terse
+  # reply gets misread as "accepted a human-handoff offer" (action_reason: human_offer_accepted) —
+  # confirmed 5/5 times, always immediately after the assistant presented a short list of choices,
+  # never with any real human-transfer offer in the transcript. Since the tool-flagged handoff is
+  # already code-certain, running the classifier anyway only risks it firing first with the wrong
+  # reason and the generic fixed message, preempting the correct tool-triggered handoff and its
+  # natural closing message — there is no ambiguity left for it to usefully resolve.
   def evaluate_action(message_history)
     return nil unless conversation_pending?
+    return nil if @handoff_already_flagged
 
     action_result = check_action_classification(message_history)
     return nil unless action_handoff?(action_result)

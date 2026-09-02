@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_28_230000) do
+ActiveRecord::Schema[7.1].define(version: 2126_09_02_140000) do
   create_schema "metabase_cache_0b4bd_2"
 
   # These extensions should be enabled to support this database
@@ -1340,6 +1340,8 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_28_230000) do
     t.jsonb "product_catalog", default: {}, null: false
     t.jsonb "knowledge_sources", default: {}, null: false
     t.boolean "feature_response_auditor", default: false, null: false
+    t.string "default_country_code", default: "+55"
+    t.string "default_area_code"
     t.index ["account_id"], name: "index_ichatr_scouts_on_account_id"
     t.index ["default_pipeline_stage_id"], name: "index_ichatr_scouts_on_default_pipeline_stage_id"
     t.index ["handover_team_id"], name: "index_ichatr_scouts_on_handover_team_id"

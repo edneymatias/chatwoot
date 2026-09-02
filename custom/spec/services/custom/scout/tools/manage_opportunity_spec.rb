@@ -260,12 +260,71 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
           expect(tool.handoff_needed).to be true
         end
 
-        it 'resets handoff_needed to false on a fresh call that does not qualify' do
+        it 'resets handoff_needed to false on a fresh call that neither transitions stage nor changes any data ' \
+           '(a call that DOES change data while already qualified is instead covered below — it must still flag, ' \
+           'per the already-qualified-update handoff behavior)' do
           tool.execute(action: 'update', opportunity_id: existing_opportunity.id, stage_id: stage_qualified.id)
           expect(tool.handoff_needed).to be true
 
-          tool.execute(action: 'update', opportunity_id: existing_opportunity.id, title: 'Só um ajuste de título')
+          tool.execute(action: 'update', opportunity_id: existing_opportunity.id)
           expect(tool.handoff_needed).to be false
+        end
+      end
+
+      context 'when the opportunity is already at the qualified stage and this call updates data without ' \
+              're-passing stage_id (follows conversation #66/display_id 64: a merged-in follow-up silently ' \
+              'overwrote an already-qualified opportunity with no handoff, since reassigning the same stage_id ' \
+              'is not a Rails "change" and stage_id was never re-sent anyway)' do
+        let(:stage_qualified) { PipelineStage.create!(account: account, name: 'Qualified', position: 3) }
+
+        before do
+          scout.update!(qualified_stage: stage_qualified)
+          existing_opportunity.update!(pipeline_stage: stage_qualified)
+        end
+
+        it 'flags handoff_needed and includes the no-question closing instruction when custom_attributes actually change' do
+          attr_timeline
+          result = tool.execute(
+            action: 'update', opportunity_id: existing_opportunity.id, custom_attributes: { 'timeline' => 'Amanhã 16h' }
+          )
+
+          expect(result).to include('successfully')
+          expect(result).to include('A transferência para atendimento humano será confirmada automaticamente')
+          expect(tool.handoff_needed).to be true
+        end
+
+        it 'leaves a private note flagging the already-qualified update for human review' do
+          attr_timeline
+          tool.execute(action: 'update', opportunity_id: existing_opportunity.id, custom_attributes: { 'timeline' => 'Amanhã 16h' })
+
+          note = conversation.reload.messages.where(private: true).last
+          expect(note.content).to include("Oportunidade ##{existing_opportunity.id}")
+          expect(note.content).to include('Qualified')
+          expect(note.content).to include('sem mudança de estágio')
+        end
+
+        it 'also flags handoff_needed when only the title changes' do
+          tool.execute(action: 'update', opportunity_id: existing_opportunity.id, title: 'Novo título')
+
+          expect(tool.handoff_needed).to be true
+        end
+
+        it 'also flags handoff_needed when only the value changes' do
+          tool.execute(action: 'update', opportunity_id: existing_opportunity.id, estimated_value: 12_000.0)
+
+          expect(tool.handoff_needed).to be true
+        end
+
+        it 'does not flag handoff_needed when nothing actually changed this call' do
+          tool.execute(action: 'update', opportunity_id: existing_opportunity.id)
+
+          expect(tool.handoff_needed).to be false
+        end
+
+        it 'does not double-trigger the stage-transition handoff path (stage_id still blank, no HandoffService call)' do
+          expect(Custom::Scout::HandoffService).not_to receive(:new)
+
+          tool.execute(action: 'update', opportunity_id: existing_opportunity.id, title: 'Novo título')
         end
       end
     end
