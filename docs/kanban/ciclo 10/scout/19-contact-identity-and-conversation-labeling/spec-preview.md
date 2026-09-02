@@ -90,6 +90,11 @@ empty-meadow-50` exatamente como receberia `Name: Maria Silva`.
 
 ## Tema 2 — Ferramenta nativa: aplicar label à conversa
 
+> **Decisão (2026-09-01)**: descartado do escopo da Fase 19 durante o brainstorming da spec final —
+> decisão explícita do operador, sem motivação de negócio para adicionar a tool ao Scout agora. O
+> Tema 1 seguiu sozinho para `spec81.md`. Seção abaixo mantida como registro histórico, caso o tema
+> volte a ser priorizado no futuro.
+
 ### Contexto
 
 O catálogo de ferramentas nativas do Captain (`config/agents/tools.yml`,

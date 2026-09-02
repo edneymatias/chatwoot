@@ -54,6 +54,18 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
         )
       end
 
+      it 'includes a scoped confirmation reminder naming only this call\'s custom attribute labels' do
+        attr_budget
+        result = tool.execute(action: 'create', title: 'Lead com Orçamento', custom_attributes: { 'budget' => 5000 })
+        expect(result).to include('Dados registrados nesta chamada: Budget')
+        expect(result).to include('não repita dados já confirmados em mensagens anteriores desta conversa')
+      end
+
+      it 'omits the confirmation reminder when no custom attributes were sent in this call' do
+        result = tool.execute(action: 'create', title: 'Lead sem Atributos')
+        expect(result).not_to include('Dados registrados nesta chamada')
+      end
+
       it 'creates opportunity and populates referral attribution without private notes' do
         expect do
           result = tool.execute(action: 'create', title: 'Opp de Anúncio', estimated_value: 5000.0)
@@ -175,6 +187,19 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
           expect(existing_opportunity.campaign_headline).to eq('Headline Original')
           expect(existing_opportunity.pipeline_stage_id).to eq(stage1.id)
         end
+      end
+
+      it 'includes a scoped confirmation reminder naming only this call\'s custom attribute labels on update' do
+        attr_timeline
+        result = tool.execute(
+          action: 'update', opportunity_id: existing_opportunity.id, custom_attributes: { 'timeline' => 'Q4' }
+        )
+        expect(result).to include('Dados registrados nesta chamada: Timeline')
+      end
+
+      it 'omits the confirmation reminder on an update call that only changes title/value' do
+        result = tool.execute(action: 'update', opportunity_id: existing_opportunity.id, title: 'Só um ajuste')
+        expect(result).not_to include('Dados registrados nesta chamada')
       end
 
       it 'delegates stage transition to OpportunityStageTransitionService when stage_id is present' do

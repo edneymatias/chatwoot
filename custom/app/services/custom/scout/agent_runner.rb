@@ -85,7 +85,8 @@ class Custom::Scout::AgentRunner
   def process_audited_reply(reply_text, tools, chat)
     if @scout.feature_response_auditor?
       audit_result = Custom::Scout::ResponseAuditor.new(scout: @scout, conversation: @conversation).audit(
-        chat: chat, response_text: reply_text, message_history: audit_message_history(chat), recorded_tool_calls: recorded_tool_calls
+        chat: chat, response_text: reply_text, message_history: audit_message_history(chat), recorded_tool_calls: recorded_tool_calls,
+        available_tool_names: tools.map(&:name)
       )
       return if handle_auditor_non_proceed(audit_result)
 
@@ -191,13 +192,15 @@ class Custom::Scout::AgentRunner
     messages
   end
 
-  # The auditor's "conversation history" must only contain actual customer/assistant/tool turns —
-  # RubyLLM's chat.messages also carries the system instructions as a role: :system entry, and
-  # dumping the full system prompt (which itself discusses handoff criteria/stage descriptions) into
-  # the classifier/consistency-check prompt as if it were part of the conversation caused it to
-  # misread guardrail text as evidence of an actual handoff-related exchange.
+  # The auditor's "conversation history" must only contain what the customer and the assistant
+  # actually said — chat.messages also carries system instructions (role: :system) and raw tool
+  # results (role: :tool). Dumping either in makes the classifier misread instructional text as a
+  # real exchange — seen with system guardrail text, then with a tool result's own "a transferência
+  # será confirmada automaticamente..." nudge being misread as an offered handoff (hallucinating
+  # action_reason: 'human_offer_accepted'). ClaimConsistencyService gets tool-call awareness
+  # separately via `recorded_tool_calls`, so dropping role: :tool here loses no real signal.
   def audit_message_history(chat)
-    chat_message_history(chat).reject { |m| m[:role] == 'system' }
+    chat_message_history(chat).reject { |m| m[:role] == 'system' || m[:role] == 'tool' }
   end
 
   def instrumentation_params(chat, prompt_text)

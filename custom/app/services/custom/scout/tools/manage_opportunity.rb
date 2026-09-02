@@ -52,6 +52,7 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
   def create_opportunity(title: nil, stage_id: nil, estimated_value: nil, custom_attributes: nil, **)
     default_stage_id = scout.default_pipeline_stage_id || account.pipeline_stages.first&.id
     resolved_title = title.presence || "Oportunidade ##{conversation.display_id}"
+    sanitized_attrs = sanitize_custom_attributes(custom_attributes)
 
     opp = Opportunity.create!(
       account: account,
@@ -60,22 +61,20 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
       pipeline_stage_id: default_stage_id,
       title: resolved_title,
       value: estimated_value,
-      custom_attributes: sanitize_custom_attributes(custom_attributes),
+      custom_attributes: sanitized_attrs,
       status: :open
     )
 
     referral_message = find_referral_message
     Custom::ReferralAttributionService.process(opp, referral_message) if referral_message
 
-    return "Opportunity created successfully (ID: #{opp.id}, Stage: #{default_stage_id})." if stage_id.blank?
+    reminder = scoped_confirmation_reminder(custom_attribute_labels(sanitized_attrs.keys, attribute_model: :opportunity_attribute))
+    return "Opportunity created successfully (ID: #{opp.id}, Stage: #{default_stage_id}).#{reminder}" if stage_id.blank?
 
     # A caller-requested stage (e.g. the qualified stage) must go through the same
     # requirement gate and handoff flagging as update_opportunity — creating directly
     # into a gated stage would silently skip both.
-    service = Custom::Scout::OpportunityStageTransitionService.new(scout: scout, conversation: conversation, opportunity: opp)
-    result = service.call(stage_id: stage_id)
-    @handoff_needed = service.handoff_needed
-    "Opportunity created successfully (ID: #{opp.id}). #{result}"
+    "Opportunity created successfully (ID: #{opp.id}). #{apply_stage_transition(opp, stage_id, reminder)}"
   end
 
   def update_opportunity(opp, stage_id: nil, **params)
@@ -83,23 +82,25 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
 
     opp.title = params[:title] if params[:title].present?
     opp.value = params[:estimated_value] if params[:estimated_value].present?
-    opp.custom_attributes = (opp.custom_attributes || {}).merge(sanitize_custom_attributes(params[:custom_attributes]))
+    sanitized_attrs = sanitize_custom_attributes(params[:custom_attributes])
+    opp.custom_attributes = (opp.custom_attributes || {}).merge(sanitized_attrs)
 
     # Persist field updates before attempting any stage transition: a rejected
     # transition (missing required fields) must not discard data the model
     # legitimately provided in the same call.
     opp.save!
 
-    return "Opportunity updated successfully (ID: #{opp.id})." if stage_id.blank?
+    reminder = scoped_confirmation_reminder(custom_attribute_labels(sanitized_attrs.keys, attribute_model: :opportunity_attribute))
+    return "Opportunity updated successfully (ID: #{opp.id}).#{reminder}" if stage_id.blank?
 
-    service = Custom::Scout::OpportunityStageTransitionService.new(
-      scout: scout,
-      conversation: conversation,
-      opportunity: opp
-    )
+    apply_stage_transition(opp, stage_id, reminder)
+  end
+
+  def apply_stage_transition(opp, stage_id, reminder)
+    service = Custom::Scout::OpportunityStageTransitionService.new(scout: scout, conversation: conversation, opportunity: opp)
     result = service.call(stage_id: stage_id)
     @handoff_needed = service.handoff_needed
-    result
+    "#{result}#{reminder}"
   end
 
   def sanitize_custom_attributes(candidate)

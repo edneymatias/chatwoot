@@ -102,12 +102,25 @@ RSpec.describe Custom::Scout::OpportunityStageTransitionService do
           expect(service.handoff_needed).to be true
         end
 
+        it 'includes a just-in-time no-question closing instruction in the result when handoff is newly flagged' do
+          result = service.call(stage_id: stage_qualified.id)
+          expect(result).to include('transferência para atendimento humano será confirmada automaticamente')
+          expect(result).to include('sem perguntas')
+        end
+
         it 'does not flag handoff as needed on subsequent redundant stage-move calls' do
           opportunity.update!(pipeline_stage: stage_qualified)
 
           result = service.call(stage_id: stage_qualified.id)
           expect(result).to include('Opportunity moved to stage Qualified successfully.')
           expect(service.handoff_needed).to be false
+        end
+
+        it 'does not include the closing instruction on redundant stage-move calls that do not flag handoff' do
+          opportunity.update!(pipeline_stage: stage_qualified)
+
+          result = service.call(stage_id: stage_qualified.id)
+          expect(result).not_to include('sem perguntas')
         end
       end
     end

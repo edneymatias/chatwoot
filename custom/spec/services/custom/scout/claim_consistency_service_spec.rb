@@ -75,6 +75,34 @@ RSpec.describe Custom::Scout::ClaimConsistencyService do
       )
     end
 
+    it 'lists the tools actually available to the assistant in the prompt' do
+      expect(fake_chat).to receive(:ask) do |prompt|
+        expect(prompt).to include('manage_opportunity')
+        expect(prompt).to include('update_contact')
+        fake_response
+      end
+
+      service.check(
+        message_history: message_history,
+        assistant_response: assistant_response,
+        recorded_tool_calls: recorded_tool_calls,
+        available_tool_names: %w[manage_opportunity update_contact]
+      )
+    end
+
+    it 'instructs the auditor not to assume a tool beyond the ones actually available' do
+      expect(fake_chat).to receive(:with_instructions) do |instructions|
+        expect(instructions).to include('Não presuma ferramentas inexistentes')
+        fake_chat
+      end
+
+      service.check(
+        message_history: message_history,
+        assistant_response: assistant_response,
+        recorded_tool_calls: recorded_tool_calls
+      )
+    end
+
     it 'passes recorded tool calls including failures into the prompt' do
       failed_calls = [
         { tool_name: 'move_opportunity_stage', arguments: { stage_id: 1 }, simulated: false, error: 'Stage not found' }

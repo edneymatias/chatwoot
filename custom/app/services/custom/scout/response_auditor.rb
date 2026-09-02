@@ -18,17 +18,17 @@ class Custom::Scout::ResponseAuditor
     @account = conversation.account
   end
 
-  def audit(chat:, response_text:, message_history:, recorded_tool_calls:)
+  def audit(chat:, response_text:, message_history:, recorded_tool_calls:, available_tool_names: [])
     return { action: :proceed, reply: response_text } unless conversation_pending?
 
     action_outcome = evaluate_action(message_history)
     return action_outcome if action_outcome
     return { action: :proceed, reply: response_text } unless conversation_pending?
 
-    consistency_result = check_claim_consistency(message_history, response_text, recorded_tool_calls)
+    consistency_result = check_claim_consistency(message_history, response_text, recorded_tool_calls, available_tool_names)
     return { action: :proceed, reply: response_text } if consistency_safe_or_unclear?(consistency_result)
 
-    perform_repair_and_reverify(chat, response_text, message_history, recorded_tool_calls)
+    perform_repair_and_reverify(chat, response_text, message_history, recorded_tool_calls, available_tool_names)
   rescue StandardError => e
     handle_audit_error(e, response_text)
   end
@@ -68,7 +68,7 @@ class Custom::Scout::ResponseAuditor
     (confirmation['action_reason'] || confirmation[:action_reason]) == reason
   end
 
-  def perform_repair_and_reverify(chat, original_reply, message_history, recorded_tool_calls)
+  def perform_repair_and_reverify(chat, original_reply, message_history, recorded_tool_calls, available_tool_names)
     return { action: :proceed, reply: original_reply } unless conversation_pending?
 
     repaired_response = execute_repair(chat)
@@ -77,7 +77,7 @@ class Custom::Scout::ResponseAuditor
     action_outcome = evaluate_action(message_history)
     return action_outcome if action_outcome
 
-    reverify_consistency(repaired_response, message_history, recorded_tool_calls)
+    reverify_consistency(repaired_response, message_history, recorded_tool_calls, available_tool_names)
   end
 
   # By this point `execute_repair` has already run a fresh `chat.ask`, which can itself trigger
@@ -88,10 +88,10 @@ class Custom::Scout::ResponseAuditor
   # right after a real handoff (observed in production: fixed handoff phrase followed immediately by
   # the model's own repaired text). `:handoff` matches the same "stop, nothing else to send" contract
   # already used everywhere else in this file for a non-pending conversation.
-  def reverify_consistency(repaired_response, message_history, recorded_tool_calls)
+  def reverify_consistency(repaired_response, message_history, recorded_tool_calls, available_tool_names)
     return { action: :handoff } unless conversation_pending?
 
-    reverify_result = check_claim_consistency(message_history, repaired_response, recorded_tool_calls)
+    reverify_result = check_claim_consistency(message_history, repaired_response, recorded_tool_calls, available_tool_names)
     if consistency_safe_or_unclear?(reverify_result)
       { action: :proceed, reply: repaired_response }
     else
@@ -122,11 +122,12 @@ class Custom::Scout::ResponseAuditor
     Custom::Scout::HandoffService.new(scout: @scout, conversation: @conversation).perform(reason: reason)
   end
 
-  def check_claim_consistency(message_history, response_text, recorded_tool_calls)
+  def check_claim_consistency(message_history, response_text, recorded_tool_calls, available_tool_names)
     Custom::Scout::ClaimConsistencyService.new(scout: @scout, conversation: @conversation).check(
       message_history: message_history,
       assistant_response: response_text,
-      recorded_tool_calls: recorded_tool_calls
+      recorded_tool_calls: recorded_tool_calls,
+      available_tool_names: available_tool_names
     )
   end
 

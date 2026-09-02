@@ -55,6 +55,23 @@ RSpec.describe Custom::Scout::ResponseAuditor do
       expect(result).to eq({ action: :proceed, reply: original_reply })
     end
 
+    it 'forwards available_tool_names to ClaimConsistencyService so it does not assume a nonexistent tool' do
+      expect(claim_service).to receive(:check).with(
+        message_history: message_history,
+        assistant_response: original_reply,
+        recorded_tool_calls: recorded_tool_calls,
+        available_tool_names: %w[manage_opportunity update_contact]
+      ).and_return({ 'decision' => 'safe', 'reason' => 'All good' })
+
+      auditor.audit(
+        chat: fake_chat,
+        response_text: original_reply,
+        message_history: message_history,
+        recorded_tool_calls: recorded_tool_calls,
+        available_tool_names: %w[manage_opportunity update_contact]
+      )
+    end
+
     it 'triggers one internal repair on false_completed_action and returns repaired reply when reverified as safe' do
       allow(claim_service).to receive(:check).and_return(
         { 'decision' => 'false_completed_action', 'reason' => 'No tool call executed' },

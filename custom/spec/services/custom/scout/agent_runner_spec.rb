@@ -515,6 +515,26 @@ RSpec.describe Custom::Scout::AgentRunner do
 
           runner.perform
         end
+
+        it 'excludes tool-result messages from the message_history passed to the auditor' do
+          user_message = instance_double(RubyLLM::Message, role: :user, content: 'amanhã de manhã.')
+          tool_content = 'Opportunity moved to stage Agendado successfully. A transferência para atendimento humano será ' \
+                         'confirmada automaticamente após sua resposta final. Escreva agora uma mensagem natural de ' \
+                         'encerramento, sem perguntas.'
+          tool_message = instance_double(RubyLLM::Message, role: :tool, content: tool_content)
+          assistant_message = instance_double(RubyLLM::Message, role: :assistant, content: 'Perfeito, já deixei registrado.')
+          allow(fake_chat).to receive(:messages).and_return([user_message, tool_message, assistant_message])
+
+          allow(auditor_double).to receive(:audit) do |**kwargs|
+            expect(kwargs[:message_history]).not_to include(a_hash_including(role: 'tool'))
+            expect(kwargs[:message_history]).to eq(
+              [{ role: 'user', content: 'amanhã de manhã.' }, { role: 'assistant', content: 'Perfeito, já deixei registrado.' }]
+            )
+            { action: :proceed, reply: 'Perfeito, já deixei registrado.' }
+          end
+
+          runner.perform
+        end
       end
     end
 

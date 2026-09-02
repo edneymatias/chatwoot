@@ -35,6 +35,17 @@ RSpec.describe Custom::Scout::Tools::UpdateContact do
       expect(contact.custom_attributes['decision_maker']).to be(true)
     end
 
+    it 'includes a scoped confirmation reminder naming only the fields sent in this call' do
+      result = tool.execute(name: 'New Name', custom_attributes: { 'budget' => '10000' })
+      expect(result).to include('Dados registrados nesta chamada: Nome, Budget')
+      expect(result).to include('não repita dados já confirmados em mensagens anteriores desta conversa')
+    end
+
+    it 'omits the confirmation reminder when no field was actually sent in this call' do
+      result = tool.execute
+      expect(result).not_to include('Dados registrados nesta chamada')
+    end
+
     it 'parses a JSON-encoded String custom_attributes into a Hash instead of dropping it (observed OpenAI function-calling behavior)' do
       result = tool.execute(custom_attributes: '{"budget":"10000","decision_maker":true}')
 

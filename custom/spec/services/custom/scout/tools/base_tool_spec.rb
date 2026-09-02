@@ -99,4 +99,46 @@ RSpec.describe Custom::Scout::Tools::BaseTool do
       expect(tool.send(:coerce_hash_param, params_like)).to eq({ 'a' => 1 })
     end
   end
+
+  describe '#custom_attribute_labels' do
+    before do
+      CustomAttributeDefinition.create!(
+        account: account,
+        attribute_key: 'budget',
+        attribute_display_name: 'Orçamento',
+        attribute_display_type: 'currency',
+        attribute_model: 'opportunity_attribute'
+      )
+    end
+
+    it 'returns the display name for a known key scoped to the given attribute_model' do
+      expect(tool.send(:custom_attribute_labels, %w[budget], attribute_model: :opportunity_attribute)).to eq(['Orçamento'])
+    end
+
+    it 'falls back to a humanized version of the key when no definition matches' do
+      expect(tool.send(:custom_attribute_labels, %w[decision_maker], attribute_model: :opportunity_attribute)).to eq(['Decision maker'])
+    end
+
+    it 'does not resolve a definition scoped to a different attribute_model' do
+      expect(tool.send(:custom_attribute_labels, %w[budget], attribute_model: :contact_attribute)).to eq(['Budget'])
+    end
+
+    it 'returns an empty array for blank keys' do
+      expect(tool.send(:custom_attribute_labels, [], attribute_model: :opportunity_attribute)).to eq([])
+      expect(tool.send(:custom_attribute_labels, nil, attribute_model: :opportunity_attribute)).to eq([])
+    end
+  end
+
+  describe '#scoped_confirmation_reminder' do
+    it 'returns a blank string when field_labels is blank' do
+      expect(tool.send(:scoped_confirmation_reminder, [])).to eq('')
+      expect(tool.send(:scoped_confirmation_reminder, nil)).to eq('')
+    end
+
+    it 'builds a reminder naming only the given fields and forbidding repetition of earlier turns' do
+      reminder = tool.send(:scoped_confirmation_reminder, %w[Orçamento Interesse])
+      expect(reminder).to include('Orçamento, Interesse')
+      expect(reminder).to include('não repita dados já confirmados em mensagens anteriores desta conversa')
+    end
+  end
 end

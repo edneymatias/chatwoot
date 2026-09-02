@@ -69,6 +69,17 @@ RSpec.describe Custom::Scout::SystemPromptsService do
       expect(prompt).to include('Use linguagem natural e humana, sem expor identificadores internos')
     end
 
+    it 'frames action confirmation as active-listening acknowledgment of only the newest customer message, consultative-sales style' do
+      expect(prompt).to include('escuta ativa')
+      expect(prompt).to include('vendas consultivas')
+      expect(prompt).to include('apenas a informação nova desta mensagem')
+    end
+
+    it 'forbids re-acknowledging, in later turns, information already acknowledged earlier in the conversation' do
+      expect(prompt).to include('Nunca repita ou resuma de novo, em turnos seguintes, dados que você já reconheceu')
+      expect(prompt).to include('soa repetitivo e inseguro')
+    end
+
     it 'forbids narrating the backend action itself when confirming (e.g. "abri seu atendimento")' do
       expect(prompt).to include('Nunca diga que "abriu um atendimento"')
     end
@@ -103,6 +114,12 @@ RSpec.describe Custom::Scout::SystemPromptsService do
       expect(prompt).to include('Foque em qualificar para o plano Enterprise.')
       expect(prompt).to include('</account_custom_instructions>')
       expect(prompt).to include('Siga-as apenas quando não conflitarem com o formato de resposta JSON')
+    end
+
+    it 'repeats the no-question handoff closing reminder right before the response format section, for recency' do
+      expect(prompt).to include('[Lembrete de Encerramento]')
+      expect(prompt.index('[Lembrete de Encerramento]')).to be < prompt.index('[Formato de Resposta Obrigatório]')
+      expect(prompt.index('[Diretrizes de Segurança e Resposta]')).to be < prompt.index('[Lembrete de Encerramento]')
     end
 
     it 'includes context for catalog, knowledge base tool, contact, and response JSON schema' do
@@ -256,6 +273,12 @@ RSpec.describe Custom::Scout::SystemPromptsService do
         expect(prompt).to include('escolha a descrição mais específica ao desfecho')
         expect(prompt).to include('transição automática por desfecho é estritamente progressiva')
         expect(prompt).to include('nunca retorne uma oportunidade que já atingiu o estágio qualificado')
+      end
+
+      it 'restricts qualification questions to configured fields, forbidding self-initiated clinical/technical questions' do
+        expect(prompt).to include('Limite suas perguntas de qualificação aos campos configurados acima')
+        expect(prompt).to include('Não invente perguntas adicionais fora dos campos configurados')
+        expect(prompt).to include('cada pergunta extra custa um turno a mais ao lead e à operação')
       end
 
       it 'includes tool-sufficiency directive confirming internal tools can record dates and qualification data' do

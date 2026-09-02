@@ -23,6 +23,7 @@ class Custom::Scout::SystemPromptsService
       context_section,
       funnel_section,
       custom_instructions_section,
+      handoff_closing_reminder_section,
       response_format_section
     ]
 
@@ -67,7 +68,7 @@ class Custom::Scout::SystemPromptsService
       [Diretrizes de Segurança e Resposta]
       - Anti-alucinação: Nunca invente informações e não utilize conhecimento prévio de treinamento para assumir dados sobre preços, planos, produtos, regras ou políticas da empresa. Responda estritamente com base no contexto fornecido e nas ferramentas disponíveis.
       - Anti-falsa-promessa: Não prometa trabalhos ou ações futuras que devam acontecer após esta resposta (como "vou verificar e te aviso", "entraremos em contato amanhã", "enviaremos um email depois" ou "vou registrar seu pedido"). Realize a ação imediatamente caso haja uma ferramenta disponível para isso agora ou, caso não seja possível resolver no momento, utilize a ferramenta de transferência para atendente humano.
-      - Confirmação de ação: Sempre que executar com sucesso uma ferramenta de registro ou atualização (ex: `manage_opportunity`, `update_contact`), confirme brevemente ao cliente o que foi registrado antes de prosseguir com novas perguntas. Nunca execute uma ação e siga direto para a próxima pergunta sem informar ao cliente o que aconteceu. Use linguagem natural e humana, sem expor identificadores internos (como IDs numéricos), nomes técnicos de atributos ou jargões de log de sistema. Nunca diga que "abriu um atendimento", "abriu uma oportunidade" ou "registrou um chamado" — narrar a ação de bastidores em si soa como um sistema, não como uma pessoa; confirme apenas o dado relevante para o cliente (ex: "Perfeito, anotei que seu interesse é em X!").
+      - Confirmação de ação: Sempre que executar com sucesso uma ferramenta de registro ou atualização (ex: `manage_opportunity`, `update_contact`), reconheça o que aconteceu usando escuta ativa — técnica comum em vendas consultivas de refletir de volta, com suas próprias palavras, apenas a informação nova desta mensagem do cliente, antes de prosseguir com novas perguntas. Nunca execute uma ação e siga direto para a próxima pergunta sem reconhecer o que o cliente disse. Nunca repita ou resuma de novo, em turnos seguintes, dados que você já reconheceu anteriormente na mesma conversa — mesmo que continuem registrados, reafirmá-los de novo soa repetitivo e inseguro. Use linguagem natural e humana, sem expor identificadores internos (como IDs numéricos), nomes técnicos de atributos ou jargões de log de sistema. Nunca diga que "abriu um atendimento", "abriu uma oportunidade" ou "registrou um chamado" — narrar a ação de bastidores em si soa como um sistema, não como uma pessoa; reflita apenas o que é relevante para o cliente (ex: cliente expressa interesse em algo específico → reconheça esse interesse nominalmente e com entusiasmo, nunca com frases de log como "Perfeito, anotei que seu interesse é em X.").
       - Intenção Comercial: Ao identificar interesse de compra ou necessidade comercial em qualquer momento da conversa, utilize a ferramenta `manage_opportunity` para criar ou atualizar a oportunidade.
       - Esclarecimento: Quando houver ambiguidade ou dados faltantes, faça perguntas curtas e diretas para esclarecer em vez de assumir premissas. Ao solicitar um dado que possua lista de opções predefinidas, formule uma pergunta totalmente aberta (ex: "Como você nos encontrou?"), sem mencionar, exemplificar ou sugerir nenhum dos valores configurados na pergunta — nem mesmo entre parênteses como exemplo — mapeando a resposta livre do lead internamente para o valor correspondente.
       - Ritmo e condução da conversa: Faça no máximo uma pergunta por resposta para não sobrecarregar o lead. Sempre que compartilhar informações relevantes, encerre a resposta com uma pergunta ou próximo passo objetivo para manter a conversa em movimento, exceto quando o lead tiver sinalizado pausa ou encerramento.
@@ -117,69 +118,7 @@ class Custom::Scout::SystemPromptsService
   end
 
   def funnel_section
-    stages = @scout.account&.pipeline_stages&.includes(:required_custom_attribute_definitions)&.order(:position) || []
-    global_reqs = @scout.required_custom_attribute_definitions.to_a
-    return nil if stages.empty? && global_reqs.empty?
-
-    lines = ['[Funil de Vendas e Qualificação]']
-    lines.concat(build_stages_lines(stages)) if stages.any?
-    lines.concat(build_global_reqs_lines(global_reqs)) if global_reqs.any?
-    lines.concat(build_funnel_guidelines_lines)
-    lines.join("\n")
-  end
-
-  def build_stages_lines(stages)
-    ['Estágios do Funil disponíveis para esta conta:', *stages.map { |stage| format_stage(stage) }]
-  end
-
-  def build_global_reqs_lines(global_reqs)
-    ["\nRequisitos Globais de Qualificação (obrigatórios para mover para o estágio de qualificação):",
-     *global_reqs.map { |definition| format_attribute_definition(definition) }]
-  end
-
-  def build_funnel_guidelines_lines
-    [
-      "\nDiretrizes Operacionais de Funil:",
-      '- Ao mover a oportunidade para o estágio qualificado, a transferência (handoff) para a equipe humana é realizada ' \
-      'automaticamente. Não execute `handover_to_human` separadamente ao qualificar.',
-      '- O estágio de desqualificação representa uma fila de revisão humana, não o fechamento do negócio. Nunca marque a oportunidade ' \
-      'como perdida/ganha; se houver motivo de desqualificação, registre-o como nota interna via ferramenta apropriada.',
-      '- Compare o resultado observável de cada turno com as descrições dos estágios disponíveis: se o desfecho da conversa corresponder ' \
-      'claramente ao critério descrito para um estágio (ex: recusa/adiamento correspondendo à desqualificação, ou confirmação com todos ' \
-      'os dados correspondendo à qualificação), mova a oportunidade para esse estágio no próprio turno. Havendo correspondência com mais ' \
-      'de um estágio, escolha a descrição mais específica ao desfecho. A transição automática por desfecho é estritamente progressiva: ' \
-      'nunca retorne uma oportunidade que já atingiu o estágio qualificado para estágios anteriores ou para desqualificação.',
-      '- Suas ferramentas de oportunidade (`manage_opportunity`, `move_opportunity_stage`) são suficientes para registrar qualquer dado ' \
-      'de qualificação fornecido pelo lead, incluindo datas, horários e agendamentos. Nunca conclua que falta uma ferramenta de ' \
-      'agendamento ou transfira para humano por esse motivo quando o lead já forneceu as informações necessárias.'
-    ]
-  end
-
-  def format_stage(stage)
-    lines = ["- ID: #{stage.id} | Nome: #{stage.name}#{stage_role_label(stage)}"]
-    lines << "  Descrição do estágio: #{stage.description.strip}" if stage.description.present?
-    if stage.required_custom_attribute_definitions.any?
-      lines << '  Campos obrigatórios para avançar para este estágio:'
-      stage.required_custom_attribute_definitions.each { |defn| lines << "    #{format_attribute_definition(defn)}" }
-    end
-    lines.join("\n")
-  end
-
-  def stage_role_label(stage)
-    case stage.id
-    when @scout.default_pipeline_stage_id then ' (Estágio Inicial/Padrão)'
-    when @scout.qualified_stage_id then ' (Estágio Qualificado)'
-    when @scout.unqualified_stage_id then ' (Estágio Desqualificado / Revisão Humana)'
-    else ''
-    end
-  end
-
-  def format_attribute_definition(definition)
-    type_info = definition.attribute_display_type
-    values_info = ", Valores permitidos: #{Array(definition.attribute_values).join(', ')}" if definition.list? && definition.attribute_values.present?
-    base_info = "- #{definition.attribute_display_name} (Chave: #{definition.attribute_key}, Tipo: #{type_info}#{values_info})"
-    base_info += "\n    (uso interno; não cite nem exemplifique estes valores)" if definition.list? && definition.attribute_values.present?
-    definition.attribute_description.present? ? "#{base_info}\n    Descrição: #{definition.attribute_description.strip}" : base_info
+    Custom::Scout::SystemPrompts::FunnelSectionBuilder.new(scout: @scout).build
   end
 
   def custom_instructions_section
@@ -191,6 +130,18 @@ class Custom::Scout::SystemPromptsService
       <account_custom_instructions>
       #{@scout.system_prompt}
       </account_custom_instructions>
+    SECTION
+  end
+
+  # Repeats the "Fallback para humano" no-question rule right before the response format
+  # instructions, closest to where the model actually writes its final turn text — a static
+  # system-prompt bullet read many messages earlier is not salient enough on its own (see
+  # OpportunityStageTransitionService::NO_QUESTION_CLOSING_INSTRUCTION for the companion
+  # just-in-time reinforcement delivered via the tool result itself).
+  def handoff_closing_reminder_section
+    <<~SECTION.strip
+      [Lembrete de Encerramento]
+      Se este turno terminar em transferência para humano — por ter chamado `handover_to_human` ou porque a oportunidade acabou de ser movida para o estágio qualificado — sua resposta final não pode conter nenhuma pergunta ao cliente, mesmo que pareça natural continuar perguntando algo.
     SECTION
   end
 

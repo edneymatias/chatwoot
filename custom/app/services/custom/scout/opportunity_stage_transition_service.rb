@@ -1,6 +1,15 @@
 # frozen_string_literal: true
 
 class Custom::Scout::OpportunityStageTransitionService
+  # Mirrors the instruction Tools::HandoverToHuman returns when it flags handoff_needed. Without
+  # this, the model only learns "this stage transition ends in an automatic handoff" from a
+  # system-prompt bullet it read many turns earlier — not salient enough at generation time. This
+  # closes that asymmetry: whichever tool flags handoff_needed, the model gets the same just-in-time
+  # nudge right in the tool result, immediately before it writes its final turn text.
+  NO_QUESTION_CLOSING_INSTRUCTION =
+    ' A transferência para atendimento humano será confirmada automaticamente após sua resposta final. ' \
+    'Escreva agora uma mensagem natural de encerramento, sem perguntas.'
+
   attr_reader :handoff_needed
 
   def initialize(scout:, conversation:, opportunity:)
@@ -25,13 +34,18 @@ class Custom::Scout::OpportunityStageTransitionService
 
     if @opportunity.save
       handle_post_save_handoff
-      "Opportunity moved to stage #{stage.name || stage.id} successfully."
+      build_success_message(stage)
     else
       format_save_failure_message(stage)
     end
   end
 
   private
+
+  def build_success_message(stage)
+    base = "Opportunity moved to stage #{stage.name || stage.id} successfully."
+    @handoff_needed ? "#{base}#{NO_QUESTION_CLOSING_INSTRUCTION}" : base
+  end
 
   def check_global_qualification_requirements
     attrs = @opportunity.custom_attributes || {}
