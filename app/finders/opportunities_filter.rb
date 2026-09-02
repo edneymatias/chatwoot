@@ -1,5 +1,6 @@
 class OpportunitiesFilter
   DEFAULT_STATUS = 'open'.freeze
+  NO_PLATFORM_VALUE = 'none'.freeze
 
   def initialize(relation, params)
     @relation = relation
@@ -87,6 +88,7 @@ class OpportunitiesFilter
   def apply_value_filter(relation, key, vals, operator)
     vals = vals.is_a?(Array) ? vals : [vals]
     vals = vals.map { |v| v.is_a?(Hash) ? (v['id'] || v['value'] || v) : v }
+    vals = vals.map { |v| v == NO_PLATFORM_VALUE ? nil : v } if key == 'campaign_platform'
 
     if Opportunity.column_names.include?(key)
       apply_standard_column_filter(relation, key, vals, operator)
@@ -99,6 +101,10 @@ class OpportunitiesFilter
     case operator
     when 'not_equal_to'
       relation.where.not(key => vals)
+    when 'contains'
+      apply_contains_filter(relation, key, vals)
+    when 'does_not_contain'
+      apply_does_not_contain_filter(relation, key, vals)
     when 'is_greater_than'
       relation.where("#{Opportunity.table_name}.#{key} > ?", vals.first)
     when 'is_less_than'
@@ -109,6 +115,20 @@ class OpportunitiesFilter
     else
       relation.where(key => vals)
     end
+  end
+
+  def apply_contains_filter(relation, key, vals)
+    queries = vals.map { |v| "%#{ActiveRecord::Base.sanitize_sql_like(v.to_s)}%" }
+    clause = queries.map.with_index { |_, i| "#{Opportunity.table_name}.#{key} ILIKE :val_#{i}" }.join(' OR ')
+    params = queries.each_with_index.to_h { |q, i| [:"val_#{i}", q] }
+    relation.where(clause, params)
+  end
+
+  def apply_does_not_contain_filter(relation, key, vals)
+    queries = vals.map { |v| "%#{ActiveRecord::Base.sanitize_sql_like(v.to_s)}%" }
+    clause = queries.map.with_index { |_, i| "#{Opportunity.table_name}.#{key} NOT ILIKE :val_#{i}" }.join(' AND ')
+    params = queries.each_with_index.to_h { |q, i| [:"val_#{i}", q] }
+    relation.where("#{Opportunity.table_name}.#{key} IS NULL OR (#{clause})", params)
   end
 
   def apply_custom_attribute_value_filter(relation, key, vals, operator)
@@ -152,8 +172,16 @@ class OpportunitiesFilter
     return relation if @params[:q].blank?
 
     query = ActiveRecord::Base.sanitize_sql_like(@params[:q])
-    relation.left_joins(:contact)
-            .where("#{Opportunity.table_name}.title ILIKE :q OR #{Contact.table_name}.name ILIKE :q", q: "%#{query}%")
+    search_clause = <<~SQL.squish
+      #{Opportunity.table_name}.title ILIKE :q
+      OR #{Contact.table_name}.name ILIKE :q
+      OR #{Opportunity.table_name}.campaign_name ILIKE :q
+      OR #{Opportunity.table_name}.campaign_adset_name ILIKE :q
+      OR #{Opportunity.table_name}.campaign_ad_name ILIKE :q
+      OR #{Opportunity.table_name}.campaign_platform ILIKE :q
+    SQL
+
+    relation.left_joins(:contact).where(search_clause, q: "%#{query}%")
   end
 
   def apply_sort(relation)

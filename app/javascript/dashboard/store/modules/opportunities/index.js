@@ -16,6 +16,7 @@ const state = {
   },
   uiFlags: {
     isFetchingByStage: {},
+    latestRequestIdByStage: {},
     isFetchingAll: false,
     isCreating: false,
     isMoving: {},

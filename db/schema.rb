@@ -10,8 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2126_08_17_140000) do
-
+ActiveRecord::Schema[7.2].define(version: 2126_09_02_000000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1139,6 +1138,7 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_17_140000) do
     t.index ["contact_id"], name: "index_ichatr_opportunities_on_contact_id"
     t.index ["origin_conversation_id"], name: "index_ichatr_opportunities_on_origin_conversation_id", unique: true, where: "(origin_conversation_id IS NOT NULL)"
     t.index ["pipeline_stage_id"], name: "index_ichatr_opportunities_on_pipeline_stage_id"
+    t.index ["title", "campaign_name", "campaign_adset_name", "campaign_ad_name"], name: "index_ichatr_opportunities_on_title_and_campaign_trgm", opclass: :gin_trgm_ops, using: :gin
   end
 
   create_table "ichatr_opportunity_activities", force: :cascade do |t|
@@ -1768,71 +1768,6 @@ ActiveRecord::Schema[7.1].define(version: 2126_08_17_140000) do
   add_foreign_key "ichatr_pipeline_stages", "accounts"
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
-  # WARNING: generating adapter-specific definition for accounts_after_insert_row_tr() due to a mismatch.
-  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.accounts_after_insert_row_tr()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
-$function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER accounts_after_insert_row_tr AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION accounts_after_insert_row_tr()")
-
-  # WARNING: generating adapter-specific definition for camp_dpid_before_insert() due to a mismatch.
-  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.camp_dpid_before_insert()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-    execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
-$function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER camp_dpid_before_insert AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION camp_dpid_before_insert()")
-
-  # WARNING: generating adapter-specific definition for campaigns_before_insert_row_tr() due to a mismatch.
-  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.campaigns_before_insert_row_tr()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
-$function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER campaigns_before_insert_row_tr BEFORE INSERT ON \"campaigns\" FOR EACH ROW EXECUTE FUNCTION campaigns_before_insert_row_tr()")
-
-  # WARNING: generating adapter-specific definition for conversations_before_insert_row_tr() due to a mismatch.
-  # either there's a bug in hairtrigger or you've messed up your migrations and/or db :-/
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.conversations_before_insert_row_tr()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);
-    RETURN NEW;
-END;
-$function$
-  SQL
-
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute(<<-SQL)
 CREATE OR REPLACE FUNCTION public.n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()
@@ -1850,12 +1785,38 @@ AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614
   SQL
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER conversations_before_insert_row_tr BEFORE INSERT ON \"conversations\" FOR EACH ROW EXECUTE FUNCTION conversations_before_insert_row_tr()")
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER n8n_trigger_717c52d1_52d2_406d_bc05_250afa7cfc2f AFTER INSERT ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()")
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
+
+  create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
+      on("accounts").
+      after(:insert).
+      for_each(:row) do
+    "execute format('create sequence IF NOT EXISTS conv_dpid_seq_%s', NEW.id);"
+  end
+
+  create_trigger("conversations_before_insert_row_tr", :generated => true, :compatibility => 1).
+      on("conversations").
+      before(:insert).
+      for_each(:row) do
+    "NEW.display_id := nextval('conv_dpid_seq_' || NEW.account_id);"
+  end
+
+  create_trigger("camp_dpid_before_insert", :generated => true, :compatibility => 1).
+      on("accounts").
+      name("camp_dpid_before_insert").
+      after(:insert).
+      for_each(:row) do
+    "execute format('create sequence IF NOT EXISTS camp_dpid_seq_%s', NEW.id);"
+  end
+
+  create_trigger("campaigns_before_insert_row_tr", :generated => true, :compatibility => 1).
+      on("campaigns").
+      before(:insert).
+      for_each(:row) do
+    "NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);"
+  end
 
 end

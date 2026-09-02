@@ -14,8 +14,13 @@ export function useOpportunityFilterContext() {
   const agents = useMapGetter('agents/getAgents');
   const stages = useMapGetter('pipelineStages/stagesSortedByPosition');
 
-  const { equalityOperators, presenceOperators, getOperatorTypes } =
-    useOperators();
+  const {
+    equalityOperators,
+    presenceOperators,
+    containmentOperators,
+    dateOperators,
+    getOperatorTypes,
+  } = useOperators();
 
   const customFilterTypes = computed(() => {
     const attrs = opportunityAttributes.value || [];
@@ -70,6 +75,74 @@ export function useOpportunityFilterContext() {
       }),
       dataType: 'text',
       filterOperators: equalityOperators.value,
+      attributeModel: 'standard',
+    },
+    {
+      attributeKey: 'campaign_name',
+      value: 'campaign_name',
+      attributeName: t('FILTER.ATTRIBUTES.OPPORTUNITY_CAMPAIGN_NAME'),
+      label: t('FILTER.ATTRIBUTES.OPPORTUNITY_CAMPAIGN_NAME'),
+      inputType: 'plainText',
+      dataType: 'text',
+      filterOperators: containmentOperators.value,
+      attributeModel: 'standard',
+    },
+    {
+      attributeKey: 'campaign_adset_name',
+      value: 'campaign_adset_name',
+      attributeName: t('FILTER.ATTRIBUTES.OPPORTUNITY_CAMPAIGN_ADSET_NAME'),
+      label: t('FILTER.ATTRIBUTES.OPPORTUNITY_CAMPAIGN_ADSET_NAME'),
+      inputType: 'plainText',
+      dataType: 'text',
+      filterOperators: containmentOperators.value,
+      attributeModel: 'standard',
+    },
+    {
+      attributeKey: 'campaign_ad_name',
+      value: 'campaign_ad_name',
+      attributeName: t('FILTER.ATTRIBUTES.OPPORTUNITY_CAMPAIGN_AD_NAME'),
+      label: t('FILTER.ATTRIBUTES.OPPORTUNITY_CAMPAIGN_AD_NAME'),
+      inputType: 'plainText',
+      dataType: 'text',
+      filterOperators: containmentOperators.value,
+      attributeModel: 'standard',
+    },
+    {
+      attributeKey: 'campaign_platform',
+      value: 'campaign_platform',
+      attributeName: t('FILTER.ATTRIBUTES.OPPORTUNITY_CAMPAIGN_PLATFORM'),
+      label: t('FILTER.ATTRIBUTES.OPPORTUNITY_CAMPAIGN_PLATFORM'),
+      inputType: 'multiSelect',
+      options: [
+        { id: 'facebook', name: 'Facebook' },
+        { id: 'instagram', name: 'Instagram' },
+        {
+          id: 'none',
+          name: t('FILTER.ATTRIBUTES.OPPORTUNITY_CAMPAIGN_PLATFORM_NONE'),
+        },
+      ],
+      dataType: 'text',
+      filterOperators: equalityOperators.value,
+      attributeModel: 'standard',
+    },
+    {
+      attributeKey: 'created_at',
+      value: 'created_at',
+      attributeName: t('FILTER.ATTRIBUTES.OPPORTUNITY_CREATED_AT'),
+      label: t('FILTER.ATTRIBUTES.OPPORTUNITY_CREATED_AT'),
+      inputType: 'date',
+      dataType: 'text',
+      filterOperators: dateOperators.value,
+      attributeModel: 'standard',
+    },
+    {
+      attributeKey: 'updated_at',
+      value: 'updated_at',
+      attributeName: t('FILTER.ATTRIBUTES.OPPORTUNITY_UPDATED_AT'),
+      label: t('FILTER.ATTRIBUTES.OPPORTUNITY_UPDATED_AT'),
+      inputType: 'date',
+      dataType: 'text',
+      filterOperators: dateOperators.value,
       attributeModel: 'standard',
     },
     ...customFilterTypes.value,

@@ -91,10 +91,10 @@ export const actions = {
       commit('SET_UI_FLAG', { isFetching: false });
     }
   },
-  fetchAggregates: async ({ commit }, { stageIds }) => {
+  fetchAggregates: async ({ commit }, { stageIds, filters }) => {
     if (!stageIds || stageIds.length === 0) return;
 
-    const response = await pipelineStageAggregatesAPI.get(stageIds);
+    const response = await pipelineStageAggregatesAPI.get(stageIds, filters);
     const aggregates = response.data;
 
     const responseByStageId = {};
@@ -107,14 +107,14 @@ export const actions = {
       if (agg) {
         commit('SET_STAGE_AGGREGATES', {
           stageId,
-          openCount: agg.open_count,
-          openValueSum: agg.open_value_sum,
+          count: agg.count,
+          valueSum: agg.value_sum,
         });
       } else {
         commit('SET_STAGE_AGGREGATES', {
           stageId,
-          openCount: 0,
-          openValueSum: 0,
+          count: 0,
+          valueSum: 0,
         });
       }
     });

@@ -80,12 +80,12 @@ const sortOptions = [
 ];
 
 const totalLeadCount = computed(() => {
-  return stages.value.reduce((acc, stage) => acc + (stage.open_count || 0), 0);
+  return stages.value.reduce((acc, stage) => acc + (stage.count || 0), 0);
 });
 
 const totalValue = computed(() => {
   const sum = stages.value.reduce((acc, stage) => {
-    return acc + (parseFloat(stage.open_value_sum) || 0);
+    return acc + (parseFloat(stage.value_sum) || 0);
   }, 0);
 
   return formatCurrencyAmount(sum, currencyCode.value, true);

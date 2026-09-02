@@ -14,6 +14,12 @@ export const mutations = {
   SET_IS_FETCHING_ALL(state, isFetching) {
     state.uiFlags.isFetchingAll = isFetching;
   },
+  SET_LATEST_REQUEST_ID(state, { stageId, requestId }) {
+    state.uiFlags.latestRequestIdByStage = {
+      ...state.uiFlags.latestRequestIdByStage,
+      [stageId]: requestId,
+    };
+  },
   ADD_MANY_OPPORTUNITIES(state, opportunities) {
     const byId = { ...state.byId };
     opportunities.forEach(opp => {

@@ -12,6 +12,12 @@ const route = useRoute();
 const router = useRouter();
 const store = useStore();
 
+const viewMode = ref(
+  localStorage.getItem('opportunities_view_mode') || 'kanban'
+);
+
+const filters = ref({});
+
 const fetchInitialData = async () => {
   try {
     await store.dispatch('pipelineStages/fetch');
@@ -24,6 +30,7 @@ const fetchInitialData = async () => {
     if (stages?.length) {
       store.dispatch('pipelineStages/fetchAggregates', {
         stageIds: stages.map(s => s.id),
+        filters: filters.value,
       });
     }
   } catch (error) {
@@ -35,11 +42,19 @@ onMounted(() => {
   fetchInitialData();
 });
 
-const viewMode = ref(
-  localStorage.getItem('opportunities_view_mode') || 'kanban'
+watch(
+  filters,
+  () => {
+    const stages = store.getters['pipelineStages/stagesSortedByPosition'];
+    if (stages?.length) {
+      store.dispatch('pipelineStages/fetchAggregates', {
+        stageIds: stages.map(s => s.id),
+        filters: filters.value,
+      });
+    }
+  },
+  { deep: true }
 );
-
-const filters = ref({});
 
 useEmitter(BUS_EVENTS.WEBSOCKET_RECONNECT_COMPLETED, () => {
   const stages = store.getters['pipelineStages/stagesSortedByPosition'];

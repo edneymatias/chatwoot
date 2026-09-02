@@ -65,7 +65,14 @@
       "CUSTOM_ATTRIBUTE_LINK": "Link",
       "CUSTOM_ATTRIBUTE_CHECKBOX": "Checkbox",
       "CREATED_AT": "Created at",
-      "LAST_ACTIVITY": "Last activity"
+      "LAST_ACTIVITY": "Last activity",
+      "OPPORTUNITY_CAMPAIGN_NAME": "Campaign name",
+      "OPPORTUNITY_CAMPAIGN_ADSET_NAME": "Ad group",
+      "OPPORTUNITY_CAMPAIGN_AD_NAME": "Ad",
+      "OPPORTUNITY_CAMPAIGN_PLATFORM": "Platform",
+      "OPPORTUNITY_CAMPAIGN_PLATFORM_NONE": "No platform (organic/internal)",
+      "OPPORTUNITY_CREATED_AT": "Created at",
+      "OPPORTUNITY_UPDATED_AT": "Updated at"
     },
     "ERRORS": {
       "VALUE_REQUIRED": "Value is required",

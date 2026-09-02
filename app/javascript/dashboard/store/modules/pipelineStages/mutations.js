@@ -46,12 +46,12 @@ export const mutations = {
     state.byId = byId;
     state.allIds = stages.map(stage => stage.id);
   },
-  SET_STAGE_AGGREGATES(state, { stageId, openCount, openValueSum }) {
+  SET_STAGE_AGGREGATES(state, { stageId, count, valueSum }) {
     if (state.byId[stageId]) {
       state.byId[stageId] = {
         ...state.byId[stageId],
-        open_count: openCount,
-        open_value_sum: openValueSum,
+        count,
+        value_sum: valueSum,
       };
     }
   },
