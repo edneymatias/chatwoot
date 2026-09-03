@@ -9,7 +9,8 @@ options = {
   won_rate: 0.3,
   lost_rate: 0.2,
   min_dwell_days: 3,
-  max_dwell_days: 20
+  max_dwell_days: 20,
+  campaign_rate: 0.65
 }
 
 OptionParser.new do |opts|
@@ -37,6 +38,10 @@ OptionParser.new do |opts|
 
   opts.on("--max-dwell N", Integer, "Maximum days spent per pipeline stage (default: 20)") do |v|
     options[:max_dwell_days] = v
+  end
+
+  opts.on("--campaign-rate FLOAT", Float, "Fraction of opportunities with simulated Meta ad attribution (default: 0.65)") do |v|
+    options[:campaign_rate] = v
   end
 
   opts.on("--clean", "Delete previously seeded data before seeding") do
@@ -164,6 +169,32 @@ def seed_stage_history!(opportunity, account, path, dwell_range, outcome)
   )
 end
 
+# Simulated Meta (Facebook/Instagram) ad attribution, mirroring the shape
+# Custom::ReferralAttributionService/Custom::CampaignResolutionJob populate on real CTWA/referral
+# opportunities (campaign_platform/campaign_name/campaign_adset_name/campaign_ad_name).
+CAMPAIGNS = [
+  { platform: "facebook", campaign_name: "Black Friday Leads", adset_names: ["Lookalike 1%", "Retargeting 30d"], ad_names: ["Video - Depoimento", "Carrossel - Antes e Depois"] },
+  { platform: "instagram", campaign_name: "Black Friday Leads", adset_names: ["Interesses - Moda", "Seguidores de Concorrentes"], ad_names: ["Reels - Bastidores", "Story - Cupom 20%"] },
+  { platform: "facebook", campaign_name: "Lançamento Coleção Verão", adset_names: ["Lookalike 3%", "Interesses - Praia"], ad_names: ["Imagem - Produto em Uso", "Video - Unboxing"] },
+  { platform: "instagram", campaign_name: "Lançamento Coleção Verão", adset_names: ["Explorar - 18-24", "Retargeting Carrinho"], ad_names: ["Reels - Try-on", "Carrossel - Coleção"] },
+  { platform: "facebook", campaign_name: "Remarketing Carrinho Abandonado", adset_names: ["Visitantes 7d", "Add to Cart 14d"], ad_names: ["Imagem - Desconto", "Video - Depoimento Cliente"] },
+  { platform: "instagram", campaign_name: "Institucional - Reconhecimento", adset_names: ["Amplo - Brasil", "Interesses - Empreendedorismo"], ad_names: ["Reels - Marca", "Story - Bastidores Equipe"] }
+].freeze
+
+def sample_campaign_attribution
+  campaign = CAMPAIGNS.sample
+  ad_id = rand(100_000_000_000..999_999_999_999)
+  {
+    campaign_source_id: ad_id.to_s,
+    campaign_source_url: "https://www.#{campaign[:platform]}.com/ads/library/?id=#{ad_id}",
+    campaign_platform: campaign[:platform],
+    campaign_name: campaign[:campaign_name],
+    campaign_adset_name: campaign[:adset_names].sample,
+    campaign_ad_name: campaign[:ad_names].sample,
+    campaign_resolution_status: 'resolved'
+  }
+end
+
 dwell_range = options[:min_dwell_days]..options[:max_dwell_days]
 
 ActiveRecord::Base.transaction do
@@ -210,16 +241,20 @@ ActiveRecord::Base.transaction do
       )
     end
 
+    campaign_attrs = rand < options[:campaign_rate] ? sample_campaign_attribution : {}
+
     opportunity = Opportunity.create!(
-      account: account,
-      contact: contact,
-      pipeline_stage: path.first,
-      origin_conversation: conversation,
-      title: "Opportunity #{uid}",
-      status: 'open',
-      value: rand(100.0..10000.0).round(2),
-      assignee: agents.sample,
-      custom_attributes: { is_seed: true }
+      {
+        account: account,
+        contact: contact,
+        pipeline_stage: path.first,
+        origin_conversation: conversation,
+        title: "Opportunity #{uid}",
+        status: 'open',
+        value: rand(100.0..10000.0).round(2),
+        assignee: agents.sample,
+        custom_attributes: { is_seed: true }
+      }.merge(campaign_attrs)
     )
 
     seed_stage_history!(opportunity, account, path, dwell_range, outcome)

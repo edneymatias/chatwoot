@@ -46,7 +46,11 @@ const pagination = computed(
 );
 
 const loadCards = (page = 1) => {
-  if (isFetching.value) return;
+  // No guard here: a filter/search change must always trigger a fresh fetch even if one
+  // for this stage is already in flight (e.g. from the previous keystroke). The action
+  // itself discards stale, out-of-order responses, so it's safe for requests to overlap.
+  // Pagination (onObserved below) still checks isFetching before calling this, so
+  // scroll-triggered "next page" calls stay deduplicated.
   store.dispatch('opportunities/fetchForStage', {
     stageId: props.stage.id,
     page,
@@ -107,18 +111,15 @@ const hasDescription = computed(() => {
 });
 
 const displayTotal = computed(() => {
-  if (
-    props.stage.open_count === undefined ||
-    props.stage.open_value_sum === undefined
-  ) {
+  if (props.stage.count === undefined || props.stage.value_sum === undefined) {
     return null;
   }
   if (props.stage.total_display_mode === 'count') {
-    return props.stage.open_count || 0;
+    return props.stage.count || 0;
   }
 
   return formatCurrencyAmount(
-    props.stage.open_value_sum || 0,
+    props.stage.value_sum || 0,
     currencyCode.value,
     true
   );

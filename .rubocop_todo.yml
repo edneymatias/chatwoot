@@ -54,6 +54,16 @@ RSpec/InstanceVariable:
 Rails/Exit:
   Exclude:
     - 'script/backfill_applied_sla_completed_at.rb'
+    - 'script/rails_upgrade/active_storage_smoke.rb'
+    - 'script/rails_upgrade/preflight.rb'
     - 'spec/rails_helper.rb'
+
+# Offense count: 2
+# Configuration parameters: Include.
+# Include: **/app/**/*.rb, **/config/**/*.rb, **/lib/**/*.rb
+Rails/Output:
+  Exclude:
+    - 'script/rails_upgrade/active_storage_smoke.rb'
+    - 'script/rails_upgrade/preflight.rb'
 
 

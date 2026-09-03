@@ -40,6 +40,7 @@ import snooze from './snooze.json';
 import teamsSettings from './teamsSettings.json';
 import webhooks from './webhooks.json';
 import whatsappTemplates from './whatsappTemplates.json';
+import whatsappTemplateMgmt from './whatsappTemplateMgmt.json';
 import contentTemplates from './contentTemplates.json';
 import mfa from './mfa.json';
 import onboarding from './onboarding.json';
@@ -89,6 +90,7 @@ export default {
   ...teamsSettings,
   ...webhooks,
   ...whatsappTemplates,
+  ...whatsappTemplateMgmt,
   ...contentTemplates,
   ...mfa,
   ...onboarding,

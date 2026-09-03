@@ -111,6 +111,18 @@ const hasScout = computed(() => {
   return isFeatureEnabledonAccount.value(accountId.value, FEATURE_FLAGS.SCOUT);
 });
 
+const campaignAttributionSettings = useMapGetter(
+  'campaignAttributionSettings/getSettings'
+);
+
+const hasCampaignPerformanceReport = computed(() => {
+  return (
+    hasOpportunities.value &&
+    Boolean(campaignAttributionSettings.value?.enabled) &&
+    Boolean(campaignAttributionSettings.value?.resolved_data_present)
+  );
+});
+
 const fetchConversationUnreadCounts = ([currentAccountId, isEnabled]) => {
   if (!currentAccountId) return;
 
@@ -264,6 +276,7 @@ onMounted(() => {
   store.dispatch('attributes/get');
   store.dispatch('customViews/get', 'conversation');
   store.dispatch('customViews/get', 'contact');
+  store.dispatch('campaignAttributionSettings/get');
 });
 
 watch([accountId, hasConversationUnreadCounts], fetchConversationUnreadCounts, {
@@ -573,6 +586,9 @@ const menuItems = computed(() => {
           label: t('SIDEBAR.CAPTAIN_SETTINGS'),
           activeOn: [
             'captain_assistants_settings_index',
+            'captain_assistants_settings_system_index',
+            'captain_assistants_settings_audience_index',
+            'captain_assistants_settings_schedule_index',
             'captain_assistants_guidelines_index',
             'captain_assistants_guardrails_index',
           ],
@@ -718,6 +734,15 @@ const menuItems = computed(() => {
           label: t('SIDEBAR.REPORTS_OPPORTUNITY_ATTRIBUTE'),
           to: accountScopedRoute('opportunity_attribute_reports'),
         },
+        ...(hasCampaignPerformanceReport.value
+          ? [
+              {
+                name: 'Reports Campaign Performance',
+                label: t('SIDEBAR.REPORTS_CAMPAIGN_PERFORMANCE'),
+                to: accountScopedRoute('campaign_performance_reports'),
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -908,6 +933,12 @@ const menuItems = computed(() => {
             'settings_inboxes_add_agents',
           ],
           to: accountScopedRoute('settings_inbox_list'),
+        },
+        {
+          name: 'Settings Templates',
+          label: t('SIDEBAR.WHATSAPP_TEMPLATES'),
+          icon: 'i-lucide-layout-template',
+          to: accountScopedRoute('settings_templates'),
         },
         {
           name: 'Settings Labels',

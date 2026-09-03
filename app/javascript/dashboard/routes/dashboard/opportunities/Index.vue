@@ -12,6 +12,12 @@ const route = useRoute();
 const router = useRouter();
 const store = useStore();
 
+const viewMode = ref(
+  localStorage.getItem('opportunities_view_mode') || 'kanban'
+);
+
+const filters = ref({});
+
 const fetchInitialData = async () => {
   try {
     await store.dispatch('pipelineStages/fetch');
@@ -24,6 +30,7 @@ const fetchInitialData = async () => {
     if (stages?.length) {
       store.dispatch('pipelineStages/fetchAggregates', {
         stageIds: stages.map(s => s.id),
+        filters: filters.value,
       });
     }
   } catch (error) {
@@ -35,11 +42,19 @@ onMounted(() => {
   fetchInitialData();
 });
 
-const viewMode = ref(
-  localStorage.getItem('opportunities_view_mode') || 'kanban'
+watch(
+  filters,
+  () => {
+    const stages = store.getters['pipelineStages/stagesSortedByPosition'];
+    if (stages?.length) {
+      store.dispatch('pipelineStages/fetchAggregates', {
+        stageIds: stages.map(s => s.id),
+        filters: filters.value,
+      });
+    }
+  },
+  { deep: true }
 );
-
-const filters = ref({});
 
 useEmitter(BUS_EVENTS.WEBSOCKET_RECONNECT_COMPLETED, () => {
   const stages = store.getters['pipelineStages/stagesSortedByPosition'];
@@ -64,13 +79,19 @@ watch(viewMode, newVal => {
 });
 
 const handleRowClick = opportunity => {
-  if (!opportunity.active_conversation_id) return;
+  const params = {};
+  const conversationId =
+    opportunity.active_conversation_display_id ||
+    opportunity.active_conversation_id;
+  if (conversationId) {
+    params.conversationId = conversationId;
+  }
+
   router.push({
     name: 'opportunities_conversation',
-    params: {
-      conversationId:
-        opportunity.active_conversation_display_id ||
-        opportunity.active_conversation_id,
+    params,
+    query: {
+      opportunityId: opportunity.id,
     },
   });
 };

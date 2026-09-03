@@ -3,14 +3,29 @@ import opportunitiesAPI from 'dashboard/api/opportunities';
 import { throwErrorMessage } from 'dashboard/store/utils/api';
 
 export const actions = {
-  fetchForStage: async ({ commit }, { stageId, page = 1, filters = {} }) => {
+  fetchForStage: async (
+    { commit, state },
+    { stageId, page = 1, filters = {} }
+  ) => {
+    // Filter/search changes fire a fetch per keystroke with no debounce (by design), so
+    // multiple requests for the same stage can be in flight together and resolve out of
+    // order. Only the response matching the most recently dispatched request is applied,
+    // so a slower, now-stale request can't clobber a newer one's results.
+    const requestId = (state.uiFlags.latestRequestIdByStage[stageId] || 0) + 1;
+    commit('SET_LATEST_REQUEST_ID', { stageId, requestId });
     commit('SET_IS_FETCHING', { stageId, isFetching: true });
+
+    const isStale = () =>
+      state.uiFlags.latestRequestIdByStage[stageId] !== requestId;
+
     try {
       const response = await opportunitiesAPI.get({
         pipeline_stage_id: stageId,
         page,
         ...filters,
       });
+      if (isStale()) return;
+
       const payload = response.data.payload || response.data;
 
       commit('ADD_MANY_OPPORTUNITIES', payload);
@@ -36,9 +51,9 @@ export const actions = {
         pagination: { page, hasMore: payload.length >= 15 },
       });
     } catch (error) {
-      throwErrorMessage(error);
+      if (!isStale()) throwErrorMessage(error);
     } finally {
-      commit('SET_IS_FETCHING', { stageId, isFetching: false });
+      if (!isStale()) commit('SET_IS_FETCHING', { stageId, isFetching: false });
     }
   },
   fetchAll: async ({ commit }, { page = 1, filters = {} } = {}) => {

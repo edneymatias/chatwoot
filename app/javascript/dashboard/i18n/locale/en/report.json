@@ -23,12 +23,14 @@
         "NAME": "First Response Time",
         "DESC": "( Avg )",
         "INFO_TEXT": "Total number of conversations used for computation:",
+        "TOOLTIP_DESCRIPTION": "Based on {count} conversation | Based on {count} conversations",
         "TOOLTIP_TEXT": "First Response Time is {metricValue} (based on {conversationCount} conversations)"
       },
       "RESOLUTION_TIME": {
         "NAME": "Resolution Time",
         "DESC": "( Avg )",
         "INFO_TEXT": "Total number of conversations used for computation:",
+        "TOOLTIP_DESCRIPTION": "Based on {count} conversation | Based on {count} conversations",
         "TOOLTIP_TEXT": "Resolution Time is {metricValue} (based on {conversationCount} conversations)"
       },
       "RESOLUTION_COUNT": {
@@ -45,6 +47,8 @@
       },
       "REPLY_TIME": {
         "NAME": "Customer waiting time",
+        "TOOLTIP_LABEL": "Waiting time",
+        "TOOLTIP_DESCRIPTION": "Based on {count} reply | Based on {count} replies",
         "TOOLTIP_TEXT": "Waiting time is {metricValue} (based on {conversationCount} replies)",
         "DESC": ""
       }
@@ -129,7 +133,6 @@
       "ERROR": "Could not load records. Please try again.",
       "ADMIN_ONLY": "Only administrators can drill down into report records.",
       "LOAD_MORE": "Load more",
-      "CLOSE": "Close details",
       "PREVIOUS_BUCKET": "Previous bar",
       "NEXT_BUCKET": "Next bar",
       "UNKNOWN_CONTACT": "Unknown contact",
@@ -545,6 +548,7 @@
   "OVERVIEW_REPORTS": {
     "HEADER": "Overview",
     "LIVE": "Live",
+    "HEATMAP_ARIA_LABEL": "{metric} by day and hour",
     "ACCOUNT_CONVERSATIONS": {
       "HEADER": "Open Conversations",
       "LOADING_MESSAGE": "Loading conversation metrics...",
@@ -735,6 +739,42 @@
     "NO_DATA": {
       "TITLE": "No opportunity data for this attribute",
       "DESCRIPTION": "Try a different date range or select another attribute to view opportunity metrics."
+    }
+  },
+  "CAMPAIGN_PERFORMANCE_REPORTS": {
+    "HEADER": "Ad Campaign Performance",
+    "LOADING": "Loading campaign performance...",
+    "METRICS": {
+      "LEADS": "Leads",
+      "LEADS_INFO": "Total leads attributed to paid campaigns in the selected period",
+      "WON": "Won",
+      "WON_INFO": "Leads marked as won and win rate",
+      "LOST": "Lost",
+      "LOST_INFO": "Leads marked as lost and loss rate",
+      "CAMPAIGNS": "Campaigns",
+      "CAMPAIGNS_INFO": "Distinct identified campaigns",
+      "ADSETS": "Ad Sets",
+      "ADSETS_INFO": "Distinct identified ad sets",
+      "ADS": "Ads",
+      "ADS_INFO": "Distinct identified ads",
+      "MILESTONE_INFO": "Leads that reached or surpassed the milestone stage"
+    },
+    "TABS": {
+      "CAMPAIGNS": "Campaigns",
+      "ADSETS": "Ad Sets",
+      "ADS": "Ads"
+    },
+    "TABLE": {
+      "TITLE": "Campaign Breakdown",
+      "CAMPAIGN": "Campaign",
+      "ADSET": "Ad Set",
+      "AD": "Ad",
+      "LEADS": "Leads",
+      "WON": "Won",
+      "LOST": "Lost",
+      "MILESTONE_RATE": "Milestone Rate",
+      "UNIDENTIFIED": "Unidentified",
+      "EMPTY": "No campaign data to display in this view."
     }
   }
 }

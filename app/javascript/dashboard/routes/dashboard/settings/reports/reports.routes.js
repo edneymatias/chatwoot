@@ -25,6 +25,7 @@ import LiveReports from './LiveReports.vue';
 import SLAReports from './SLAReports.vue';
 import OpportunityFunnelReport from './OpportunityFunnelReport.vue';
 import OpportunityAttributeReport from './OpportunityAttributeReport.vue';
+import CampaignPerformanceReport from './CampaignPerformanceReport.vue';
 
 const meta = {
   featureFlag: FEATURE_FLAGS.REPORTS,
@@ -62,66 +63,50 @@ const revisedReportRoutes = [
   {
     path: 'agents_overview',
     name: 'agent_reports_index',
-    meta: {
-      permissions: ['administrator', 'report_manage'],
-    },
+    meta,
     component: AgentReportsIndex,
   },
   {
     path: 'agents/:id',
     name: 'agent_reports_show',
-    meta: {
-      permissions: ['administrator', 'report_manage'],
-    },
+    meta,
     component: AgentReportsShow,
   },
 
   {
     path: 'inboxes_overview',
     name: 'inbox_reports_index',
-    meta: {
-      permissions: ['administrator', 'report_manage'],
-    },
+    meta,
     component: InboxReportsIndex,
   },
   {
     path: 'inboxes/:id',
     name: 'inbox_reports_show',
-    meta: {
-      permissions: ['administrator', 'report_manage'],
-    },
+    meta,
     component: InboxReportsShow,
   },
   {
     path: 'teams_overview',
     name: 'team_reports_index',
-    meta: {
-      permissions: ['administrator', 'report_manage'],
-    },
+    meta,
     component: TeamReportsIndex,
   },
   {
     path: 'teams/:id',
     name: 'team_reports_show',
-    meta: {
-      permissions: ['administrator', 'report_manage'],
-    },
+    meta,
     component: TeamReportsShow,
   },
   {
     path: 'labels_overview',
     name: 'label_reports_index',
-    meta: {
-      permissions: ['administrator', 'report_manage'],
-    },
+    meta,
     component: LabelReportsIndex,
   },
   {
     path: 'labels/:id',
     name: 'label_reports_show',
-    meta: {
-      permissions: ['administrator', 'report_manage'],
-    },
+    meta,
     component: LabelReportsShow,
   },
 ];
@@ -181,6 +166,12 @@ export default {
           name: 'opportunity_attribute_reports',
           meta,
           component: OpportunityAttributeReport,
+        },
+        {
+          path: 'campaign-performance',
+          name: 'campaign_performance_reports',
+          meta,
+          component: CampaignPerformanceReport,
         },
       ],
     },

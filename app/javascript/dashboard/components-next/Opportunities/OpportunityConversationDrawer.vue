@@ -17,7 +17,7 @@ import Spinner from 'shared/components/Spinner.vue';
 const router = useRouter();
 const route = useRoute();
 const store = useStore();
-const { loading, ready, error } = useConversationDrawer();
+const { loading, ready, error, processConversation } = useConversationDrawer();
 const { isCloudFeatureEnabled } = useAccount();
 
 const currentChat = computed(() => store.getters.getSelectedChat);
@@ -54,12 +54,27 @@ const currentOpportunity = computed(() => {
   );
 });
 
-const activeTab = ref('conversation');
+const activeTab = ref(
+  route.params?.conversationId ? 'conversation' : 'activity'
+);
+
+watch(
+  () => route.params?.conversationId,
+  newId => {
+    if (newId) {
+      activeTab.value = 'conversation';
+    } else {
+      activeTab.value = 'activity';
+    }
+  }
+);
 
 watch(
   () => [currentChat.value?.id, currentChat.value?.meta?.sender?.id],
   ([, newContactId]) => {
-    activeTab.value = 'conversation';
+    if (route.params?.conversationId) {
+      activeTab.value = 'conversation';
+    }
     if (newContactId && !currentOpportunity.value) {
       store.dispatch('opportunities/fetchForContact', {
         contactId: newContactId,
@@ -69,10 +84,20 @@ watch(
   { immediate: true }
 );
 
+const onSelectConversation = conversationId => {
+  activeTab.value = 'conversation';
+  if (
+    conversationId &&
+    String(route.params?.conversationId) === String(conversationId)
+  ) {
+    processConversation(Number(conversationId));
+  }
+};
+
 const { uiSettings } = useUISettings();
 const shouldShowSidebar = computed(() => {
-  if (!currentChat.value.id) return false;
-  return uiSettings.value.is_contact_sidebar_open;
+  if (!currentChat.value?.id) return false;
+  return uiSettings.value?.is_contact_sidebar_open;
 });
 
 const close = () => {
@@ -225,16 +250,19 @@ onBeforeUnmount(() => {
         v-if="activeTab === 'activity' && currentOpportunity"
         class="flex relative w-full h-full min-w-0"
       >
-        <OpportunityActivityLog :opportunity-id="currentOpportunity.id" />
+        <OpportunityActivityLog
+          :opportunity-id="currentOpportunity.id"
+          @select-conversation="onSelectConversation"
+        />
       </div>
 
       <div v-else class="flex relative w-full h-full min-w-0">
         <ConversationBox
-          :inbox-id="currentChat.inbox_id"
+          :inbox-id="currentChat?.inbox_id || 0"
           :is-on-expanded-layout="false"
           class="flex-grow min-w-0"
         >
-          <SidepanelSwitch v-if="currentChat.id" />
+          <SidepanelSwitch v-if="currentChat?.id" />
         </ConversationBox>
         <ConversationSidebar
           v-if="shouldShowSidebar"

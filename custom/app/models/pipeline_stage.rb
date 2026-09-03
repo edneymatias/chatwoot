@@ -14,6 +14,7 @@ class PipelineStage < ApplicationRecord
 
   before_validation :set_position, on: :create
   before_save :ensure_single_lane_exclusivity_for_deal_value, if: -> { requires_deal_value? && requires_deal_value_changed? }
+  before_save :ensure_single_lane_exclusivity_for_campaign_milestone, if: -> { campaign_report_milestone? && campaign_report_milestone_changed? }
 
   def self.seed_defaults_for!(account)
     return if account.pipeline_stages.exists?
@@ -54,6 +55,12 @@ class PipelineStage < ApplicationRecord
   def ensure_single_lane_exclusivity_for_deal_value
     account.pipeline_stages.where.not(id: id).each do |stage|
       stage.update!(requires_deal_value: false)
+    end
+  end
+
+  def ensure_single_lane_exclusivity_for_campaign_milestone
+    account.pipeline_stages.where.not(id: id).each do |stage|
+      stage.update!(campaign_report_milestone: false)
     end
   end
 end

@@ -68,6 +68,7 @@ class Api::V1::Accounts::CampaignAttributionSettingsController < Api::V1::Accoun
       enabled: setting.enabled,
       connected: connected?,
       pending_count: current_account.opportunities.where(campaign_resolution_status: 'pending').where.not(campaign_source_id: [nil, '']).count,
+      resolved_data_present: current_account.opportunities.exists?(campaign_resolution_status: 'resolved'),
       meta_app_id: GlobalConfigService.load('META_MARKETING_APP_ID', ''),
       meta_api_version: GlobalConfigService.load('META_MARKETING_API_VERSION', 'v22.0')
     }
