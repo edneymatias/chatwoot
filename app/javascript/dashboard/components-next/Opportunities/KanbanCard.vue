@@ -29,14 +29,17 @@ const {
 } = useOpportunityCardFields(toRef(props, 'opportunity'));
 
 const handleCardClick = () => {
-  if (!props.opportunity.active_conversation_id) return;
+  const params = {};
+  const conversationId =
+    props.opportunity.active_conversation_display_id ||
+    props.opportunity.active_conversation_id;
+  if (conversationId) {
+    params.conversationId = conversationId;
+  }
+
   router.push({
     name: 'opportunities_conversation',
-    params: {
-      conversationId:
-        props.opportunity.active_conversation_display_id ||
-        props.opportunity.active_conversation_id,
-    },
+    params,
     query: {
       opportunityId: props.opportunity.id,
     },
@@ -44,12 +47,7 @@ const handleCardClick = () => {
 };
 
 const cardClass = computed(() => {
-  let classes = '';
-  if (props.opportunity.active_conversation_id) {
-    classes = 'cursor-pointer hover:bg-n-surface-2 group';
-  } else {
-    classes = 'cursor-default grayscale border-dashed bg-n-surface-2 group';
-  }
+  let classes = 'cursor-pointer hover:bg-n-surface-2 group';
 
   if (props.opportunity.status && props.opportunity.status !== 'open') {
     classes += ' is-closed';

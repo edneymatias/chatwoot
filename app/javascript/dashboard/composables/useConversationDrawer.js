@@ -14,7 +14,12 @@ export const useConversationDrawer = () => {
   const currentChat = computed(() => store.getters.getSelectedChat);
 
   const findConversation = id => {
-    return store.getters.getConversationById(id);
+    const numId = Number(id);
+    const all = store.getters.getAllConversations || [];
+    return (
+      all.find(c => c.id === numId || c.display_id === numId) ||
+      store.getters.getConversationById(numId)
+    );
   };
 
   const clearSelected = () => {
@@ -36,7 +41,7 @@ export const useConversationDrawer = () => {
         if (response.data.meta && response.data.meta.sender) {
           store.commit('contacts/SET_CONTACT_ITEM', response.data.meta.sender);
         }
-        chat = findConversation(id);
+        chat = response.data || findConversation(id);
       } catch (e) {
         // error handled below
       }
@@ -64,6 +69,10 @@ export const useConversationDrawer = () => {
     newId => {
       if (newId) {
         processConversation(Number(newId));
+      } else {
+        loading.value = false;
+        ready.value = true;
+        error.value = false;
       }
     },
     { immediate: true }
@@ -84,5 +93,6 @@ export const useConversationDrawer = () => {
     loading,
     ready,
     error,
+    processConversation,
   };
 };

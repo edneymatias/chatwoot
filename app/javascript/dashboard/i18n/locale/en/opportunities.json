@@ -136,6 +136,12 @@
         "ACTIVITY": "Activity",
         "ACTOR": "Actor",
         "TIME": "Time"
+      },
+      "CONVERSATION_STATUS": {
+        "OPEN": "Open",
+        "PENDING": "Pending",
+        "RESOLVED": "Resolved",
+        "SNOOZED": "Snoozed"
       }
     },
     "UNDO": {
@@ -180,6 +186,8 @@
       "CLEAR_COLOR": "Clear Color",
       "STALE_AFTER_DAYS_LABEL": "Stale after (days)",
       "STALE_AFTER_DAYS_HELP": "Time in this stage before showing warning indicator",
+      "CAMPAIGN_REPORT_MILESTONE_LABEL": "Milestone stage for ad campaigns report",
+      "CAMPAIGN_REPORT_MILESTONE_HELP": "Mark this stage as the key conversion milestone for measuring ad campaign performance. Only one stage can be the milestone at a time.",
       "CANCEL": "Cancel",
       "SUBMIT_CREATE": "Create",
       "SUBMIT_EDIT": "Save changes",

@@ -224,12 +224,7 @@ const OpportunityCardRow = defineComponent({
           <div v-for="card in allCards" :key="card.id" class="relative group">
             <CardLayout
               layout="row"
-              class="transition-colors"
-              :class="[
-                card.active_conversation_id
-                  ? 'cursor-pointer hover:bg-n-alpha-1 hover:border-n-slate-4'
-                  : 'cursor-default grayscale border-dashed bg-n-surface-1/50',
-              ]"
+              class="transition-colors cursor-pointer hover:bg-n-alpha-1 hover:border-n-slate-4"
               @click="handleRowClick(card)"
             >
               <OpportunityCardRow :opportunity="card" />

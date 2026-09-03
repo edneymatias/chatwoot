@@ -45,7 +45,7 @@ export default {
           },
           children: [
             {
-              path: 'conversations/:conversationId',
+              path: 'conversations/:conversationId?',
               name: 'opportunities_conversation',
               roles: ['administrator', 'agent', 'custom_role'],
               component: () =>

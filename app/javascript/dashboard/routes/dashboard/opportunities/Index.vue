@@ -79,13 +79,19 @@ watch(viewMode, newVal => {
 });
 
 const handleRowClick = opportunity => {
-  if (!opportunity.active_conversation_id) return;
+  const params = {};
+  const conversationId =
+    opportunity.active_conversation_display_id ||
+    opportunity.active_conversation_id;
+  if (conversationId) {
+    params.conversationId = conversationId;
+  }
+
   router.push({
     name: 'opportunities_conversation',
-    params: {
-      conversationId:
-        opportunity.active_conversation_display_id ||
-        opportunity.active_conversation_id,
+    params,
+    query: {
+      opportunityId: opportunity.id,
     },
   });
 };

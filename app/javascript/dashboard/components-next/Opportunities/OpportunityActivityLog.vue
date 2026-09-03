@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { useStore } from 'vuex';
 import { useI18n } from 'vue-i18n';
+import { useRouter, useRoute } from 'vue-router';
 import Spinner from 'shared/components/Spinner.vue';
 import {
   BaseTable,
@@ -22,7 +23,11 @@ const props = defineProps({
   },
 });
 
+const emit = defineEmits(['selectConversation']);
+
 const store = useStore();
+const router = useRouter();
+const route = useRoute();
 const { t } = useI18n();
 
 const loading = ref(true);
@@ -227,6 +232,51 @@ const onPageChange = page => {
   currentPage.value = page;
 };
 
+const getConversationStatusBadge = status => {
+  if (!status) return null;
+  const statusUpper = status.toUpperCase();
+  const label = t(
+    `OPPORTUNITIES.ACTIVITY_LOG.CONVERSATION_STATUS.${statusUpper}`,
+    status
+  );
+
+  let colorClass = 'bg-n-slate-3 text-n-slate-11 border-n-slate-5';
+  switch (status.toLowerCase()) {
+    case 'open':
+      colorClass = 'bg-n-teal-3 text-n-teal-11 border-n-teal-6';
+      break;
+    case 'resolved':
+      colorClass = 'bg-n-slate-3 text-n-slate-11 border-n-slate-5';
+      break;
+    case 'pending':
+      colorClass = 'bg-n-amber-3 text-n-amber-11 border-n-amber-6';
+      break;
+    case 'snoozed':
+      colorClass = 'bg-n-blue-3 text-n-blue-11 border-n-blue-6';
+      break;
+    default:
+      break;
+  }
+
+  return { label, colorClass };
+};
+
+const handleConversationClick = activity => {
+  const meta = activity.metadata || {};
+  const conversationId = meta.conversation_display_id || meta.conversation_id;
+  if (!conversationId) return;
+
+  emit('selectConversation', conversationId);
+
+  router.push({
+    name: 'opportunities_conversation',
+    params: { conversationId },
+    query: {
+      opportunityId: route.query?.opportunityId || props.opportunityId,
+    },
+  });
+};
+
 const tableHeaders = computed(() => {
   return [
     t('OPPORTUNITIES.ACTIVITY_LOG.TABLE_HEADER.ACTIVITY'),
@@ -312,8 +362,39 @@ const tableHeaders = computed(() => {
                       />
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
-                      <span class="text-body-main text-n-slate-12 font-medium">
+                      <button
+                        v-if="activity.conversation_viewable"
+                        type="button"
+                        class="text-body-main font-medium text-n-brand hover:underline cursor-pointer text-left inline-flex items-center gap-1.5 focus:outline-none"
+                        @click="handleConversationClick(activity)"
+                      >
                         {{ getEventDisplay(activity).title }}
+                      </button>
+                      <span
+                        v-else
+                        class="text-body-main text-n-slate-12 font-medium"
+                      >
+                        {{ getEventDisplay(activity).title }}
+                      </span>
+                      <span
+                        v-if="
+                          activity.conversation_viewable &&
+                          getConversationStatusBadge(
+                            activity.conversation_status
+                          )
+                        "
+                        class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                        :class="
+                          getConversationStatusBadge(
+                            activity.conversation_status
+                          ).colorClass
+                        "
+                      >
+                        {{
+                          getConversationStatusBadge(
+                            activity.conversation_status
+                          ).label
+                        }}
                       </span>
                       <span
                         v-if="
@@ -324,9 +405,9 @@ const tableHeaders = computed(() => {
                         "
                         class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-n-amber-3 text-n-amber-11 border border-n-amber-6 cursor-help"
                       >
-                        ({{
-                          $t('OPPORTUNITIES.ACTIVITY_LOG.APPROXIMATE_BADGE')
-                        }})
+                        {{
+                          `(${$t('OPPORTUNITIES.ACTIVITY_LOG.APPROXIMATE_BADGE')})`
+                        }}
                       </span>
                     </div>
                   </div>
