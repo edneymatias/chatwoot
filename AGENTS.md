@@ -115,11 +115,27 @@ commands with `docker compose exec <service>`.
   HEAD.** `develop` HEAD can carry upstream features that are incomplete, mid-rollout across
   multiple PRs, or not yet part of any release — merging it directly risks shipping unfinished
   upstream behavior and unstabilized build/toolchain changes.
-- Upstream sync flow: identify the latest tag on `chatwoot/chatwoot` (`git fetch upstream --tags
-  && git tag --sort=-creatordate --list 'v*' | head -1`), merge that tag into `ichatr-main` with
-  `git merge --no-ff <tag>` (skip if the branch is already at parity with it), then validate with
-  `bin/sync-custom-module-hooks --check` / `--audit` and the full test suites (`bundle exec
-  rspec`, `pnpm test`) before considering the sync done.
+- Upstream sync flow:
+  1. Fast-forward `develop` first: `git fetch upstream develop --tags && git merge --ff-only
+     upstream/develop && git push origin develop`. Do this *before* running `--audit` (see below)
+     — `--audit`'s default base is `merge-base(ichatr-main, develop)`, and a stale `develop` (one
+     that predates the last upstream merge into `ichatr-main`) makes that base land *before* the
+     last sync, so the audit misreports upstream's own changes since then as fork gaps. This
+     already happened once (452 false-positive gaps from a `develop` stale since 2026-07-29) —
+     always fast-forward `develop` before trusting `--audit`'s output.
+  2. Identify the latest tag on `chatwoot/chatwoot` (`git tag --sort=-creatordate --list 'v*' |
+     head -1`) and merge it into `ichatr-main` with `git merge --no-ff <tag>` (skip if the branch
+     is already at parity with it). A `pnpm-lock.yaml` conflict is expected and normal — resolve
+     it by taking either side and regenerating with `pnpm install --no-frozen-lockfile`, not by
+     hand-editing the lockfile.
+  3. Validate with `bin/sync-custom-module-hooks --check` and `--audit` (now accurate, since
+     `develop` is fresh) and the full test suites (`bundle exec rspec`, `pnpm test`,
+     `pnpm eslint`, `bundle exec rubocop`) before considering the sync done.
+  4. **Any genuine `--audit` gap the sync (or any fork commit) surfaces gets fixed in the same
+     pass** — add a MANIFEST entry (`bin/sync-custom-module-hooks`) for a real upstream/enterprise
+     file the fork patches, or extend the script's exclusion list if the flagged path is a
+     wholesale fork-original file (no upstream equivalent to protect). Never defer this to "a
+     future cleanup" — the commits that create a gap are also the ones responsible for closing it.
 
 ## Fork Versioning Scheme
 
@@ -141,8 +157,9 @@ commands with `docker compose exec <service>`.
   3. **Full Frontend Test Suite**: `docker compose exec vite pnpm test` (all tests passing).
   4. **Full Backend Lint (RuboCop Global)**: `docker compose exec rails bundle exec rubocop` (must pass with 0 offenses across the entire repository, exactly matching the `lint-backend` CI job).
   5. **Full / Comprehensive Backend Test Suite**: Run `docker compose exec rails env -u FRONTEND_URL RAILS_ENV=test bundle exec rspec` (or at minimum the full suite of custom and modified core models/controllers: `custom/spec/ spec/models/opportunity_spec.rb spec/services/automation_rules/conditions_filter_service_spec.rb spec/requests/api/v1/accounts/pipeline_stages_controller_spec.rb`).
-  6. **Sync Hooks Audit**: `docker compose exec rails ruby bin/sync-custom-module-hooks --check && docker compose exec rails ruby bin/sync-custom-module-hooks --audit` (all wiring points present, 0 gaps).
-  7. **Explicit User Approval**: Ask and obtain explicit user validation before executing release commands.
+  6. **Fast-forward `develop`** (`git fetch upstream develop --tags && git merge --ff-only upstream/develop && git push origin develop`) *before* the sync hooks audit below — a stale `develop` makes `--audit`'s default base land before the last upstream sync and misreports upstream's own changes as fork gaps (see Branch Model).
+  7. **Sync Hooks Audit**: `docker compose exec rails ruby bin/sync-custom-module-hooks --check && docker compose exec rails ruby bin/sync-custom-module-hooks --audit` (all wiring points present, 0 gaps). Fix any genuine gap in the same pass — add a MANIFEST entry or extend the exclusion list in `bin/sync-custom-module-hooks` — rather than deferring it; do not cut a release on top of known, unfixed gaps.
+  8. **Explicit User Approval**: Ask and obtain explicit user validation before executing release commands.
 - Run `bin/ichatr-release`; it computes the next `<upstream-base-version>-ichatr.<N>` tag (see
   Fork Versioning Scheme above) and the changelog range for it, and asks for confirmation before
   creating and pushing the tag.
