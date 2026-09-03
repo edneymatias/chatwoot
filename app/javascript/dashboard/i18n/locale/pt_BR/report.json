@@ -734,5 +734,41 @@
       "TITLE": "Nenhum dado de oportunidade para este atributo",
       "DESCRIPTION": "Tente um intervalo de datas diferente ou selecione outro atributo para ver as métricas de oportunidade."
     }
+  },
+  "CAMPAIGN_PERFORMANCE_REPORTS": {
+    "HEADER": "Desempenho de Campanhas de Anúncios",
+    "LOADING": "Carregando desempenho das campanhas...",
+    "METRICS": {
+      "LEADS": "Leads",
+      "LEADS_INFO": "Total de leads atribuídos a campanhas pagas no período selecionado",
+      "WON": "Ganhos",
+      "WON_INFO": "Leads marcados como ganhos e taxa de vitória",
+      "LOST": "Perdidos",
+      "LOST_INFO": "Leads marcados como perdidos e taxa de perda",
+      "CAMPAIGNS": "Campanhas",
+      "CAMPAIGNS_INFO": "Campanhas identificadas distintas",
+      "ADSETS": "Conjuntos",
+      "ADSETS_INFO": "Conjuntos de anúncios identificados distintos",
+      "ADS": "Criativos",
+      "ADS_INFO": "Criativos de anúncios identificados distintos",
+      "MILESTONE_INFO": "Leads que atingiram ou ultrapassaram a etapa marco"
+    },
+    "TABS": {
+      "CAMPAIGNS": "Campanhas",
+      "ADSETS": "Conjuntos",
+      "ADS": "Criativos"
+    },
+    "TABLE": {
+      "TITLE": "Detalhamento das Campanhas",
+      "CAMPAIGN": "Campanha",
+      "ADSET": "Conjunto",
+      "AD": "Criativo",
+      "LEADS": "Leads",
+      "WON": "Ganhos",
+      "LOST": "Perdidos",
+      "MILESTONE_RATE": "Taxa do Marco",
+      "UNIDENTIFIED": "Não identificado",
+      "EMPTY": "Nenhum dado de campanha para exibir nesta visualização."
+    }
   }
 }

@@ -740,5 +740,41 @@
       "TITLE": "No opportunity data for this attribute",
       "DESCRIPTION": "Try a different date range or select another attribute to view opportunity metrics."
     }
+  },
+  "CAMPAIGN_PERFORMANCE_REPORTS": {
+    "HEADER": "Ad Campaign Performance",
+    "LOADING": "Loading campaign performance...",
+    "METRICS": {
+      "LEADS": "Leads",
+      "LEADS_INFO": "Total leads attributed to paid campaigns in the selected period",
+      "WON": "Won",
+      "WON_INFO": "Leads marked as won and win rate",
+      "LOST": "Lost",
+      "LOST_INFO": "Leads marked as lost and loss rate",
+      "CAMPAIGNS": "Campaigns",
+      "CAMPAIGNS_INFO": "Distinct identified campaigns",
+      "ADSETS": "Ad Sets",
+      "ADSETS_INFO": "Distinct identified ad sets",
+      "ADS": "Ads",
+      "ADS_INFO": "Distinct identified ads",
+      "MILESTONE_INFO": "Leads that reached or surpassed the milestone stage"
+    },
+    "TABS": {
+      "CAMPAIGNS": "Campaigns",
+      "ADSETS": "Ad Sets",
+      "ADS": "Ads"
+    },
+    "TABLE": {
+      "TITLE": "Campaign Breakdown",
+      "CAMPAIGN": "Campaign",
+      "ADSET": "Ad Set",
+      "AD": "Ad",
+      "LEADS": "Leads",
+      "WON": "Won",
+      "LOST": "Lost",
+      "MILESTONE_RATE": "Milestone Rate",
+      "UNIDENTIFIED": "Unidentified",
+      "EMPTY": "No campaign data to display in this view."
+    }
   }
 }

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useStore } from 'vuex';
+import { useStore } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import ColorPicker from 'dashboard/components-next/colorpicker/ColorPicker.vue';
@@ -20,6 +20,7 @@ const description = ref('');
 const isSubmitting = ref(false);
 
 const requiresDealValue = ref(false);
+const campaignReportMilestone = ref(false);
 const selectedAttributeIds = ref([]);
 const accentColor = ref('');
 const totalDisplayMode = ref('value_sum');
@@ -38,6 +39,8 @@ onMounted(() => {
   name.value = currentStage.name || '';
   description.value = currentStage.description || '';
   requiresDealValue.value = currentStage.requires_deal_value || false;
+  campaignReportMilestone.value =
+    currentStage.campaign_report_milestone || false;
   accentColor.value = currentStage.accent_color || '';
   totalDisplayMode.value = currentStage.total_display_mode || 'value_sum';
   staleAfterDays.value = currentStage.stale_after_days ?? '';
@@ -58,6 +61,7 @@ const submit = async () => {
       name: name.value.trim(),
       description: description.value ? description.value.trim() : '',
       requires_deal_value: requiresDealValue.value,
+      campaign_report_milestone: campaignReportMilestone.value,
       accent_color: accentColor.value || null,
       total_display_mode: totalDisplayMode.value,
       stale_after_days:
@@ -121,6 +125,22 @@ const submit = async () => {
               t('PIPELINE_STAGES_MGMT.REQUIREMENTS.DEAL_VALUE_HELP') ||
               'Require Deal Value for this stage'
             }}
+          </span>
+        </label>
+      </div>
+
+      <div class="flex flex-col gap-2 mt-2">
+        <label class="text-sm font-medium text-n-slate-12">
+          {{ $t('PIPELINE_STAGES_MGMT.FORM.CAMPAIGN_REPORT_MILESTONE_LABEL') }}
+        </label>
+        <label class="flex items-start gap-2 cursor-pointer">
+          <input
+            v-model="campaignReportMilestone"
+            type="checkbox"
+            class="w-4 h-4 mt-0.5 text-n-brand-9 border-n-weak rounded focus:ring-n-brand-9"
+          />
+          <span class="text-sm text-n-slate-11">
+            {{ $t('PIPELINE_STAGES_MGMT.FORM.CAMPAIGN_REPORT_MILESTONE_HELP') }}
           </span>
         </label>
       </div>

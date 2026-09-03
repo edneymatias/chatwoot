@@ -73,4 +73,25 @@ RSpec.describe PipelineStage, type: :model do
       expect { stage.reorder_to!(1) }.not_to(change { other_account.pipeline_stages.order(:position).pluck(:id, :position) })
     end
   end
+
+  describe 'campaign_report_milestone exclusivity' do
+    let(:account) { create(:account) }
+    let(:other_account) { create(:account) }
+    let!(:stage1) { account.pipeline_stages.create!(name: 'Stage 1', campaign_report_milestone: true) }
+    let!(:stage2) { account.pipeline_stages.create!(name: 'Stage 2', campaign_report_milestone: false) }
+    let!(:other_stage) { other_account.pipeline_stages.create!(name: 'Other Stage', campaign_report_milestone: true) }
+
+    it 'unsets campaign_report_milestone on previous stage when a new stage is marked' do
+      stage2.update!(campaign_report_milestone: true)
+
+      expect(stage1.reload.campaign_report_milestone).to be(false)
+      expect(stage2.reload.campaign_report_milestone).to be(true)
+    end
+
+    it 'does not affect stages in other accounts' do
+      stage2.update!(campaign_report_milestone: true)
+
+      expect(other_stage.reload.campaign_report_milestone).to be(true)
+    end
+  end
 end

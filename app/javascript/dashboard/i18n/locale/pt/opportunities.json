@@ -179,6 +179,8 @@
       "CLEAR_COLOR": "Limpar Cor",
       "STALE_AFTER_DAYS_LABEL": "Fica inativo após (dias)",
       "STALE_AFTER_DAYS_HELP": "Tempo nesta etapa antes de exibir o alerta visual",
+      "CAMPAIGN_REPORT_MILESTONE_LABEL": "Etapa marco do relatório de campanhas",
+      "CAMPAIGN_REPORT_MILESTONE_HELP": "Defina esta etapa como o marco de conversão para medir o desempenho de campanhas de anúncios. Apenas uma etapa pode ser o marco por vez.",
       "CANCEL": "Cancelar",
       "SUBMIT_CREATE": "Criar",
       "SUBMIT_EDIT": "Salvar alterações",

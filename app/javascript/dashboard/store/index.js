@@ -69,6 +69,8 @@ import pipelineClosingRequiredFields from './modules/pipelineClosingRequiredFiel
 import pipelineCardFieldConfigs from './modules/pipelineCardFieldConfigs';
 import pipelineCurrencySetting from './modules/pipelineCurrencySetting';
 import opportunities from './modules/opportunities';
+import campaignPerformanceReports from './modules/CampaignPerformanceReports';
+import campaignAttributionSettings from './modules/CampaignAttributionSettings';
 
 const plugins = [];
 
@@ -143,6 +145,8 @@ export default createStore({
     pipelineCardFieldConfigs,
     pipelineCurrencySetting,
     opportunities,
+    campaignPerformanceReports,
+    campaignAttributionSettings,
   },
   plugins,
 });

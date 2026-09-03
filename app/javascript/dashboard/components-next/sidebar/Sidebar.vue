@@ -107,6 +107,18 @@ const hasOpportunities = computed(() => {
   );
 });
 
+const campaignAttributionSettings = useMapGetter(
+  'campaignAttributionSettings/getSettings'
+);
+
+const hasCampaignPerformanceReport = computed(() => {
+  return (
+    hasOpportunities.value &&
+    Boolean(campaignAttributionSettings.value?.enabled) &&
+    Boolean(campaignAttributionSettings.value?.resolved_data_present)
+  );
+});
+
 const fetchConversationUnreadCounts = ([currentAccountId, isEnabled]) => {
   if (!currentAccountId) return;
 
@@ -260,6 +272,7 @@ onMounted(() => {
   store.dispatch('attributes/get');
   store.dispatch('customViews/get', 'conversation');
   store.dispatch('customViews/get', 'contact');
+  store.dispatch('campaignAttributionSettings/get');
 });
 
 watch([accountId, hasConversationUnreadCounts], fetchConversationUnreadCounts, {
@@ -717,6 +730,15 @@ const menuItems = computed(() => {
           label: t('SIDEBAR.REPORTS_OPPORTUNITY_ATTRIBUTE'),
           to: accountScopedRoute('opportunity_attribute_reports'),
         },
+        ...(hasCampaignPerformanceReport.value
+          ? [
+              {
+                name: 'Reports Campaign Performance',
+                label: t('SIDEBAR.REPORTS_CAMPAIGN_PERFORMANCE'),
+                to: accountScopedRoute('campaign_performance_reports'),
+              },
+            ]
+          : []),
       ],
     },
     {

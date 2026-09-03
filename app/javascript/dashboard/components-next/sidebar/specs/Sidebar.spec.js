@@ -38,7 +38,10 @@ describe('Sidebar.vue', () => {
   let store;
   let i18n;
 
-  const createWrapper = (featureFlags = []) => {
+  const createWrapper = (
+    featureFlags = [],
+    attributionSettings = { enabled: false, resolved_data_present: false }
+  ) => {
     store = createStore({
       getters: {
         getCurrentAccountId: () => 1,
@@ -62,6 +65,7 @@ describe('Sidebar.vue', () => {
         'customViews/getContactCustomViews': () => [],
         'customViews/getConversationCustomViews': () => [],
         'sidebarSortPreferences/getSectionSort': () => () => 'name',
+        'campaignAttributionSettings/getSettings': () => attributionSettings,
       },
       actions: {
         'labels/get': vi.fn(),
@@ -70,6 +74,7 @@ describe('Sidebar.vue', () => {
         'teams/get': vi.fn(),
         'attributes/get': vi.fn(),
         'customViews/get': vi.fn(),
+        'campaignAttributionSettings/get': vi.fn(),
         'conversationUnreadCounts/clear': vi.fn(),
         'conversationUnreadCounts/get': vi.fn(),
         'sidebarSortPreferences/initialize': vi.fn(),
@@ -83,6 +88,8 @@ describe('Sidebar.vue', () => {
         en: {
           SIDEBAR: {
             OPPORTUNITIES: 'Opportunities',
+            REPORTS: 'Reports',
+            REPORTS_CAMPAIGN_PERFORMANCE: 'Ad Campaigns',
           },
         },
       },
@@ -124,5 +131,36 @@ describe('Sidebar.vue', () => {
       .findAllComponents({ name: 'SidebarGroup' })
       .find(c => c.props('name') === 'Opportunities');
     expect(group).toBeFalsy();
+  });
+
+  it('renders Campaign Performance report nav entry when opportunities feature is enabled and attribution has resolved data', () => {
+    const wrapper = createWrapper([FEATURE_FLAGS.OPPORTUNITIES], {
+      enabled: true,
+      resolved_data_present: true,
+    });
+    const reportsGroup = wrapper
+      .findAllComponents({ name: 'SidebarGroup' })
+      .find(c => c.props('name') === 'Reports');
+    expect(reportsGroup).toBeTruthy();
+    const children = reportsGroup.props('children') || [];
+    const campaignItem = children.find(
+      c => c.name === 'Reports Campaign Performance'
+    );
+    expect(campaignItem).toBeTruthy();
+  });
+
+  it('does not render Campaign Performance report nav entry when resolved_data_present is false', () => {
+    const wrapper = createWrapper([FEATURE_FLAGS.OPPORTUNITIES], {
+      enabled: true,
+      resolved_data_present: false,
+    });
+    const reportsGroup = wrapper
+      .findAllComponents({ name: 'SidebarGroup' })
+      .find(c => c.props('name') === 'Reports');
+    const children = reportsGroup.props('children') || [];
+    const campaignItem = children.find(
+      c => c.name === 'Reports Campaign Performance'
+    );
+    expect(campaignItem).toBeFalsy();
   });
 });

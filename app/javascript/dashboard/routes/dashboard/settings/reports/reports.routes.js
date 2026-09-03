@@ -25,6 +25,7 @@ import LiveReports from './LiveReports.vue';
 import SLAReports from './SLAReports.vue';
 import OpportunityFunnelReport from './OpportunityFunnelReport.vue';
 import OpportunityAttributeReport from './OpportunityAttributeReport.vue';
+import CampaignPerformanceReport from './CampaignPerformanceReport.vue';
 
 const meta = {
   featureFlag: FEATURE_FLAGS.REPORTS,
@@ -165,6 +166,12 @@ export default {
           name: 'opportunity_attribute_reports',
           meta,
           component: OpportunityAttributeReport,
+        },
+        {
+          path: 'campaign-performance',
+          name: 'campaign_performance_reports',
+          meta,
+          component: CampaignPerformanceReport,
         },
       ],
     },

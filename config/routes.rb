@@ -156,6 +156,7 @@ Rails.application.routes.draw do
           end
           resources :opportunity_funnel_reports, only: [:index]
           resources :opportunity_attribute_reports, only: [:index]
+          resources :campaign_performance_reports, only: [:index]
           resources :pipeline_stages, only: [:index, :create, :update, :destroy] do
             resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'
           end
@@ -172,6 +173,7 @@ Rails.application.routes.draw do
           end
           resources :opportunity_funnel_reports, only: [:index]
           resources :opportunity_attribute_reports, only: [:index]
+          resources :campaign_performance_reports, only: [:index]
           resources :sla_policies, only: [:index, :create, :show, :update, :destroy]
           resources :custom_roles, only: [:index, :create, :show, :update, :destroy]
           resources :agent_capacity_policies, only: [:index, :create, :show, :update, :destroy] do

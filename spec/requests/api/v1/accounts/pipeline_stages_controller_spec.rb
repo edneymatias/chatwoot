@@ -146,6 +146,19 @@ RSpec.describe 'Api::V1::Accounts::PipelineStages', type: :request do
       expect(stage2.reload.required_custom_attribute_definitions).to contain_exactly(cad1)
     end
 
+    it 'updates campaign_report_milestone flag and enforces exclusivity across stages' do
+      payload1 = { pipeline_stage: { campaign_report_milestone: true } }.to_json
+      patch "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage1.id}", headers: headers_admin, params: payload1
+      expect(response).to have_http_status(:ok)
+      expect(stage1.reload.campaign_report_milestone).to be(true)
+
+      payload2 = { pipeline_stage: { campaign_report_milestone: true } }.to_json
+      patch "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage2.id}", headers: headers_admin, params: payload2
+      expect(response).to have_http_status(:ok)
+      expect(stage2.reload.campaign_report_milestone).to be(true)
+      expect(stage1.reload.campaign_report_milestone).to be(false)
+    end
+
     it 'reorders stages and returns an array when position is changed' do
       patch "/api/v1/accounts/#{account.id}/pipeline_stages/#{stage3.id}", headers: headers_admin, params: { pipeline_stage: { position: 1 } }.to_json
       expect(response).to have_http_status(:ok)

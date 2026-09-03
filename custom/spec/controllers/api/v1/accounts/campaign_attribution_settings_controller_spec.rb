@@ -23,7 +23,7 @@ RSpec.describe 'Api::V1::Accounts::CampaignAttributionSettings', type: :request 
       )
     end
 
-    it 'returns the setting data with pending_count' do
+    it 'returns the setting data with pending_count and resolved_data_present' do
       get "/api/v1/accounts/#{account.id}/campaign_attribution_setting",
           headers: admin.create_new_auth_token
 
@@ -32,6 +32,23 @@ RSpec.describe 'Api::V1::Accounts::CampaignAttributionSettings', type: :request 
       expect(data['enabled']).to be(true)
       expect(data['connected']).to be(true)
       expect(data['pending_count']).to eq(1)
+      expect(data['resolved_data_present']).to be(false)
+
+      Opportunity.create!(
+        account: account,
+        contact: contact,
+        pipeline_stage: stage,
+        status: :open,
+        title: 'Resolved Op',
+        campaign_source_id: '456',
+        campaign_resolution_status: 'resolved'
+      )
+
+      get "/api/v1/accounts/#{account.id}/campaign_attribution_setting",
+          headers: admin.create_new_auth_token
+
+      data = JSON.parse(response.body)
+      expect(data['resolved_data_present']).to be(true)
     end
   end
 

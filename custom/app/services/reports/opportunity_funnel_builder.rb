@@ -35,15 +35,11 @@ class Reports::OpportunityFunnelBuilder
 
   # Returns a hash {opp_id => max_position_reached} for all base_opps via stage changes.
   def max_stage_positions_reached(base_opps, stages)
-    stage_position_by_id = stages.each_with_object({}) { |s, h| h[s.id] = s.position }
-    opp_ids = base_opps.pluck(:id)
-    OpportunityStageChange
-      .where(account_id: account.id, opportunity_id: opp_ids)
-      .pluck(:opportunity_id, :to_stage_id)
-      .each_with_object(Hash.new(0)) do |(opp_id, stage_id), h|
-      pos = stage_position_by_id[stage_id] || 0
-      h[opp_id] = [h[opp_id], pos].max
-    end
+    Reports::StageReachCalculator.new(
+      account: account,
+      opportunity_ids: base_opps.pluck(:id),
+      stages: stages
+    ).calculate
   end
 
   # FR-008: Raw opportunity count per stage — number of opps that reached each stage or later.
