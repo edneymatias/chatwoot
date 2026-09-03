@@ -30,7 +30,7 @@ export const AUTOMATIONS = {
       {
         key: 'content',
         name: 'MESSAGE_CONTAINS',
-        inputType: 'comma_separated_plain_text',
+        inputType: 'multi_text',
         filterOperators: OPERATOR_TYPES_2,
       },
       {
