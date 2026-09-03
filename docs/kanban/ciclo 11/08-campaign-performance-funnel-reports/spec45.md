@@ -1,6 +1,7 @@
 # Phase 45: Consolidated Campaign Performance Reports Across the Opportunity Funnel
 
-**Status**: placeholder — pending brainstorm session
+**Status**: superseded by `spec84.md` (same folder) — brainstormed and approved 2026-09-02. This
+file's open questions are answered there; kept here only as the original placeholder record.
 **Depends on**: Phase 21 (Opportunity Funnel Report, `docs/kanban/ciclo 4/07-opportunity-funnel-report/spec21.md`); Phase 26 (WhatsApp/Meta referral attribution) for the campaign attribution columns on `Opportunity` this report groups/filters by; Phase 44 (ad spend collection) for cost data this report may eventually join against for cost-normalized metrics.
 
 ## Quick Preview
