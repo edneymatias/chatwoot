@@ -263,6 +263,41 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  anchor: "mail_subject phone_number priority conversation_language labels private_note]",
                  insert: "mail_subject phone_number priority conversation_language labels private_note campaign_referral_present]",
                  replace: true
+               },
+               {
+                 file: 'app/models/message.rb',
+                 anchor: "    '[Attachment]' if attachments.any?\n  end\n\n  private",
+                 insert: "    '[Attachment]' if attachments.any?\n  end\n\n  def reindex_for_search\n    return unless respond_to?(:reindex)\n\n    reindex(mode: :async)\n  end\n\n  private",
+                 replace: true
+               },
+               {
+                 file: 'enterprise/app/services/voice/call_transcription_service.rb',
+                 anchor: '    message.reindex if ChatwootApp.advanced_search_allowed?',
+                 insert: '    message.reindex_for_search if ChatwootApp.advanced_search_allowed?',
+                 replace: true
+               },
+               {
+                 file: 'docker/entrypoints/vite.sh',
+                 anchor: 'rm -rf /app/tmp/cache/*',
+                 insert: "rm -rf /app/tmp/cache/*\n\n# install missing gems for local dev as we are using base image compiled for production\nbundle install",
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/en/advancedFilters.json',
+                 anchor: '      "LAST_ACTIVITY": "Last activity"',
+                 insert: "      \"LAST_ACTIVITY\": \"Last activity\",\n      \"OPPORTUNITY_CAMPAIGN_NAME\": \"Campaign name\",\n      \"OPPORTUNITY_CAMPAIGN_ADSET_NAME\": \"Ad group\",\n      \"OPPORTUNITY_CAMPAIGN_AD_NAME\": \"Ad\",\n      \"OPPORTUNITY_CAMPAIGN_PLATFORM\": \"Platform\",\n      \"OPPORTUNITY_CAMPAIGN_PLATFORM_NONE\": \"No platform (organic/internal)\",\n      \"OPPORTUNITY_CREATED_AT\": \"Created at\",\n      \"OPPORTUNITY_UPDATED_AT\": \"Updated at\"",
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/pt_BR/advancedFilters.json',
+                 anchor: '      "LAST_ACTIVITY": "Última atividade"',
+                 insert: "      \"LAST_ACTIVITY\": \"Última atividade\",\n      \"OPPORTUNITY_CAMPAIGN_NAME\": \"Nome da campanha\",\n      \"OPPORTUNITY_CAMPAIGN_ADSET_NAME\": \"Conjunto de anúncios\",\n      \"OPPORTUNITY_CAMPAIGN_AD_NAME\": \"Anúncio\",\n      \"OPPORTUNITY_CAMPAIGN_PLATFORM\": \"Plataforma\",\n      \"OPPORTUNITY_CAMPAIGN_PLATFORM_NONE\": \"Sem plataforma (orgânico/interno)\",\n      \"OPPORTUNITY_CREATED_AT\": \"Criado em\",\n      \"OPPORTUNITY_UPDATED_AT\": \"Atualizado em\"",
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/reports/constants.js',
+                 anchor: "    groupByOptions: [\n      GROUP_BY_OPTIONS.DAY,\n      GROUP_BY_OPTIONS.WEEK,\n      GROUP_BY_OPTIONS.MONTH,\n      GROUP_BY_OPTIONS.YEAR,\n    ],\n  },\n};",
+                 insert: "\nexport const CHART_FONT_FAMILY =\n  'Inter,-apple-system,system-ui,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif';"
                }
              ]
            end
