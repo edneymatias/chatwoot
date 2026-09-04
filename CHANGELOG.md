@@ -1,3 +1,22 @@
+## [4.17.1-ichatr.2] - 2026-09-04
+
+### 🚀 Features
+
+- *(whatsapp)* Correlate campaign replies, track recipients, add campaign_id automation condition
+
+### 🐛 Bug Fixes
+
+- *(whatsapp)* Add deferred reconciliation for Custom::CampaignRecipient status races
+
+### 📚 Documentation
+
+- *(kanban)* Bring whatsapp campaign reply tracking spec into ciclo 12
+- *(specs)* Add speckit spec.md for whatsapp campaign reply tracking
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Update changelog for 4.17.1-ichatr.1 [skip ci]
+
 ## [4.17.1-ichatr.1] - 2026-09-03
 
 ### 🚀 Features
