@@ -106,15 +106,20 @@ class OpportunitiesFilter
     when 'does_not_contain'
       apply_does_not_contain_filter(relation, key, vals)
     when 'is_greater_than'
-      relation.where("#{Opportunity.table_name}.#{key} > ?", vals.first)
+      apply_column_comparison(relation, key, vals.first, '>')
     when 'is_less_than'
-      relation.where("#{Opportunity.table_name}.#{key} < ?", vals.first)
+      apply_column_comparison(relation, key, vals.first, '<')
     when 'days_before'
       target = Date.current - vals.first.to_i.days
       relation.where("#{Opportunity.table_name}.#{key}::date = ?", target)
     else
       relation.where(key => vals)
     end
+  end
+
+  def apply_column_comparison(relation, key, val, operator)
+    sql = OpportunityDateComparison.sql_fragment(Opportunity, key, operator)
+    relation.where(sql, OpportunityDateComparison.bound_value(Opportunity, key, val))
   end
 
   def apply_contains_filter(relation, key, vals)
