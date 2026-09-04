@@ -44,6 +44,27 @@ RSpec.describe Custom::Whatsapp::IncomingMessageBaseService do
       expect(recipient.reload.status).to eq('delivered')
       expect(recipient.delivered_at).to be_present
     end
+
+    context 'when neither a Custom::CampaignRecipient nor a Message is persisted yet' do
+      let(:status_payload) do
+        {
+          'statuses' => [
+            {
+              'id' => 'wamid.not-persisted-yet',
+              'status' => 'delivered',
+              'timestamp' => Time.current.to_i.to_s
+            }
+          ]
+        }.with_indifferent_access
+      end
+
+      it 'defers reconciliation via Custom::UpdateCampaignRecipientStatusJob' do
+        expect do
+          Whatsapp::IncomingMessageService.new(inbox: inbox, params: status_payload).perform
+        end.to have_enqueued_job(Custom::UpdateCampaignRecipientStatusJob)
+          .with(inbox.id, status_payload['statuses'].first).on_queue('low')
+      end
+    end
   end
 
   describe '#set_conversation reply correlation' do

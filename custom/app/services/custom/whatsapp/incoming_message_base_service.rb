@@ -14,12 +14,27 @@ module Custom::Whatsapp::IncomingMessageBaseService
     )
     recipient&.update_from_whatsapp_status!(status)
 
-    return unless find_message_by_source_id(status[:id])
+    message_found = find_message_by_source_id(status[:id])
+    if message_found
+      update_whatsapp_identifiers_from_status(status)
+      update_message_with_status(@message, status)
+    end
 
-    update_whatsapp_identifiers_from_status(status)
-    update_message_with_status(@message, status)
+    enqueue_deferred_recipient_status_update(status) if recipient.blank? && message_found.blank?
   rescue ArgumentError => e
     Rails.logger.error "Error while processing whatsapp status update #{e.message}"
+  end
+
+  # Mirrors Enterprise::Whatsapp::IncomingMessageBaseService's own deferred-reconciliation
+  # safety net (Campaigns::UpdateRecipientStatusJob), retargeted at Custom::CampaignRecipient —
+  # Enterprise's job only ever queries the Enterprise campaign_recipients table, which this
+  # fork never writes to, so it cannot help our own recipients. Guards against the rare race
+  # where a status webhook beats our own mark_sent! write to Custom::CampaignRecipient.
+  def enqueue_deferred_recipient_status_update(status)
+    return unless inbox.account.feature_enabled?(:whatsapp_campaign)
+    return unless %w[delivered read failed].include?(status[:status].to_s)
+
+    Custom::UpdateCampaignRecipientStatusJob.set(wait: 2.seconds).perform_later(inbox.id, status.to_h)
   end
 
   def set_conversation
