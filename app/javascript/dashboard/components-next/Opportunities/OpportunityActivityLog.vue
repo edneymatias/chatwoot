@@ -68,6 +68,41 @@ const getStageName = stageId => {
   return stage ? stage.name : `#${stageId}`;
 };
 
+const FIELD_LABEL_KEYS = {
+  title: 'TITLE',
+  value: 'VALUE',
+  assignee_id: 'ASSIGNEE',
+  contact_id: 'CONTACT',
+  custom_attributes: 'CUSTOM_ATTRIBUTES',
+  lost_reason: 'LOST_REASON',
+  campaign_name: 'CAMPAIGN_NAME',
+  campaign_adset_name: 'CAMPAIGN_ADSET_NAME',
+  campaign_ad_name: 'CAMPAIGN_AD_NAME',
+  campaign_thumbnail_url: 'CAMPAIGN_THUMBNAIL',
+  campaign_resolution_status: 'CAMPAIGN_RESOLUTION_STATUS',
+  campaign_platform: 'CAMPAIGN_PLATFORM',
+  campaign_source_id: 'CAMPAIGN_SOURCE_ID',
+  campaign_source_url: 'CAMPAIGN_SOURCE_URL',
+  campaign_headline: 'CAMPAIGN_HEADLINE',
+  campaign_body: 'CAMPAIGN_BODY',
+};
+
+const getFieldLabel = field =>
+  FIELD_LABEL_KEYS[field]
+    ? t(`OPPORTUNITIES.ACTIVITY_LOG.FIELDS.${FIELD_LABEL_KEYS[field]}`)
+    : field;
+
+const CONVERSATION_DETACHED_REASON_KEYS = {
+  resolved_by_agent: 'CONVERSATION_DETACHED_RESOLVED',
+  resolved_automatically: 'CONVERSATION_DETACHED_AUTO_RESOLVED',
+  deleted: 'CONVERSATION_DETACHED_DELETED',
+};
+
+const formatEventTime = timestamp => {
+  if (!timestamp) return '';
+  return messageTimestamp(timestamp, 'MMM dd, yyyy hh:mm a');
+};
+
 const getEventDisplay = activity => {
   const meta = activity.metadata || {};
   switch (activity.event_type) {
@@ -184,11 +219,48 @@ const getEventDisplay = activity => {
     case 'conversation_detached': {
       const displayId =
         meta.conversation_display_id || meta.conversation_id || '';
+      const key =
+        CONVERSATION_DETACHED_REASON_KEYS[meta.reason] ||
+        'CONVERSATION_DETACHED';
       return {
         icon: 'i-ph-link-break-bold',
         colorClass: 'text-n-slate-9 bg-n-slate-3 dark:bg-n-slate-3/20',
-        title: t('OPPORTUNITIES.ACTIVITY_LOG.EVENTS.CONVERSATION_DETACHED', {
+        title: t(`OPPORTUNITIES.ACTIVITY_LOG.EVENTS.${key}`, { displayId }),
+      };
+    }
+    case 'conversation_reopened': {
+      const displayId =
+        meta.conversation_display_id || meta.conversation_id || '';
+      return {
+        icon: 'i-ph-arrow-clockwise-bold',
+        colorClass: 'text-n-teal-9 bg-n-teal-3 dark:bg-n-teal-3/20',
+        title: t('OPPORTUNITIES.ACTIVITY_LOG.EVENTS.CONVERSATION_REOPENED', {
           displayId,
+        }),
+      };
+    }
+    case 'conversation_snoozed': {
+      const displayId =
+        meta.conversation_display_id || meta.conversation_id || '';
+      const key = meta.snoozed_until
+        ? 'CONVERSATION_SNOOZED_UNTIL'
+        : 'CONVERSATION_SNOOZED_UNTIL_REPLY';
+      return {
+        icon: 'i-ph-clock-bold',
+        colorClass: 'text-n-amber-9 bg-n-amber-3 dark:bg-n-amber-3/20',
+        title: t(`OPPORTUNITIES.ACTIVITY_LOG.EVENTS.${key}`, {
+          displayId,
+          date: formatEventTime(meta.snoozed_until),
+        }),
+      };
+    }
+    case 'opportunity_updated': {
+      const fields = (meta.changed_fields || []).map(getFieldLabel).join(', ');
+      return {
+        icon: 'i-ph-pencil-simple-bold',
+        colorClass: 'text-n-slate-9 bg-n-slate-3 dark:bg-n-slate-3/20',
+        title: t('OPPORTUNITIES.ACTIVITY_LOG.EVENTS.OPPORTUNITY_UPDATED', {
+          fields,
         }),
       };
     }
@@ -204,11 +276,6 @@ const getEventDisplay = activity => {
 const getActorName = actor => {
   if (actor && actor.name && actor.type !== 'system') return actor.name;
   return t('OPPORTUNITIES.ACTIVITY_LOG.SYSTEM_ACTOR');
-};
-
-const formatEventTime = timestamp => {
-  if (!timestamp) return '';
-  return messageTimestamp(timestamp, 'MMM dd, yyyy hh:mm a');
 };
 
 const getRelativeTime = timestamp => {

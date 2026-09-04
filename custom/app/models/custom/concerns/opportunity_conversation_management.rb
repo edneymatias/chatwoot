@@ -19,12 +19,27 @@ module Custom::Concerns::OpportunityConversationManagement
     end
   end
 
-  def detach_active_conversation!(transferred_to: nil, record_activity: false)
+  # Re-marks an already-linked conversation as active (e.g. it reopened after being
+  # resolved/snoozed) without going through the OpportunityConversation link/transfer bookkeeping.
+  def reattach_active_conversation!(conversation, reason:)
+    transaction do
+      update!(active_conversation: conversation)
+      activities.create!(
+        account_id: account_id,
+        event_type: 'conversation_reopened',
+        actor: Current.executed_by || Current.user,
+        metadata: { conversation_id: conversation.id, conversation_display_id: conversation.display_id, reason: reason },
+        occurred_at: Time.current
+      )
+    end
+  end
+
+  def detach_active_conversation!(transferred_to: nil, reason: nil)
     return if active_conversation_id.blank?
 
     conv = active_conversation
     transaction do
-      record_detached_activity(conv, transferred_to, record_activity)
+      record_detached_activity(conv, transferred_to, reason)
       update!(active_conversation: nil)
     end
   end
@@ -66,11 +81,11 @@ module Custom::Concerns::OpportunityConversationManagement
     )
   end
 
-  def record_detached_activity(conv, transferred_to, record_activity)
+  def record_detached_activity(conv, transferred_to, reason)
     if transferred_to.present?
       record_transfer_out_activity(conv, transferred_to)
-    elsif record_activity
-      record_detached_simple_activity(conv)
+    else
+      record_detached_simple_activity(conv, reason)
     end
   end
 
@@ -89,12 +104,12 @@ module Custom::Concerns::OpportunityConversationManagement
     )
   end
 
-  def record_detached_simple_activity(conv)
+  def record_detached_simple_activity(conv, reason)
     activities.create!(
       account_id: account_id,
       event_type: 'conversation_detached',
       actor: Current.executed_by || Current.user,
-      metadata: { conversation_id: conv.id, conversation_display_id: conv.display_id },
+      metadata: { conversation_id: conv.id, conversation_display_id: conv.display_id, reason: reason },
       occurred_at: Time.current
     )
   end

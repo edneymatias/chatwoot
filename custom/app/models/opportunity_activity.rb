@@ -11,11 +11,14 @@ class OpportunityActivity < ApplicationRecord
 
   enum event_type: {
     opportunity_created: 'opportunity_created',
+    opportunity_updated: 'opportunity_updated',
     opportunity_stage_changed: 'opportunity_stage_changed',
     opportunity_won: 'opportunity_won',
     opportunity_lost: 'opportunity_lost',
     opportunity_reopened: 'opportunity_reopened',
     conversation_opened: 'conversation_opened',
+    conversation_reopened: 'conversation_reopened',
+    conversation_snoozed: 'conversation_snoozed',
     conversation_transferred_out: 'conversation_transferred_out',
     conversation_transferred_in: 'conversation_transferred_in',
     conversation_detached: 'conversation_detached'

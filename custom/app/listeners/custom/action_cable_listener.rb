@@ -13,27 +13,21 @@ module Custom::ActionCableListener
     conversation = event.data[:conversation]
     return if conversation.blank?
 
+    reason = event.data[:performed_by].present? ? :resolved_by_agent : :resolved_automatically
     Opportunity.where(account_id: conversation.account_id, active_conversation_id: conversation.id)
-               .find_each(&:detach_active_conversation!)
+               .find_each { |opportunity| opportunity.detach_active_conversation!(reason: reason) }
   end
 
   def conversation_opened(event)
     conversation = event.data[:conversation]
     return if conversation.blank?
 
-    Opportunity.where(account_id: conversation.account_id, status: :open, active_conversation_id: nil)
-               .joins(:opportunity_conversations)
-               .where(opportunity_conversations: { conversation_id: conversation.id })
-               .first
-               &.update!(active_conversation: conversation)
-  end
-
-  def conversation_deleted(event)
-    conversation_data = event.data[:conversation_data]
-    return if conversation_data.blank?
-
-    Opportunity.where(account_id: conversation_data[:account_id], active_conversation_id: conversation_data[:id])
-               .find_each(&:detach_active_conversation!)
+    opportunity = Opportunity.where(account_id: conversation.account_id, status: :open, active_conversation_id: nil)
+                             .joins(:opportunity_conversations)
+                             .where(opportunity_conversations: { conversation_id: conversation.id })
+                             .first
+    reason = event.data[:performed_by].present? ? :reopened_by_agent : :reopened_automatically
+    opportunity&.reattach_active_conversation!(conversation, reason: reason)
   end
 
   private

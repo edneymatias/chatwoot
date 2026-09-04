@@ -130,7 +130,32 @@
         "CONVERSATION_LINKED": "Conversation #{displayId} linked",
         "CONVERSATION_TRANSFERRED_OUT": "Conversation #{displayId} transferred to \"{targetTitle}\"",
         "CONVERSATION_TRANSFERRED_IN": "Conversation #{displayId} transferred from \"{sourceTitle}\"",
-        "CONVERSATION_DETACHED": "Conversation #{displayId} unlinked"
+        "CONVERSATION_DETACHED": "Conversation #{displayId} unlinked",
+        "CONVERSATION_DETACHED_RESOLVED": "Conversation #{displayId} resolved and unlinked",
+        "CONVERSATION_DETACHED_AUTO_RESOLVED": "Conversation #{displayId} auto-resolved (inactivity) and unlinked",
+        "CONVERSATION_DETACHED_DELETED": "Conversation #{displayId} deleted",
+        "CONVERSATION_REOPENED": "Conversation #{displayId} reopened",
+        "CONVERSATION_SNOOZED_UNTIL": "Conversation #{displayId} snoozed until {date}",
+        "CONVERSATION_SNOOZED_UNTIL_REPLY": "Conversation #{displayId} snoozed until customer replies",
+        "OPPORTUNITY_UPDATED": "Updated: {fields}"
+      },
+      "FIELDS": {
+        "TITLE": "Title",
+        "VALUE": "Value",
+        "ASSIGNEE": "Assignee",
+        "CONTACT": "Contact",
+        "CUSTOM_ATTRIBUTES": "Custom fields",
+        "LOST_REASON": "Lost reason",
+        "CAMPAIGN_NAME": "Campaign name",
+        "CAMPAIGN_ADSET_NAME": "Ad set name",
+        "CAMPAIGN_AD_NAME": "Ad name",
+        "CAMPAIGN_THUMBNAIL": "Campaign thumbnail",
+        "CAMPAIGN_RESOLUTION_STATUS": "Campaign resolution status",
+        "CAMPAIGN_PLATFORM": "Campaign platform",
+        "CAMPAIGN_SOURCE_ID": "Campaign source ID",
+        "CAMPAIGN_SOURCE_URL": "Campaign source URL",
+        "CAMPAIGN_HEADLINE": "Campaign headline",
+        "CAMPAIGN_BODY": "Campaign body"
       },
       "TABLE_HEADER": {
         "ACTIVITY": "Activity",

@@ -8,6 +8,8 @@ class Api::V1::Accounts::Opportunities::ActivitiesController < Api::V1::Accounts
 
   CONVERSATION_EVENT_TYPES = %w[
     conversation_opened
+    conversation_reopened
+    conversation_snoozed
     conversation_transferred_in
     conversation_transferred_out
     conversation_detached

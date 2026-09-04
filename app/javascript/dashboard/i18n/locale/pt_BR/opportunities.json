@@ -129,7 +129,32 @@
         "CONVERSATION_LINKED": "Conversa #{displayId} vinculada",
         "CONVERSATION_TRANSFERRED_OUT": "Conversa #{displayId} transferida para \"{targetTitle}\"",
         "CONVERSATION_TRANSFERRED_IN": "Conversa #{displayId} transferida de \"{sourceTitle}\"",
-        "CONVERSATION_DETACHED": "Conversa #{displayId} desvinculada"
+        "CONVERSATION_DETACHED": "Conversa #{displayId} desvinculada",
+        "CONVERSATION_DETACHED_RESOLVED": "Conversa #{displayId} resolvida e desvinculada",
+        "CONVERSATION_DETACHED_AUTO_RESOLVED": "Conversa #{displayId} resolvida automaticamente (inatividade) e desvinculada",
+        "CONVERSATION_DETACHED_DELETED": "Conversa #{displayId} excluída",
+        "CONVERSATION_REOPENED": "Conversa #{displayId} reaberta",
+        "CONVERSATION_SNOOZED_UNTIL": "Conversa #{displayId} adiada até {date}",
+        "CONVERSATION_SNOOZED_UNTIL_REPLY": "Conversa #{displayId} adiada até a próxima resposta do cliente",
+        "OPPORTUNITY_UPDATED": "Atualizado: {fields}"
+      },
+      "FIELDS": {
+        "TITLE": "Título",
+        "VALUE": "Valor",
+        "ASSIGNEE": "Responsável",
+        "CONTACT": "Contato",
+        "CUSTOM_ATTRIBUTES": "Campos personalizados",
+        "LOST_REASON": "Motivo da perda",
+        "CAMPAIGN_NAME": "Nome da campanha",
+        "CAMPAIGN_ADSET_NAME": "Nome do conjunto de anúncios",
+        "CAMPAIGN_AD_NAME": "Nome do anúncio",
+        "CAMPAIGN_THUMBNAIL": "Miniatura da campanha",
+        "CAMPAIGN_RESOLUTION_STATUS": "Status de resolução da campanha",
+        "CAMPAIGN_PLATFORM": "Plataforma da campanha",
+        "CAMPAIGN_SOURCE_ID": "ID de origem da campanha",
+        "CAMPAIGN_SOURCE_URL": "URL de origem da campanha",
+        "CAMPAIGN_HEADLINE": "Título do anúncio",
+        "CAMPAIGN_BODY": "Corpo do anúncio"
       },
       "TABLE_HEADER": {
         "ACTIVITY": "Atividade",
