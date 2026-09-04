@@ -1,3 +1,21 @@
+## [4.17.1-ichatr.3] - 2026-09-04
+
+### 🚀 Features
+
+- *(kanban)* Log conversation lifecycle and generic edits to opportunity history
+
+### 🐛 Bug Fixes
+
+- *(kanban)* Align opportunity date filters with Chatwoot's day-boundary semantics
+
+### 📚 Documentation
+
+- *(kanban)* Add backlog placeholders for CRM landscape brainstorm
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Update changelog for 4.17.1-ichatr.2 [skip ci]
+
 ## [4.17.1-ichatr.2] - 2026-09-04
 
 ### 🚀 Features
