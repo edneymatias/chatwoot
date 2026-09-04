@@ -259,6 +259,10 @@
             "LABEL": "Read",
             "HINT": "Messages opened by the contact."
           },
+          "REPLIED": {
+            "LABEL": "Unique replies",
+            "HINT": "Contacts who replied to this campaign."
+          },
           "FAILED": {
             "LABEL": "Failed",
             "HINT": "Messages WhatsApp could not deliver."
@@ -273,6 +277,7 @@
           "SENT": "Awaiting delivery update",
           "DELIVERED": "Delivered",
           "READ": "Read",
+          "REPLIED": "Replied",
           "FAILED": "Failed",
           "SKIPPED": "Skipped"
         },
@@ -286,6 +291,14 @@
             "SKIPPED": "Skipped",
             "PENDING": "Queued or awaiting update"
           }
+        },
+        "REPLY_BREAKDOWN": {
+          "TITLE": "Quick reply button performance",
+          "DESCRIPTION": "Breakdown of button clicks and other replies prompted by this campaign.",
+          "BUTTON_LABEL": "Button / Action",
+          "TOTAL_CLICKS": "Clicks / Replies",
+          "CLICK_RATE": "Click rate",
+          "OTHER_REPLIES": "Other replies"
         },
         "TABLE": {
           "TITLE": "Deliveries",

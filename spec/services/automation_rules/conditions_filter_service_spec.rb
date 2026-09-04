@@ -162,6 +162,92 @@ RSpec.describe AutomationRules::ConditionsFilterService do
         end
       end
 
+      context 'when filtering campaign_id' do
+        let(:campaign) { create(:campaign, account: account) }
+        let(:other_campaign) { create(:campaign, account: account) }
+
+        it 'will return true when campaign_id is equal_to campaign' do
+          rule.update!(conditions: [{
+                         'values': [campaign.id], 'attribute_key': 'campaign_id',
+                         'query_operator': nil, 'filter_operator': 'equal_to'
+                       }])
+          conversation.update!(campaign_id: campaign.id)
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+
+        it 'will return false when campaign_id is equal_to different campaign' do
+          rule.update!(conditions: [{
+                         'values': [campaign.id], 'attribute_key': 'campaign_id',
+                         'query_operator': nil, 'filter_operator': 'equal_to'
+                       }])
+          conversation.update!(campaign_id: other_campaign.id)
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(false)
+        end
+
+        it 'will return true when campaign_id is not_equal_to different campaign' do
+          rule.update!(conditions: [{
+                         'values': [campaign.id], 'attribute_key': 'campaign_id',
+                         'query_operator': nil, 'filter_operator': 'not_equal_to'
+                       }])
+          conversation.update!(campaign_id: other_campaign.id)
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+
+        it 'will return false when campaign_id is not_equal_to same campaign' do
+          rule.update!(conditions: [{
+                         'values': [campaign.id], 'attribute_key': 'campaign_id',
+                         'query_operator': nil, 'filter_operator': 'not_equal_to'
+                       }])
+          conversation.update!(campaign_id: campaign.id)
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(false)
+        end
+
+        it 'will return true when campaign_id is_present and conversation has campaign' do
+          rule.update!(conditions: [{
+                         'values': nil, 'attribute_key': 'campaign_id',
+                         'query_operator': nil, 'filter_operator': 'is_present'
+                       }])
+          conversation.update!(campaign_id: campaign.id)
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+
+        it 'will return false when campaign_id is_present and conversation has no campaign' do
+          rule.update!(conditions: [{
+                         'values': nil, 'attribute_key': 'campaign_id',
+                         'query_operator': nil, 'filter_operator': 'is_present'
+                       }])
+          conversation.update!(campaign_id: nil)
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(false)
+        end
+
+        it 'will return true when campaign_id is_not_present and conversation has no campaign' do
+          rule.update!(conditions: [{
+                         'values': nil, 'attribute_key': 'campaign_id',
+                         'query_operator': nil, 'filter_operator': 'is_not_present'
+                       }])
+          conversation.update!(campaign_id: nil)
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+
+        it 'will return false when campaign_id is_not_present and conversation has campaign' do
+          rule.update!(conditions: [{
+                         'values': nil, 'attribute_key': 'campaign_id',
+                         'query_operator': nil, 'filter_operator': 'is_not_present'
+                       }])
+          conversation.update!(campaign_id: campaign.id)
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(false)
+        end
+
+        it 'works with message_created event options' do
+          rule.update!(conditions: [{
+                         'values': [campaign.id], 'attribute_key': 'campaign_id',
+                         'query_operator': nil, 'filter_operator': 'equal_to'
+                       }])
+          conversation.update!(campaign_id: campaign.id)
+          expect(described_class.new(rule, conversation, { message: message, changed_attributes: {} }).perform).to be(true)
+        end
+      end
+
       context 'when filter_operator is on processed_message_content' do
         before do
           rule.conditions = [

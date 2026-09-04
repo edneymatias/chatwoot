@@ -201,6 +201,113 @@
             "ERROR_MESSAGE": "Houve um erro. Por favor, tente novamente."
           }
         }
+      },
+      "ANALYTICS": {
+        "LOADING": "Carregando análises...",
+        "EMPTY": "Nenhum registro de entrega encontrado.",
+        "EMPTY_FILTER": "Nenhum registro de entrega com status {status} encontrado.",
+        "DELIVERIES_ERROR": "Não foi possível carregar os registros de entrega. Atualize a página para tentar novamente.",
+        "EMPTY_STATE": {
+          "ERROR": {
+            "TITLE": "Não foi possível carregar as análises",
+            "DESCRIPTION": "Atualize a página para tentar novamente."
+          },
+          "PENDING": {
+            "TITLE": "Os dados de entrega aparecerão assim que o envio começar",
+            "DESCRIPTION": "Ainda não há registros de entrega para esta campanha."
+          },
+          "UNAVAILABLE": {
+            "TITLE": "As análises não estão disponíveis para esta campanha",
+            "DESCRIPTION": "Nenhum dado de entrega foi registrado para esta campanha."
+          }
+        },
+        "PROCESSING_BANNER": {
+          "DEFAULT": "Esta campanha ainda está sendo processada. As análises serão atualizadas automaticamente.",
+          "BOTH": "Esta campanha ainda está sendo processada. {queued} mensagens estão na fila e {awaitingUpdate} aguardam atualização de entrega do WhatsApp.",
+          "BOTH_SINGLE": "Esta campanha ainda está sendo processada. {queued} mensagem está na fila e {awaitingUpdate} aguarda atualização de entrega do WhatsApp.",
+          "BOTH_QUEUED_SINGLE": "Esta campanha ainda está sendo processada. {queued} mensagem está na fila e {awaitingUpdate} aguardam atualização de entrega do WhatsApp.",
+          "BOTH_AWAITING_SINGLE": "Esta campanha ainda está sendo processada. {queued} mensagens estão na fila e {awaitingUpdate} aguarda atualização de entrega do WhatsApp.",
+          "QUEUED": "Esta campanha ainda está sendo processada. {count} mensagem na fila. | Esta campanha ainda está sendo processada. {count} mensagens na fila.",
+          "AWAITING_UPDATE": "Esta campanha ainda está sendo processada. {count} mensagem aguardando atualização do WhatsApp. | Esta campanha ainda está sendo processada. {count} mensagens aguardando atualização do WhatsApp.",
+          "COMPLETING": "Esta campanha está sendo finalizada. As análises serão atualizadas automaticamente."
+        },
+        "RATE": "{value}% do público",
+        "SENT_ON": "Enviado em {date}",
+        "PAGE_INFO": "Exibindo {startItem} - {endItem} de {totalItems} contato | Exibindo {startItem} - {endItem} de {totalItems} contatos",
+        "BREADCRUMB": {
+          "CAMPAIGNS": "Campanhas",
+          "WHATSAPP": "WhatsApp"
+        },
+        "FILTERS": {
+          "ALL": "Todos"
+        },
+        "METRICS": {
+          "AUDIENCE": {
+            "LABEL": "Público",
+            "HINT": "Contatos incluídos nesta campanha."
+          },
+          "SENT": {
+            "LABEL": "Enviadas ao WhatsApp",
+            "HINT": "Mensagens aceitas pelo WhatsApp para entrega."
+          },
+          "DELIVERED": {
+            "LABEL": "Entregues",
+            "HINT": "Mensagens que chegaram ao dispositivo do contato. Mensagens lidas estão incluídas."
+          },
+          "READ": {
+            "LABEL": "Lidas",
+            "HINT": "Mensagens abertas pelo contato."
+          },
+          "REPLIED": {
+            "LABEL": "Respostas únicas",
+            "HINT": "Contatos que responderam a esta campanha."
+          },
+          "FAILED": {
+            "LABEL": "Falhas",
+            "HINT": "Mensagens que o WhatsApp não pôde entregar."
+          },
+          "SKIPPED": {
+            "LABEL": "Ignoradas",
+            "HINT": "Contatos ignorados antes do envio, geralmente por número de telefone ausente ou inválido."
+          }
+        },
+        "STATUS": {
+          "QUEUED": "Na fila",
+          "SENT": "Aguardando atualização de entrega",
+          "DELIVERED": "Entregue",
+          "READ": "Lida",
+          "REPLIED": "Respondida",
+          "FAILED": "Falhou",
+          "SKIPPED": "Ignorada"
+        },
+        "BREAKDOWN": {
+          "TITLE": "Desempenho de entrega",
+          "DELIVERY_RATE": "{value}% entregues",
+          "LEGEND": {
+            "READ": "Lidas",
+            "DELIVERED": "Entregues",
+            "FAILED": "Falhas",
+            "SKIPPED": "Ignoradas",
+            "PENDING": "Na fila ou aguardando atualização"
+          }
+        },
+        "REPLY_BREAKDOWN": {
+          "TITLE": "Desempenho dos botões de resposta",
+          "DESCRIPTION": "Detalhamento de cliques nos botões e outras respostas geradas por esta campanha.",
+          "BUTTON_LABEL": "Botão / Ação",
+          "TOTAL_CLICKS": "Cliques / Respostas",
+          "CLICK_RATE": "Taxa de cliques",
+          "OTHER_REPLIES": "Outras respostas"
+        },
+        "TABLE": {
+          "TITLE": "Entregas",
+          "CONTACT": "Contato",
+          "STATUS": "Status",
+          "MESSAGE": "Mensagem",
+          "MESSAGE_NOT_GENERATED": "Não gerada",
+          "REASON": "Motivo",
+          "ERROR_CODE": "Código {code}"
+        }
       }
     },
     "CONFIRM_DELETE": {

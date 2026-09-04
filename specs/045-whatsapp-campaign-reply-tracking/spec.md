@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Phase 72: WhatsApp Campaign Reply Tracking (Context, Analytics, Automation Chaining) — see docs/kanban/backlog/13-whatsapp-campaign-reply-tracking/spec72.md. Design already approved by the user on 2026-08-21."
+**Input**: User description: "Phase 72: WhatsApp Campaign Reply Tracking (Context, Analytics, Automation Chaining) — see docs/kanban/ciclo 12/13-whatsapp-campaign-reply-tracking/spec72.md. Design already approved by the user on 2026-08-21."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -105,3 +105,4 @@ Someone configuring automation rules wants to route or tag conversations differe
 - No historical backfill is needed — conversations created before this feature ships are out of scope for retroactive attribution.
 - No manual UI is needed for an agent or manager to correct a missing or wrong campaign attribution after the fact.
 - This capability must work standalone in a base (non-Enterprise-licensed) deployment, since the fork operates without a paid Enterprise subscription.
+- No trend/line chart is added to the analytics page in this version — the reply breakdown is presented as a metric card and a table only.

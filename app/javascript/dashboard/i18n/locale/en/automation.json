@@ -240,6 +240,7 @@
       "MESSAGE_TYPE": "Message Type",
       "PRIVATE_NOTE": "Private Note",
       "CAMPAIGN_REFERRAL_PRESENT": "Campaign Referral Present",
+      "CAMPAIGN": "Campaign",
       "MESSAGE_CONTAINS": "Message Content",
       "EMAIL": "Email",
       "INBOX": "Inbox",

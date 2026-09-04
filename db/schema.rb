@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2126_09_03_000000) do
+ActiveRecord::Schema[7.2].define(version: 2126_09_03_100000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -880,8 +880,8 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_03_000000) do
     t.datetime "waiting_since"
     t.text "cached_label_list"
     t.bigint "assignee_agent_bot_id"
-    t.string "ai_assignee_type"
     t.datetime "status_changed_at"
+    t.string "ai_assignee_type"
     t.index ["account_id", "display_id"], name: "index_conversations_on_account_id_and_display_id", unique: true
     t.index ["account_id", "id"], name: "index_conversations_on_id_and_account_id"
     t.index ["account_id", "inbox_id", "status", "assignee_id"], name: "conv_acid_inbid_stat_asgnid_idx"
@@ -1107,6 +1107,35 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_03_000000) do
     t.index ["account_id"], name: "index_ichatr_campaign_attribution_settings_on_account_id", unique: true
   end
 
+  create_table "ichatr_campaign_recipients", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "campaign_id", null: false
+    t.bigint "contact_id", null: false
+    t.bigint "inbox_id", null: false
+    t.string "source_id"
+    t.integer "status", default: 0, null: false
+    t.string "error_code"
+    t.string "error_title"
+    t.text "error_message"
+    t.text "message_content"
+    t.datetime "sent_at"
+    t.datetime "delivered_at"
+    t.datetime "read_at"
+    t.datetime "replied_at"
+    t.datetime "failed_at"
+    t.string "reply_source_id"
+    t.integer "reply_type"
+    t.string "reply_label"
+    t.bigint "campaign_message_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "campaign_id"], name: "index_ichatr_campaign_recipients_on_account_and_campaign"
+    t.index ["campaign_id", "contact_id"], name: "index_ichatr_campaign_recipients_on_campaign_and_contact", unique: true
+    t.index ["campaign_id", "status"], name: "index_ichatr_campaign_recipients_on_campaign_and_status"
+    t.index ["reply_source_id"], name: "index_ichatr_campaign_recipients_on_reply_source_id", unique: true, where: "(reply_source_id IS NOT NULL)"
+    t.index ["source_id"], name: "index_ichatr_campaign_recipients_on_source_id", unique: true, where: "(source_id IS NOT NULL)"
+  end
+
   create_table "ichatr_opportunities", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "contact_id", null: false
@@ -1131,6 +1160,7 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_03_000000) do
     t.text "campaign_body"
     t.text "campaign_thumbnail_url"
     t.bigint "active_conversation_id"
+    t.string "lost_reason"
     t.index ["account_id", "closed_at"], name: "index_ichatr_opportunities_on_account_id_and_closed_at"
     t.index ["account_id"], name: "index_ichatr_opportunities_on_account_id"
     t.index ["active_conversation_id"], name: "index_ichatr_opportunities_on_active_conversation_id", unique: true, where: "(active_conversation_id IS NOT NULL)"
@@ -1241,6 +1271,112 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_03_000000) do
     t.text "description"
     t.boolean "campaign_report_milestone", default: false, null: false
     t.index ["account_id"], name: "index_ichatr_pipeline_stages_on_account_id"
+  end
+
+  create_table "ichatr_scout_account_configs", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "provider", default: 0, null: false
+    t.string "model_name", null: false
+    t.text "api_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_scout_account_configs_on_account_id", unique: true
+  end
+
+  create_table "ichatr_scout_inboxes", force: :cascade do |t|
+    t.bigint "scout_id", null: false
+    t.bigint "inbox_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["inbox_id"], name: "index_ichatr_scout_inboxes_on_inbox_id", unique: true
+    t.index ["scout_id"], name: "index_ichatr_scout_inboxes_on_scout_id"
+  end
+
+  create_table "ichatr_scout_knowledge_embeddings", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "scout_id", null: false
+    t.bigint "scout_knowledge_source_id", null: false
+    t.text "question", null: false
+    t.text "answer", null: false
+    t.vector "embedding", limit: 768
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_scout_ke_on_account_id"
+    t.index ["embedding"], name: "idx_scout_knowledge_embeddings_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["scout_id"], name: "index_ichatr_scout_ke_on_scout_id"
+    t.index ["scout_knowledge_source_id"], name: "index_ichatr_scout_ke_on_source_id"
+  end
+
+  create_table "ichatr_scout_knowledge_sources", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "scout_id", null: false
+    t.integer "kind", null: false
+    t.string "url"
+    t.text "question"
+    t.text "answer"
+    t.integer "status", default: 0, null: false
+    t.text "error_message"
+    t.text "content"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_scout_knowledge_sources_on_account_id"
+    t.index ["scout_id", "status"], name: "index_ichatr_scout_ks_on_scout_and_status"
+    t.index ["scout_id"], name: "index_ichatr_scout_knowledge_sources_on_scout_id"
+  end
+
+  create_table "ichatr_scout_required_fields", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "scout_id", null: false
+    t.bigint "custom_attribute_definition_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_scout_required_fields_on_account_id"
+    t.index ["custom_attribute_definition_id"], name: "index_ichatr_scout_required_fields_on_cad_id"
+    t.index ["scout_id", "custom_attribute_definition_id"], name: "index_ichatr_scout_req_fields_on_scout_and_cad", unique: true
+    t.index ["scout_id"], name: "index_ichatr_scout_required_fields_on_scout_id"
+  end
+
+  create_table "ichatr_scout_tools", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.text "description", null: false
+    t.string "endpoint_url", null: false
+    t.string "http_method", null: false
+    t.text "auth_headers"
+    t.jsonb "parameter_schema", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.boolean "enabled", default: true, null: false
+    t.text "response_template"
+    t.string "auth_type", default: "none", null: false
+    t.index ["account_id"], name: "index_ichatr_scout_tools_on_account_id"
+  end
+
+  create_table "ichatr_scouts", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.text "persona"
+    t.bigint "default_pipeline_stage_id"
+    t.integer "responses_quota", default: -1, null: false
+    t.integer "responses_consumed", default: 0, null: false
+    t.boolean "enabled", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "debounce_delay_seconds", default: 5, null: false
+    t.boolean "feature_memory", default: true, null: false
+    t.bigint "qualified_stage_id"
+    t.bigint "unqualified_stage_id"
+    t.bigint "handover_team_id"
+    t.jsonb "product_catalog", default: {}, null: false
+    t.jsonb "knowledge_sources", default: {}, null: false
+    t.boolean "feature_response_auditor", default: false, null: false
+    t.string "default_country_code", default: "+55"
+    t.string "default_area_code"
+    t.index ["account_id"], name: "index_ichatr_scouts_on_account_id"
+    t.index ["default_pipeline_stage_id"], name: "index_ichatr_scouts_on_default_pipeline_stage_id"
+    t.index ["handover_team_id"], name: "index_ichatr_scouts_on_handover_team_id"
+    t.index ["qualified_stage_id"], name: "index_ichatr_scouts_on_qualified_stage_id"
+    t.index ["unqualified_stage_id"], name: "index_ichatr_scouts_on_unqualified_stage_id"
   end
 
   create_table "inbox_assignment_policies", force: :cascade do |t|
@@ -1744,6 +1880,10 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_03_000000) do
   add_foreign_key "campaign_recipients", "campaigns", on_delete: :cascade
   add_foreign_key "campaign_recipients", "contacts", on_delete: :cascade
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
+  add_foreign_key "ichatr_campaign_recipients", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_campaign_recipients", "campaigns", on_delete: :cascade
+  add_foreign_key "ichatr_campaign_recipients", "contacts", on_delete: :cascade
+  add_foreign_key "ichatr_campaign_recipients", "inboxes", on_delete: :cascade
   add_foreign_key "ichatr_opportunities", "accounts"
   add_foreign_key "ichatr_opportunities", "contacts"
   add_foreign_key "ichatr_opportunities", "conversations", column: "active_conversation_id", on_delete: :nullify
@@ -1768,30 +1908,25 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_03_000000) do
   add_foreign_key "ichatr_pipeline_stage_required_fields", "custom_attribute_definitions"
   add_foreign_key "ichatr_pipeline_stage_required_fields", "ichatr_pipeline_stages", column: "pipeline_stage_id"
   add_foreign_key "ichatr_pipeline_stages", "accounts"
+  add_foreign_key "ichatr_scout_account_configs", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scout_inboxes", "ichatr_scouts", column: "scout_id", on_delete: :cascade
+  add_foreign_key "ichatr_scout_inboxes", "inboxes", on_delete: :cascade
+  add_foreign_key "ichatr_scout_knowledge_embeddings", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scout_knowledge_embeddings", "ichatr_scout_knowledge_sources", column: "scout_knowledge_source_id", on_delete: :cascade
+  add_foreign_key "ichatr_scout_knowledge_embeddings", "ichatr_scouts", column: "scout_id", on_delete: :cascade
+  add_foreign_key "ichatr_scout_knowledge_sources", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scout_knowledge_sources", "ichatr_scouts", column: "scout_id", on_delete: :cascade
+  add_foreign_key "ichatr_scout_required_fields", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scout_required_fields", "custom_attribute_definitions", on_delete: :cascade
+  add_foreign_key "ichatr_scout_required_fields", "ichatr_scouts", column: "scout_id", on_delete: :cascade
+  add_foreign_key "ichatr_scout_tools", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scouts", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "default_pipeline_stage_id", on_delete: :nullify
+  add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "qualified_stage_id", on_delete: :nullify
+  add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "unqualified_stage_id", on_delete: :nullify
+  add_foreign_key "ichatr_scouts", "teams", column: "handover_team_id", on_delete: :nullify
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$ begin perform pg_notify('n8n_channel_717c52d1_52d2_406d_bc05_250afa7cfc2f', row_to_json(NEW)::text); return null; end; $function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614e45cdea', row_to_json(OLD)::text); return null; end; $function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER n8n_trigger_717c52d1_52d2_406d_bc05_250afa7cfc2f AFTER INSERT ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_717c52d1_52d2_406d_bc05_250afa7cfc2f()")
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
-
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").
       after(:insert).

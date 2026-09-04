@@ -31,7 +31,7 @@
 
 ## Notes
 
-- Source design (`docs/kanban/backlog/13-whatsapp-campaign-reply-tracking/spec72.md`) was already
+- Source design (`docs/kanban/ciclo 12/13-whatsapp-campaign-reply-tracking/spec72.md`) was already
   approved by the user on 2026-08-21 with no open questions, so no [NEEDS CLARIFICATION] markers
   were needed — all decisions (72h lookback, no historical backfill, no manual reassignment UI,
   no trend chart, no concurrent-campaign restriction) were carried into the Assumptions/Out-of-scope

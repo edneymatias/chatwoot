@@ -209,6 +209,7 @@ export const getConditionOptions = ({
     inbox_id: inboxes,
     team_id: generateTeamOptions(teams),
     campaigns: generateConditionOptions(campaigns),
+    campaign_id: generateConditionOptions(campaigns),
     browser_language: languages,
     conversation_language: languages,
     country_code: countries,

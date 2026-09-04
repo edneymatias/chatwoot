@@ -5,6 +5,7 @@
 #  id                     :integer          not null, primary key
 #  additional_attributes  :jsonb
 #  agent_last_seen_at     :datetime
+#  ai_assignee_type       :string
 #  assignee_last_seen_at  :datetime
 #  cached_label_list      :text
 #  contact_last_seen_at   :datetime

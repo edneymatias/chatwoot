@@ -21,6 +21,7 @@ import PaginationFooter from 'dashboard/components-next/pagination/PaginationFoo
 import CampaignAnalyticsLayout from 'dashboard/components-next/Campaigns/CampaignAnalyticsLayout.vue';
 import CampaignMetricCard from 'dashboard/components-next/Campaigns/Pages/CampaignAnalyticsPage/CampaignMetricCard.vue';
 import CampaignDeliveryBreakdown from 'dashboard/components-next/Campaigns/Pages/CampaignAnalyticsPage/CampaignDeliveryBreakdown.vue';
+import CampaignReplyBreakdown from 'dashboard/components-next/Campaigns/Pages/CampaignAnalyticsPage/CampaignReplyBreakdown.vue';
 import CampaignDeliveryTable from 'dashboard/components-next/Campaigns/Pages/CampaignAnalyticsPage/CampaignDeliveryTable.vue';
 
 const DELIVERIES_PER_PAGE = 25;
@@ -31,6 +32,7 @@ const STATUS_FILTERS = [
   'sent',
   'delivered',
   'read',
+  'replied',
   'failed',
   'skipped',
 ];
@@ -43,17 +45,21 @@ const store = useStore();
 const state = reactive({
   metrics: null,
   deliveries: [],
+  replyBreakdown: [],
   meta: {},
   status: 'all',
   page: 1,
   isFetchingMetrics: true,
   isFetchingDeliveries: true,
+  isFetchingReplyBreakdown: true,
   metricsError: false,
   deliveriesError: false,
+  replyBreakdownError: false,
 });
 
 let metricsRequestId = 0;
 let deliveriesRequestId = 0;
+let replyBreakdownRequestId = 0;
 let pollingTimeoutId;
 let isPageActive = false;
 let skipNextFilterRefresh = false;
@@ -186,17 +192,19 @@ const metricRate = key => {
 };
 
 const metrics = computed(() =>
-  ['audience', 'sent', 'delivered', 'read', 'failed', 'skipped'].map(key => {
-    const scope = `CAMPAIGN.WHATSAPP.ANALYTICS.METRICS.${key.toUpperCase()}`;
+  ['audience', 'sent', 'delivered', 'read', 'replied', 'failed', 'skipped'].map(
+    key => {
+      const scope = `CAMPAIGN.WHATSAPP.ANALYTICS.METRICS.${key.toUpperCase()}`;
 
-    return {
-      key,
-      label: t(`${scope}.LABEL`),
-      hint: t(`${scope}.HINT`),
-      value: metricCount(key),
-      rate: key === 'audience' ? '' : metricRate(key),
-    };
-  })
+      return {
+        key,
+        label: t(`${scope}.LABEL`),
+        hint: t(`${scope}.HINT`),
+        value: metricCount(key),
+        rate: key === 'audience' ? '' : metricRate(key),
+      };
+    }
+  )
 );
 
 const statusTabs = computed(() =>
@@ -241,7 +249,7 @@ const fetchMetrics = async ({
   if (showLoading) state.isFetchingMetrics = true;
 
   try {
-    const { data } = await CampaignsAPI.analyticsMetrics(id);
+    const { data } = await CampaignsAPI.recipientsMetrics(id);
     if (requestId !== metricsRequestId || id !== campaignId.value) return;
 
     state.metrics = data;
@@ -269,7 +277,7 @@ const fetchDeliveries = async ({
   if (showLoading) state.isFetchingDeliveries = true;
 
   try {
-    const { data } = await CampaignsAPI.analyticsContacts(id, {
+    const { data } = await CampaignsAPI.recipientsContacts(id, {
       status: status === 'all' ? undefined : status,
       page,
     });
@@ -291,6 +299,34 @@ const fetchDeliveries = async ({
   }
 };
 
+const fetchReplyBreakdown = async ({
+  id = campaignId.value,
+  showLoading = true,
+} = {}) => {
+  replyBreakdownRequestId += 1;
+  const requestId = replyBreakdownRequestId;
+  if (showLoading) state.isFetchingReplyBreakdown = true;
+
+  try {
+    const { data } = await CampaignsAPI.recipientsReplyBreakdown(id);
+    if (requestId !== replyBreakdownRequestId || id !== campaignId.value)
+      return;
+
+    state.replyBreakdown = data;
+    state.replyBreakdownError = false;
+  } catch {
+    if (requestId !== replyBreakdownRequestId || id !== campaignId.value)
+      return;
+
+    state.replyBreakdown = [];
+    state.replyBreakdownError = true;
+  } finally {
+    if (requestId === replyBreakdownRequestId && id === campaignId.value) {
+      state.isFetchingReplyBreakdown = false;
+    }
+  }
+};
+
 const stopPolling = () => {
   window.clearTimeout(pollingTimeoutId);
   pollingTimeoutId = undefined;
@@ -304,6 +340,7 @@ const schedulePolling = () => {
     await Promise.all([
       fetchMetrics({ showLoading: false }),
       fetchDeliveries({ showLoading: false }),
+      fetchReplyBreakdown({ showLoading: false }),
       store.dispatch('campaigns/get'),
     ]);
     schedulePolling();
@@ -334,19 +371,24 @@ watch(
 
     metricsRequestId += 1;
     deliveriesRequestId += 1;
+    replyBreakdownRequestId += 1;
     state.metrics = null;
     state.deliveries = [];
+    state.replyBreakdown = [];
     state.meta = {};
     state.metricsError = false;
     state.deliveriesError = false;
+    state.replyBreakdownError = false;
     state.isFetchingMetrics = true;
     state.isFetchingDeliveries = true;
+    state.isFetchingReplyBreakdown = true;
 
     skipNextFilterRefresh = state.status !== 'all' || state.page !== 1;
     state.status = 'all';
     state.page = 1;
     fetchMetrics({ id });
     fetchDeliveries({ id, status: 'all', page: 1 });
+    fetchReplyBreakdown({ id });
     schedulePolling();
   },
   { immediate: true }
@@ -472,6 +514,12 @@ onBeforeUnmount(stopPolling);
         v-if="showAnalytics"
         :metrics="state.metrics ?? undefined"
         :loading="state.isFetchingMetrics"
+      />
+
+      <CampaignReplyBreakdown
+        v-if="showAnalytics"
+        :breakdown="state.replyBreakdown"
+        :loading="state.isFetchingReplyBreakdown"
       />
 
       <CampaignDeliveryTable

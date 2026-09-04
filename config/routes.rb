@@ -187,6 +187,9 @@ Rails.application.routes.draw do
               get 'analytics/metrics', to: 'campaigns/analytics#metrics'
               get 'analytics/contacts', to: 'campaigns/analytics#contacts'
             end
+            get 'recipients/metrics', to: 'campaigns/recipients#metrics'
+            get 'recipients/contacts', to: 'campaigns/recipients#contacts'
+            get 'recipients/reply_breakdown', to: 'campaigns/recipients#reply_breakdown'
           end
           resources :dashboard_apps, only: [:index, :show, :create, :update, :destroy]
           namespace :channels do

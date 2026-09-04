@@ -28,6 +28,12 @@ export const AUTOMATIONS = {
         filterOperators: OPERATOR_TYPES_1,
       },
       {
+        key: 'campaign_id',
+        name: 'CAMPAIGN',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
         key: 'content',
         name: 'MESSAGE_CONTAINS',
         inputType: 'multi_text',
@@ -237,6 +243,12 @@ export const AUTOMATIONS = {
         key: 'labels',
         name: 'LABELS',
         inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'campaign_id',
+        name: 'CAMPAIGN',
+        inputType: 'search_select',
         filterOperators: OPERATOR_TYPES_3,
       },
     ],

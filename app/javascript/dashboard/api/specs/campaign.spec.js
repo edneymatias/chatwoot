@@ -9,5 +9,8 @@ describe('#CampaignAPI', () => {
     expect(campaigns).toHaveProperty('create');
     expect(campaigns).toHaveProperty('update');
     expect(campaigns).toHaveProperty('delete');
+    expect(campaigns).toHaveProperty('recipientsMetrics');
+    expect(campaigns).toHaveProperty('recipientsContacts');
+    expect(campaigns).toHaveProperty('recipientsReplyBreakdown');
   });
 });

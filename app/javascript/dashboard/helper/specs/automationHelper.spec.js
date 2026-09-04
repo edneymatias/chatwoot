@@ -193,6 +193,25 @@ describe('getConditionOptions', () => {
       })
     ).toEqual(booleanOptions);
   });
+
+  it('returns campaigns options for campaign_id', () => {
+    const campaigns = [
+      { id: 1, title: 'Black Friday' },
+      { id: 2, title: 'Summer Sale' },
+    ];
+    const expected = [
+      { id: 1, name: 'Black Friday' },
+      { id: 2, name: 'Summer Sale' },
+    ];
+
+    expect(
+      helpers.getConditionOptions({
+        campaigns,
+        customAttributes,
+        type: 'campaign_id',
+      })
+    ).toEqual(expected);
+  });
 });
 
 describe('getFileName', () => {

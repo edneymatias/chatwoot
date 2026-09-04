@@ -239,6 +239,7 @@
       "MESSAGE_TYPE": "Tipo da Mensagem",
       "PRIVATE_NOTE": "Mensagem Privada",
       "CAMPAIGN_REFERRAL_PRESENT": "Referência de Campanha Presente",
+      "CAMPAIGN": "Campanha",
       "MESSAGE_CONTAINS": "A mensagem contém",
       "EMAIL": "E-mail",
       "INBOX": "Caixa de Entrada",

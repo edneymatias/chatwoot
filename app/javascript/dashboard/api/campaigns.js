@@ -7,14 +7,18 @@ class CampaignsAPI extends ApiClient {
     super('campaigns', { accountScoped: true });
   }
 
-  analyticsMetrics(id) {
-    return axios.get(`${this.url}/${id}/analytics/metrics`);
+  recipientsMetrics(id) {
+    return axios.get(`${this.url}/${id}/recipients/metrics`);
   }
 
-  analyticsContacts(id, { status, page } = {}) {
-    return axios.get(`${this.url}/${id}/analytics/contacts`, {
+  recipientsContacts(id, { status, page } = {}) {
+    return axios.get(`${this.url}/${id}/recipients/contacts`, {
       params: { status, page },
     });
+  }
+
+  recipientsReplyBreakdown(id) {
+    return axios.get(`${this.url}/${id}/recipients/reply_breakdown`);
   }
 }
 
