@@ -97,6 +97,8 @@ class Custom::Scout::AgentRunner
       reply_text = audit_result[:reply]
     end
 
+    return unless conversation_pending?
+
     return trigger_handoff(tool, reply_text) if tool.present?
 
     dispatch_outgoing_reply(reply_text)
@@ -116,14 +118,10 @@ class Custom::Scout::AgentRunner
 
   def trigger_handoff(tool, reply_text)
     Custom::Scout::HandoffService.new(scout: @scout, conversation: @conversation).perform(
-      message: reply_text, assignee_id: handoff_param(tool, :handoff_assignee_id),
-      team_id: handoff_param(tool, :handoff_team_id),
-      reason: handoff_param(tool, :handoff_reason) || 'Oportunidade movida para o estágio qualificado'
+      message: reply_text, assignee_id: tool.try(:handoff_assignee_id),
+      team_id: tool.try(:handoff_team_id),
+      reason: tool.try(:handoff_reason) || 'Oportunidade movida para o estágio qualificado'
     )
-  end
-
-  def handoff_param(tool, method_name)
-    tool.public_send(method_name) if tool.respond_to?(method_name)
   end
 
   def parse_structured_response(content)

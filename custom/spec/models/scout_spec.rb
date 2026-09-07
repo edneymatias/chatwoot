@@ -35,9 +35,15 @@ RSpec.describe Scout, type: :model do
                                     default_pipeline_stage: nil,
                                     qualified_stage: nil,
                                     unqualified_stage: nil,
+                                    rescue_stage: nil,
                                     handover_team: nil
                                   ))
       expect(scout).to be_valid
+    end
+
+    it 'belongs to rescue_stage' do
+      scout = described_class.new(valid_attributes.merge(rescue_stage: stage))
+      expect(scout.rescue_stage).to eq(stage)
     end
 
     it 'cascade-deletes associated ScoutInbox records on destroy' do
@@ -88,6 +94,31 @@ RSpec.describe Scout, type: :model do
     it 'validates responses_consumed numericality' do
       expect(described_class.new(valid_attributes.merge(responses_consumed: -1))).not_to be_valid
       expect(described_class.new(valid_attributes.merge(responses_consumed: 0))).to be_valid
+    end
+
+    it 'accepts valid follow_up_delays_hours' do
+      expect(described_class.new(valid_attributes.merge(follow_up_delays_hours: [2, 12, 24]))).to be_valid
+      expect(described_class.new(valid_attributes.merge(follow_up_delays_hours: [1, 5, 10]))).to be_valid
+    end
+
+    it 'rejects invalid follow_up_delays_hours length or ordering' do
+      expect(described_class.new(valid_attributes.merge(follow_up_delays_hours: [2, 12]))).not_to be_valid
+      expect(described_class.new(valid_attributes.merge(follow_up_delays_hours: [2, 12, 24, 48]))).not_to be_valid
+      expect(described_class.new(valid_attributes.merge(follow_up_delays_hours: [12, 2, 24]))).not_to be_valid
+      expect(described_class.new(valid_attributes.merge(follow_up_delays_hours: [2, 2, 24]))).not_to be_valid
+    end
+
+    it 'rejects non-positive or non-integer follow_up_delays_hours' do
+      expect(described_class.new(valid_attributes.merge(follow_up_delays_hours: [0, 12, 24]))).not_to be_valid
+      expect(described_class.new(valid_attributes.merge(follow_up_delays_hours: [-1, 12, 24]))).not_to be_valid
+      expect(described_class.new(valid_attributes.merge(follow_up_delays_hours: 'not-an-array'))).not_to be_valid
+      expect(described_class.new(valid_attributes.merge(follow_up_delays_hours: %w[a b c]))).not_to be_valid
+    end
+
+    it 'coerces stringified integers in follow_up_delays_hours' do
+      scout = described_class.new(valid_attributes.merge(follow_up_delays_hours: %w[2 12 24]))
+      expect(scout).to be_valid
+      expect(scout.follow_up_delays_hours).to eq([2, 12, 24])
     end
   end
 

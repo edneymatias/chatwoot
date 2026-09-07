@@ -39,8 +39,13 @@ class Opportunity < ApplicationRecord
       'created_at' => created_at.to_i,
       'current_stage_entered_at' => stage_changes.order(changed_at: :desc).first&.changed_at&.to_i,
       'contact' => contact_json,
-      'assignee' => assignee_json
+      'assignee' => assignee_json,
+      'scout_engaged' => scout_engaged?
     ).merge(campaign_json)
+  end
+
+  def scout_engaged?
+    conversations.pending.any? { |conv| conv.inbox&.scout&.enabled? }
   end
 
   private

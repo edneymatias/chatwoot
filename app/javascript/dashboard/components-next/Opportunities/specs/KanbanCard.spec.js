@@ -127,4 +127,64 @@ describe('KanbanCard', () => {
       },
     });
   });
+
+  it('renders Scout badge when opportunity.scout_engaged is true', () => {
+    const store = createMockStore();
+    const opportunity = {
+      id: 14,
+      title: 'Deal with scout',
+      status: 'open',
+      scout_engaged: true,
+    };
+
+    const wrapper = mount(KanbanCard, {
+      props: {
+        opportunity,
+      },
+      global: {
+        plugins: [store],
+        stubs: {
+          Avatar: true,
+          Button: true,
+          StartOpportunityConversationButton: true,
+          OpportunityAttributionPopover: true,
+        },
+        mocks: {
+          $t: msg => msg,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain('OPPORTUNITIES.BOARD.SCOUT_BADGE');
+  });
+
+  it('omits Scout badge when opportunity.scout_engaged is false', () => {
+    const store = createMockStore();
+    const opportunity = {
+      id: 15,
+      title: 'Deal without scout',
+      status: 'open',
+      scout_engaged: false,
+    };
+
+    const wrapper = mount(KanbanCard, {
+      props: {
+        opportunity,
+      },
+      global: {
+        plugins: [store],
+        stubs: {
+          Avatar: true,
+          Button: true,
+          StartOpportunityConversationButton: true,
+          OpportunityAttributionPopover: true,
+        },
+        mocks: {
+          $t: msg => msg,
+        },
+      },
+    });
+
+    expect(wrapper.text()).not.toContain('OPPORTUNITIES.BOARD.SCOUT_BADGE');
+  });
 });

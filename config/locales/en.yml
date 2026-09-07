@@ -311,6 +311,8 @@ en:
       handoff: 'Transferring to another agent for further assistance.'
     scout:
       handoff: 'Transferring to another agent for further assistance.'
+      follow_up_nudge: 'Just checking in! Let me know if you have any questions or if you would like to continue.'
+      follow_up_handoff: 'I am connecting you with a team member who will assist you shortly.'
     messages:
       instagram_story_content: '%{story_sender} mentioned you in the story: '
       instagram_deleted_story_content: This story is no longer available.

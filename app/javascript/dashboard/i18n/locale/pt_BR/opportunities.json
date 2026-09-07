@@ -10,6 +10,7 @@
         "WON": "Ganho",
         "LOST": "Perdido"
       },
+      "SCOUT_BADGE": "Scout",
       "ACTIONS": {
         "MARK_WON": "Marcar como Ganho",
         "MARK_LOST": "Marcar como Perdido",

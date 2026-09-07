@@ -9,6 +9,7 @@ class Scout < ApplicationRecord
   belongs_to :default_pipeline_stage, class_name: 'PipelineStage', optional: true
   belongs_to :qualified_stage, class_name: 'PipelineStage', optional: true
   belongs_to :unqualified_stage, class_name: 'PipelineStage', optional: true
+  belongs_to :rescue_stage, class_name: 'PipelineStage', optional: true
   belongs_to :handover_team, class_name: 'Team', optional: true
 
   has_many :scout_inboxes, class_name: 'ScoutInbox', dependent: :destroy
@@ -22,6 +23,7 @@ class Scout < ApplicationRecord
   validates :debounce_delay_seconds, numericality: { only_integer: true, greater_than_or_equal_to: 1 }
   validates :responses_quota, numericality: { only_integer: true, greater_than_or_equal_to: -1 }
   validates :responses_consumed, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+  validate :validate_follow_up_delays_hours
 
   def quota_available?
     return true if responses_quota == -1
@@ -64,5 +66,32 @@ class Scout < ApplicationRecord
     chat = context.chat(model: config.model_name)
     chat = chat.with_params(temperature: temperature) if temperature && chat.respond_to?(:with_params)
     chat
+  end
+
+  def follow_up_delays_hours=(values)
+    if values.is_a?(Array)
+      coerced = values.map do |v|
+        (Integer(v, exception: false) if v.is_a?(Numeric) || v.is_a?(String))
+      end
+      super(coerced.any?(&:nil?) ? values : coerced)
+    else
+      super(values)
+    end
+  end
+
+  private
+
+  def validate_follow_up_delays_hours
+    delays = follow_up_delays_hours
+    return if valid_follow_up_delays?(delays)
+
+    errors.add(:follow_up_delays_hours, :invalid)
+  end
+
+  def valid_follow_up_delays?(delays)
+    delays.is_a?(Array) &&
+      delays.length == 3 &&
+      delays.all? { |d| d.is_a?(Integer) && d.positive? } &&
+      delays.each_cons(2).all? { |a, b| a < b }
   end
 end

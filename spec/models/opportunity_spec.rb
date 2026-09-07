@@ -170,4 +170,83 @@ RSpec.describe Opportunity, type: :model do
       expect(opp.reload.pipeline_stage_id).to eq(stage2.id)
     end
   end
+
+  describe '#scout_engaged?' do
+    let(:account) { create(:account) }
+    let(:contact) { create(:contact, account: account) }
+    let(:stage) { PipelineStage.create!(account: account, name: 'Stage 1') }
+    let(:inbox) { create(:inbox, account: account) }
+    let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: inbox) }
+    let(:conversation) do
+      create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :pending)
+    end
+    let(:opp) do
+      described_class.create!(
+        account: account,
+        contact: contact,
+        pipeline_stage: stage,
+        title: 'Deal',
+        origin_conversation: conversation
+      )
+    end
+
+    it 'returns false when no conversation is linked to the opportunity' do
+      opp.opportunity_conversations.destroy_all
+      expect(opp.scout_engaged?).to be(false)
+      expect(opp.as_json['scout_engaged']).to be(false)
+    end
+
+    it 'returns false when the linked conversation is not pending' do
+      conversation.update!(status: :open)
+      expect(opp.scout_engaged?).to be(false)
+      expect(opp.as_json['scout_engaged']).to be(false)
+    end
+
+    it 'returns false when inbox has no scout' do
+      expect(opp.scout_engaged?).to be(false)
+      expect(opp.as_json['scout_engaged']).to be(false)
+    end
+
+    it 'returns false when inbox scout is disabled' do
+      scout = Scout.create!(account: account, name: 'Scout', enabled: false)
+      ScoutInbox.create!(scout: scout, inbox: inbox)
+
+      expect(opp.scout_engaged?).to be(false)
+      expect(opp.as_json['scout_engaged']).to be(false)
+    end
+
+    it 'returns true for the origin conversation even when it was never promoted to active_conversation' do
+      # The origin conversation was already pending when the opportunity was created, so
+      # set_default_active_conversation never set active_conversation_id - exactly what happens
+      # for real, pre-existing deals whose conversation cycles back to pending later.
+      scout = Scout.create!(account: account, name: 'Scout', enabled: true)
+      ScoutInbox.create!(scout: scout, inbox: inbox)
+
+      expect(opp.active_conversation_id).to be_nil
+      expect(opp.scout_engaged?).to be(true)
+      expect(opp.as_json['scout_engaged']).to be(true)
+    end
+
+    it 'returns true for a pending conversation linked via opportunity_conversations that is neither the active nor origin conversation' do
+      scout = Scout.create!(account: account, name: 'Scout', enabled: true)
+      ScoutInbox.create!(scout: scout, inbox: inbox)
+      conversation.update!(status: :resolved)
+
+      other_conversation = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :pending)
+      opp.attach_conversation!(other_conversation, set_active: false)
+
+      expect(opp.reload.active_conversation_id).not_to eq(other_conversation.id)
+      expect(opp.origin_conversation_id).not_to eq(other_conversation.id)
+      expect(opp.scout_engaged?).to be(true)
+    end
+
+    it 'returns true when origin_conversation is pending with enabled scout even if active_conversation is nil' do
+      scout = Scout.create!(account: account, name: 'Scout', enabled: true)
+      ScoutInbox.create!(scout: scout, inbox: inbox)
+      opp.update!(active_conversation: nil, origin_conversation: conversation)
+
+      expect(opp.scout_engaged?).to be(true)
+      expect(opp.as_json['scout_engaged']).to be(true)
+    end
+  end
 end

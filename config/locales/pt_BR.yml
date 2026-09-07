@@ -293,6 +293,8 @@ pt_BR:
       handoff: 'Transferindo para que outro agente dê assistência.'
     scout:
       handoff: 'Transferindo para que outro agente dê assistência.'
+      follow_up_nudge: 'Passando para ver se você tem alguma dúvida ou gostaria de continuar nosso atendimento!'
+      follow_up_handoff: 'Estou conectando você com um membro da nossa equipe para dar continuidade ao seu atendimento.'
     messages:
       instagram_story_content: '%{story_sender} mencionou você na conversa: '
       instagram_deleted_story_content: Este Story não está mais disponível.

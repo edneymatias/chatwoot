@@ -10,6 +10,7 @@
         "WON": "Won",
         "LOST": "Lost"
       },
+      "SCOUT_BADGE": "Scout",
       "ACTIONS": {
         "REOPEN": "Reopen",
         "COMPLETE_FIELDS": "Complete Fields",

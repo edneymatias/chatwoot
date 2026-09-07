@@ -87,6 +87,41 @@ RSpec.describe 'Api::V1::Accounts::Scouts', type: :request do
       expect(scout.default_area_code).to eq('41')
     end
 
+    it 'updates rescue_stage_id and follow_up_delays_hours' do
+      rescue_stage = PipelineStage.create!(account: account, name: 'Rescue Stage')
+
+      patch "/api/v1/accounts/#{account.id}/scouts/#{scout.id}",
+            params: {
+              scout: {
+                rescue_stage_id: rescue_stage.id,
+                follow_up_delays_hours: [3, 6, 18]
+              }
+            },
+            headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:success)
+      json = response.parsed_body
+      expect(json['rescue_stage_id']).to eq(rescue_stage.id)
+      expect(json['follow_up_delays_hours']).to eq([3, 6, 18])
+      scout.reload
+      expect(scout.rescue_stage_id).to eq(rescue_stage.id)
+      expect(scout.follow_up_delays_hours).to eq([3, 6, 18])
+    end
+
+    it 'returns unprocessable_entity when follow_up_delays_hours is invalid' do
+      patch "/api/v1/accounts/#{account.id}/scouts/#{scout.id}",
+            params: {
+              scout: {
+                follow_up_delays_hours: [10, 2]
+              }
+            },
+            headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      json = response.parsed_body
+      expect(json['error']).to be_present
+    end
+
     it 'clears required custom attributes when empty array is passed' do
       scout.required_custom_attribute_definitions << attr1
 

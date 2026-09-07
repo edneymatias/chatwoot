@@ -667,6 +667,26 @@ RSpec.describe Custom::Scout::AgentRunner do
         expect(outgoing.content).to eq('Como posso ajudar?')
         expect(conversation.messages.where(private: false, message_type: :outgoing).count).to eq(1)
       end
+
+      it 'aborts reply and handoff if conversation is no longer pending after response auditor completes' do
+        scout.update!(feature_response_auditor: true)
+        action_service = instance_double(Custom::Scout::ActionClassifierService)
+        claim_service = instance_double(Custom::Scout::ClaimConsistencyService)
+
+        allow(Custom::Scout::ActionClassifierService).to receive(:new).and_return(action_service)
+        allow(Custom::Scout::ClaimConsistencyService).to receive(:new).and_return(claim_service)
+        allow(action_service).to receive(:classify) do
+          conversation.update!(status: :open)
+          { 'action' => 'continue', 'action_reason' => nil }
+        end
+        allow(claim_service).to receive(:check).and_return({ 'decision' => 'safe', 'reason' => 'Safe conversation' })
+
+        expect do
+          runner.perform
+        end.not_to(change { scout.reload.responses_consumed })
+
+        expect(conversation.messages.where(private: false, message_type: :outgoing)).to be_empty
+      end
     end
   end
 end
