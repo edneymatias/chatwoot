@@ -123,6 +123,34 @@ RSpec.describe Custom::Scout::SystemPromptsService do
       expect(prompt).to include('nunca faça perguntas ao transferir')
     end
 
+    it 'instructs immediate handover_to_human upon recognizing existing customer or ongoing treatment without self-resolution' do
+      expect(prompt).to include('Reconhecimento de intenção fora de prospecção:')
+      expect(prompt).to include('afirma já ser cliente, menciona tratamento em andamento')
+      expect(prompt).to include('não tente resolver a questão por conta própria, mesmo que pareça simples')
+      expect(prompt).to include('Utilize `handover_to_human` imediatamente')
+      expect(prompt.index('Fallback para humano:')).to be < prompt.index('Reconhecimento de intenção fora de prospecção:')
+      expect(prompt.index('Reconhecimento de intenção fora de prospecção:')).to be < prompt.index('Idioma e Estilo:')
+    end
+
+    it 'instructs immediate handover_to_human for reschedule, cancellation, or complaint requests without self-resolution' do
+      expect(prompt).to include('Reconhecimento de intenção fora de prospecção:')
+      expect(prompt).to include('quer reagendar/cancelar, tem uma reclamação')
+      expect(prompt).to include('não tente resolver a questão por conta própria, mesmo que pareça simples')
+      expect(prompt).to include('Utilize `handover_to_human` imediatamente')
+    end
+
+    it 'instructs immediate handover_to_human when contact answers triage question with quick question unrelated to evaluation' do
+      expect(prompt).to include('Reconhecimento de intenção fora de prospecção:')
+      expect(prompt).to include('responde a uma pergunta de triagem indicando ser "só uma dúvida rápida" não relacionada a agendar avaliação')
+      expect(prompt).to include('Utilize `handover_to_human` imediatamente')
+    end
+
+    it 'instructs that external customer status lookup is optional reinforcement and never blocks handoff' do
+      expect(prompt).to include('Se houver uma ferramenta externa configurada para verificar o status do contato')
+      expect(prompt).to include('consulte-a para reforçar a decisão')
+      expect(prompt).to include('um sinal claro na própria fala do cliente já é suficiente para transferir, sem exigir confirmação do ERP')
+    end
+
     it 'wraps operator custom instructions in subordinate tags with override prohibition' do
       expect(prompt).to include('[Instruções Personalizadas da Conta]')
       expect(prompt).to include('<account_custom_instructions>')

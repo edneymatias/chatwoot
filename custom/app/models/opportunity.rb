@@ -48,6 +48,17 @@ class Opportunity < ApplicationRecord
     conversations.pending.any? { |conv| conv.inbox&.scout&.enabled? }
   end
 
+  # Pushes a fresh 'opportunity_updated' payload straight to the account's ActionCable channel so
+  # the Kanban card's "Scout" badge (derived from scout_engaged?) updates in real time when a
+  # linked conversation's status changes - e.g. handoff to a human. Deliberately bypasses
+  # `broadcast_opportunity_updated`/`dispatch_event`'s Wisper bus, since that's also what
+  # Custom::AutomationRuleListener subscribes to for "opportunity updated" automation rules; going
+  # through it here would spuriously re-trigger those rules on every conversation status change
+  # even when nothing about the opportunity itself changed.
+  def broadcast_scout_badge_refresh
+    ActionCableBroadcastJob.perform_later(["account_#{account_id}"], 'opportunity_updated', as_json)
+  end
+
   private
 
   def set_default_active_conversation

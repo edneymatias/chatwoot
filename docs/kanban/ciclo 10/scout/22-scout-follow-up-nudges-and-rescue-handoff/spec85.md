@@ -73,6 +73,25 @@ cache) antes de agir.
    usado até agora para bloquear envio automático de um job). Contas sem horário comercial
    configurado (`working_hours_enabled?` falso) não mudam de comportamento — `out_of_office?` já
    retorna `false` sempre nesse caso.
+10. **Sem tratamento especial para o canal Widget** (considerado e descartado explicitamente):
+    diferente de WhatsApp/Instagram/Facebook, o Widget deste fork não tem push notification nativo
+    (sem Web Push/service worker — só eventos via `postMessage` enquanto a aba está aberta,
+    confirmado em `app/javascript/widget/`), então um nudge só apareceria na hora se o cliente, por
+    acaso, ainda estivesse com aquela aba aberta. **Mas isso não significa entrega zero**: o core já
+    tem `Channel::WebWidget#continuity_via_email` (`db/schema.rb:727`), **default `true`**, que
+    reenvia por e-mail qualquer mensagem outgoing não-privada da conversa
+    (`Messages::SendEmailNotificationService`/`ConversationReplyEmailJob`) sempre que o contato tiver
+    e-mail cadastrado — o nudge e o handoff entram nessa regra como qualquer outra mensagem, sem
+    precisar de nenhum código novo. Ou seja, pra todo contato de Widget que informou e-mail (comum em
+    formulário de pré-chat) e cuja conta não desativou essa configuração, o nudge/handoff já tem uma
+    via real de entrega assíncrona hoje. O gap genuíno fica restrito a visitantes anônimos sem
+    e-mail — segmento de baixo valor (Oportunidade pouco qualificada, sem nenhum dado de contato) —
+    e não justifica uma exceção de canal nesta fase. Se o contato tiver telefone capturado, o agente
+    também já tem a ferramenta manual existente (`StartOpportunityConversationButton.vue`/"iniciar
+    conversa", reaproveitando `contacts/fetchContactableInbox` do core) pra tentar outro canal por
+    conta própria. Contato proativo automático via telefone (WhatsApp) fica descartado por ora —
+    não avaliado como valendo o esforço/risco de compliance (mensagem de template fora da janela de
+    sessão) neste momento.
 
 ## Escopo
 
