@@ -249,4 +249,85 @@ RSpec.describe Opportunity, type: :model do
       expect(opp.as_json['scout_engaged']).to be(true)
     end
   end
+
+  describe '#has_unread_messages?' do
+    let(:account) { create(:account) }
+    let(:contact) { create(:contact, account: account) }
+    let(:stage) { PipelineStage.create!(account: account, name: 'Stage 1') }
+    let(:inbox) { create(:inbox, account: account) }
+    let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: inbox) }
+    let(:conversation) do
+      create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :open)
+    end
+    let(:opp) do
+      described_class.create!(
+        account: account,
+        contact: contact,
+        pipeline_stage: stage,
+        title: 'Deal',
+        origin_conversation: conversation,
+        active_conversation: conversation
+      )
+    end
+
+    it 'returns true when scout is not engaged and active_conversation has an unread incoming message' do
+      create(:message, account: account, conversation: conversation, message_type: :incoming, private: false)
+
+      expect(opp.scout_engaged?).to be(false)
+      expect(opp.has_unread_messages?).to be(true)
+      expect(opp.as_json['has_unread_messages']).to be(true)
+    end
+
+    it 'returns false when scout_engaged? is true even if active_conversation has an unread incoming message' do
+      scout = Scout.create!(account: account, name: 'Scout', enabled: true)
+      ScoutInbox.create!(scout: scout, inbox: inbox)
+      conversation.update!(status: :pending)
+
+      create(:message, account: account, conversation: conversation, message_type: :incoming, private: false)
+
+      expect(opp.scout_engaged?).to be(true)
+      expect(opp.has_unread_messages?).to be(false)
+      expect(opp.as_json['has_unread_messages']).to be(false)
+    end
+
+    it 'returns false when active_conversation has unread incoming messages but a second linked conversation is Scout-engaged' do
+      scout = Scout.create!(account: account, name: 'Scout', enabled: true)
+      ScoutInbox.create!(scout: scout, inbox: inbox)
+
+      create(:message, account: account, conversation: conversation, message_type: :incoming, private: false)
+
+      second_conversation = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        contact_inbox: contact_inbox,
+        status: :pending
+      )
+      opp.attach_conversation!(second_conversation, set_active: false)
+
+      expect(opp.reload.scout_engaged?).to be(true)
+      expect(opp.has_unread_messages?).to be(false)
+      expect(opp.as_json['has_unread_messages']).to be(false)
+    end
+
+    it 'returns false when active_conversation has no unread incoming messages' do
+      expect(opp.has_unread_messages?).to be(false)
+      expect(opp.as_json['has_unread_messages']).to be(false)
+    end
+
+    it 'returns false when messages are only outgoing or not incoming' do
+      create(:message, account: account, conversation: conversation, message_type: :outgoing, private: false)
+
+      expect(opp.has_unread_messages?).to be(false)
+      expect(opp.as_json['has_unread_messages']).to be(false)
+    end
+
+    it 'returns false when active_conversation is nil' do
+      opp.update!(active_conversation: nil)
+
+      expect(opp.has_unread_messages?).to be(false)
+      expect(opp.as_json['has_unread_messages']).to be(false)
+    end
+  end
 end

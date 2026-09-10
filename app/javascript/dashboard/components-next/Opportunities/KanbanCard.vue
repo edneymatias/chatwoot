@@ -118,6 +118,12 @@ const hasActions = computed(() => {
       </h3>
       <div class="flex items-center gap-2 shrink-0">
         <span
+          v-if="opportunity.has_unread_messages"
+          v-tooltip.top="$t('OPPORTUNITIES.BOARD.UNREAD_TOOLTIP')"
+          data-testid="unread-indicator"
+          class="size-2 rounded-full bg-n-brand animate-pulse [animation-duration:3s]"
+        />
+        <span
           v-if="opportunity.scout_engaged"
           class="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-n-blue-3 text-n-blue-11"
         >

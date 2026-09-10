@@ -11,6 +11,7 @@
         "LOST": "Lost"
       },
       "SCOUT_BADGE": "Scout",
+      "UNREAD_TOOLTIP": "Unread messages",
       "ACTIONS": {
         "REOPEN": "Reopen",
         "COMPLETE_FIELDS": "Complete Fields",

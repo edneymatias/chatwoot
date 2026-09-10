@@ -187,4 +187,74 @@ describe('KanbanCard', () => {
 
     expect(wrapper.text()).not.toContain('OPPORTUNITIES.BOARD.SCOUT_BADGE');
   });
+
+  it('renders unread message indicator when opportunity.has_unread_messages is true', () => {
+    const store = createMockStore();
+    const opportunity = {
+      id: 16,
+      title: 'Deal with unread',
+      status: 'open',
+      has_unread_messages: true,
+    };
+
+    const wrapper = mount(KanbanCard, {
+      props: {
+        opportunity,
+      },
+      global: {
+        plugins: [store],
+        directives: {
+          tooltip: () => {},
+        },
+        stubs: {
+          Avatar: true,
+          Button: true,
+          StartOpportunityConversationButton: true,
+          OpportunityAttributionPopover: true,
+        },
+        mocks: {
+          $t: msg => msg,
+        },
+      },
+    });
+
+    const unreadDot = wrapper.find('[data-testid="unread-indicator"]');
+    expect(unreadDot.exists()).toBe(true);
+    expect(unreadDot.text()).toBe('');
+  });
+
+  it('omits unread message indicator when opportunity.has_unread_messages is false or undefined', () => {
+    const store = createMockStore();
+    const opportunity = {
+      id: 17,
+      title: 'Deal without unread',
+      status: 'open',
+      has_unread_messages: false,
+    };
+
+    const wrapper = mount(KanbanCard, {
+      props: {
+        opportunity,
+      },
+      global: {
+        plugins: [store],
+        directives: {
+          tooltip: () => {},
+        },
+        stubs: {
+          Avatar: true,
+          Button: true,
+          StartOpportunityConversationButton: true,
+          OpportunityAttributionPopover: true,
+        },
+        mocks: {
+          $t: msg => msg,
+        },
+      },
+    });
+
+    expect(wrapper.find('[data-testid="unread-indicator"]').exists()).toBe(
+      false
+    );
+  });
 });

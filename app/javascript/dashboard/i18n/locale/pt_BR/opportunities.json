@@ -11,6 +11,7 @@
         "LOST": "Perdido"
       },
       "SCOUT_BADGE": "Scout",
+      "UNREAD_TOOLTIP": "Mensagens não lidas",
       "ACTIONS": {
         "MARK_WON": "Marcar como Ganho",
         "MARK_LOST": "Marcar como Perdido",

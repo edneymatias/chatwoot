@@ -17,7 +17,7 @@ RSpec.describe Custom::Concerns::Conversation do
     ScoutInbox.create!(scout: scout, inbox: inbox)
   end
 
-  describe '#refresh_linked_opportunities_scout_badge' do
+  describe '#refresh_linked_opportunities_kanban_badges' do
     let!(:opportunity) do
       Opportunity.create!(account: account, contact: contact, pipeline_stage: stage, title: 'Deal', origin_conversation: conversation)
     end
@@ -48,7 +48,47 @@ RSpec.describe Custom::Concerns::Conversation do
       ).at_least(:once)
     end
 
-    it 'does not push an opportunity_updated broadcast when an attribute unrelated to status changes' do
+    it 'rebroadcasts with has_unread_messages: false and scout_engaged: true when conversation reverts to pending on Scout inbox' do
+      conversation.update!(status: :open, agent_last_seen_at: 10.minutes.ago)
+      opportunity.update!(active_conversation: conversation)
+
+      create(:message, account: account, conversation: conversation, message_type: :incoming, private: false, created_at: 5.minutes.ago)
+      expect(opportunity.reload.has_unread_messages?).to be(true)
+      expect(opportunity.scout_engaged?).to be(false)
+
+      allow(ActionCableBroadcastJob).to receive(:perform_later)
+
+      conversation.pending!
+
+      expect(opportunity.reload.scout_engaged?).to be(true)
+      expect(opportunity.has_unread_messages?).to be(false)
+      expect(ActionCableBroadcastJob).to have_received(:perform_later).with(
+        ["account_#{account.id}"],
+        'opportunity_updated',
+        hash_including('id' => opportunity.id, 'has_unread_messages' => false, 'scout_engaged' => true)
+      ).at_least(:once)
+    end
+
+    it 'rebroadcasts every opportunity linked to the conversation when agent_last_seen_at changes' do
+      conversation.update!(status: :open, agent_last_seen_at: 10.minutes.ago)
+      opportunity.update!(active_conversation: conversation)
+
+      create(:message, account: account, conversation: conversation, message_type: :incoming, private: false, created_at: 5.minutes.ago)
+      expect(opportunity.reload.has_unread_messages?).to be(true)
+
+      allow(ActionCableBroadcastJob).to receive(:perform_later)
+
+      conversation.update!(agent_last_seen_at: Time.current)
+
+      expect(opportunity.reload.has_unread_messages?).to be(false)
+      expect(ActionCableBroadcastJob).to have_received(:perform_later).with(
+        ["account_#{account.id}"],
+        'opportunity_updated',
+        hash_including('id' => opportunity.id, 'has_unread_messages' => false)
+      ).at_least(:once)
+    end
+
+    it 'does not push an opportunity_updated broadcast when an attribute unrelated to status or agent_last_seen_at changes' do
       allow(ActionCableBroadcastJob).to receive(:perform_later)
 
       conversation.update!(additional_attributes: { some: 'value' })
