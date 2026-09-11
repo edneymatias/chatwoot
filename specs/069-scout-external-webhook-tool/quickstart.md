@@ -1,10 +1,10 @@
 # Quickstart: Scout External REST/Webhook Tool
 
-**Branch**: `045-scout-external-webhook-tool` | **Date**: 2026-08-19 | **Spec**: [spec.md](spec.md)
+**Branch**: `069-scout-external-webhook-tool` | **Date**: 2026-08-19 | **Spec**: [spec.md](spec.md)
 
 Validates the feature end-to-end against a running dev stack (`docker compose up -d`). Assumes an
 account, a Scout, an inbox, and a conversation already exist (see
-`specs/043-scout-native-tools-pipeline/quickstart.md` for how to seed those from scratch).
+`specs/067-scout-native-tools-pipeline/quickstart.md` for how to seed those from scratch).
 
 ## Prerequisites
 
@@ -40,7 +40,7 @@ tool = ScoutTool.create!(
 
 1. Start a conversation whose message content would plausibly lead the Scout to look up stock
    (e.g. "Do you have SKU ABC123 in stock?").
-2. Dispatch the message the same way `specs/043-scout-native-tools-pipeline/quickstart.md` does
+2. Dispatch the message the same way `specs/067-scout-native-tools-pipeline/quickstart.md` does
    (via `Events::Types::MESSAGE_CREATED`), and let the debounce delay elapse.
 3. **Expected outcome**: the outbound request arrives at the test endpoint with the payload
    `{"sku":"ABC123"}` and the configured `Authorization` header; the Scout's reply in the

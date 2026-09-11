@@ -1,6 +1,6 @@
 # Feature Specification: Scout External REST/Webhook Tool
 
-**Feature Branch**: `045-scout-external-webhook-tool`
+**Feature Branch**: `069-scout-external-webhook-tool`
 
 **Created**: 2026-08-19
 

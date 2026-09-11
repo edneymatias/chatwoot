@@ -1,8 +1,8 @@
 # Implementation Plan: Scout Production Encryption Hardening
 
-**Branch**: `044-scout-production-encryption-hardening` | **Date**: 2026-08-19 | **Spec**: [spec.md](spec.md)
+**Branch**: `068-scout-production-encryption-hardening` | **Date**: 2026-08-19 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/044-scout-production-encryption-hardening/spec.md`
+**Input**: Feature specification from `/specs/068-scout-production-encryption-hardening/spec.md`
 
 **Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
 
@@ -13,7 +13,7 @@ three `ACTIVE_RECORD_ENCRYPTION_*` keys into the real production Docker Swarm st
 mechanism Swarm actually honors, and (b) confirm, and prove, that `Scout`/`ScoutTool` sensitive
 fields (`api_key_override`/`auth_headers`) cannot be persisted in plaintext when those keys are
 missing in production. Research (see `research.md`) found that requirement (b) is **already fully
-implemented and tested** by Phase 1 (`specs/042-scout-core-data-model`): both models call
+implemented and tested** by Phase 1 (`specs/066-scout-core-data-model`): both models call
 `encrypts` unconditionally, and Rails' own `ActiveRecord::Encryption` raises
 `ActiveRecord::Encryption::Errors::Configuration` on save whenever keys are absent in
 `RAILS_ENV=production` (no fallback exists outside dev/test), which `scout_spec.rb`/
@@ -83,7 +83,7 @@ upstream-tracked `docker-compose.production.yaml`) — see Complexity Tracking.
 ### Documentation (this feature)
 
 ```text
-specs/044-scout-production-encryption-hardening/
+specs/068-scout-production-encryption-hardening/
 ├── plan.md              # This file (/speckit-plan command output)
 ├── research.md          # Phase 0 output (/speckit-plan command)
 ├── data-model.md         # Phase 1 output (/speckit-plan command) — no new entities

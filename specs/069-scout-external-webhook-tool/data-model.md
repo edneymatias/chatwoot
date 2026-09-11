@@ -1,6 +1,6 @@
 # Data Model: Scout External REST/Webhook Tool
 
-**Branch**: `045-scout-external-webhook-tool` | **Date**: 2026-08-19 | **Spec**: [spec.md](spec.md)
+**Branch**: `069-scout-external-webhook-tool` | **Date**: 2026-08-19 | **Spec**: [spec.md](spec.md)
 
 This feature introduces no new tables and no changes to existing table schemas. It adds one
 execution-path entity (in-memory only, never persisted) that operates against an entity already

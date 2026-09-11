@@ -1,6 +1,6 @@
 # Feature Specification: Scout Native Tools & Message Pipeline
 
-**Feature Branch**: `043-scout-native-tools-pipeline`
+**Feature Branch**: `067-scout-native-tools-pipeline`
 
 **Created**: 2026-08-19
 
@@ -9,7 +9,7 @@
 **Input**: User description: "@docs/kanban/ciclo 9/scout/02-native-tools-and-pipeline/spec63.md" (Phase 2 of
 the Scout AI agent engine — see master doc `docs/kanban/ciclo 9/scout/spec60.md` §2, §4, §5, §8,
 §10). Depends on Phase 1 (`Scout`/`ScoutInbox`/`ScoutTool` models and `ruby_llm` client integration,
-`specs/042-scout-core-data-model/`), which is already implemented.
+`specs/066-scout-core-data-model/`), which is already implemented.
 
 ## Clarifications
 
@@ -282,7 +282,7 @@ repeating the same flow must produce no note.
 
 ## Assumptions
 
-- Phase 1 (`specs/042-scout-core-data-model/`) is complete and its `Scout`/`ScoutInbox`/`ScoutTool`
+- Phase 1 (`specs/066-scout-core-data-model/`) is complete and its `Scout`/`ScoutInbox`/`ScoutTool`
   models and `ruby_llm` client integration are available as a foundation; this phase only adds the
   configuration fields it specifically needs (FR-018) on top of that model, not a redesign of it.
 - This phase is scoped to WhatsApp inboxes, matching the master spec's primary channel; other channel

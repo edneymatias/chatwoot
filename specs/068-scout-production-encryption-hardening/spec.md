@@ -1,6 +1,6 @@
 # Feature Specification: Scout Production Encryption Hardening
 
-**Feature Branch**: `044-scout-production-encryption-hardening`
+**Feature Branch**: `068-scout-production-encryption-hardening`
 
 **Created**: 2026-08-19
 

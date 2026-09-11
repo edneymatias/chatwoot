@@ -1,8 +1,8 @@
 # Implementation Plan: Scout Core & Data Model
 
-**Branch**: `042-scout-core-data-model` | **Date**: 2026-08-19 | **Spec**: [spec.md](./spec.md)
+**Branch**: `066-scout-core-data-model` | **Date**: 2026-08-19 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/042-scout-core-data-model/spec.md`
+**Input**: Feature specification from `/specs/066-scout-core-data-model/spec.md`
 
 **Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
 
@@ -67,7 +67,7 @@ existing model; no controllers, jobs, or background processing introduced in thi
 ### Documentation (this feature)
 
 ```text
-specs/042-scout-core-data-model/
+specs/066-scout-core-data-model/
 ├── plan.md              # This file (/speckit-plan command output)
 ├── research.md          # Phase 0 output (/speckit-plan command)
 ├── data-model.md         # Phase 1 output (/speckit-plan command)

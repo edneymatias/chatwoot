@@ -3,12 +3,12 @@
 ## 1. Whether FR-004–FR-007 (fail-loudly guard) require new application code
 
 **Decision**: No new Ruby/Rails guard code is needed. FR-004 through FR-007 are already fully
-satisfied by the Phase 1 implementation (`specs/042-scout-core-data-model`).
+satisfied by the Phase 1 implementation (`specs/066-scout-core-data-model`).
 
 **Rationale**: `custom/app/models/scout.rb` calls `encrypts :api_key_override` and
 `custom/app/models/scout_tool.rb` calls `encrypts :auth_headers` **unconditionally** — with no
 `if Chatwoot.encryption_configured?` guard, unlike every other encrypted-credential model in this
-codebase (see `specs/042-scout-core-data-model/research.md` §2 for that prior decision and its
+codebase (see `specs/066-scout-core-data-model/research.md` §2 for that prior decision and its
 rationale). Rails' `ActiveRecord::Encryption` itself raises
 `ActiveRecord::Encryption::Errors::Configuration` on save whenever an `encrypts`-declared
 attribute is written and no encryption key is configured for the current environment. Combined

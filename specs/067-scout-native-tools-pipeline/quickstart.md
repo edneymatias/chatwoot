@@ -1,6 +1,6 @@
 # Quickstart: Scout Native Tools & Message Pipeline
 
-**Branch**: `043-scout-native-tools-pipeline` | **Date**: 2026-08-19 | **Spec**: [spec.md](file:///home/matias/dev/chatwoot/specs/043-scout-native-tools-pipeline/spec.md)
+**Branch**: `067-scout-native-tools-pipeline` | **Date**: 2026-08-19 | **Spec**: [spec.md](file:///home/matias/dev/chatwoot/specs/067-scout-native-tools-pipeline/spec.md)
 
 This guide provides executable validation steps to verify the Scout Native Tools and Message Pipeline end-to-end.
 

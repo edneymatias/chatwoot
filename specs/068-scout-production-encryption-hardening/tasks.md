@@ -1,8 +1,8 @@
 # Tasks: Scout Production Encryption Hardening
 
-**Input**: Design documents from `/specs/044-scout-production-encryption-hardening/` (`spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`)  
-**Feature Branch**: `044-scout-production-encryption-hardening`  
-**Prerequisites**: Phase 1 (`specs/042-scout-core-data-model/`) and Phase 2 (`specs/043-scout-native-tools-pipeline/`) complete
+**Input**: Design documents from `/specs/068-scout-production-encryption-hardening/` (`spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`)  
+**Feature Branch**: `068-scout-production-encryption-hardening`  
+**Prerequisites**: Phase 1 (`specs/066-scout-core-data-model/`) and Phase 2 (`specs/067-scout-native-tools-pipeline/`) complete
 
 ---
 
@@ -33,8 +33,8 @@
 
 **Independent Test**: Execute `Chatwoot.encryption_configured?` and round-trip smoke test via `bin/rails runner` in `quickstart.md` §§3-4; verify `raw != decrypted` and `decrypted == original`.
 
-- [x] T004 [US1] Document and validate operator encryption configuration verification command (`Chatwoot.encryption_configured?`) in `specs/044-scout-production-encryption-hardening/quickstart.md`
-- [x] T005 [US1] Document and validate operator Scout credential round-trip verification command in `specs/044-scout-production-encryption-hardening/quickstart.md`
+- [x] T004 [US1] Document and validate operator encryption configuration verification command (`Chatwoot.encryption_configured?`) in `specs/068-scout-production-encryption-hardening/quickstart.md`
+- [x] T005 [US1] Document and validate operator Scout credential round-trip verification command in `specs/068-scout-production-encryption-hardening/quickstart.md`
 
 **Checkpoint**: At this point, User Story 1 operator verification is complete and testable independently.
 
@@ -69,7 +69,7 @@
 
 **Purpose**: End-to-end runbook verification, lint compliance, and module hook validation.
 
-- [x] T009 Run quickstart operator validation workflow from `specs/044-scout-production-encryption-hardening/quickstart.md`
+- [x] T009 Run quickstart operator validation workflow from `specs/068-scout-production-encryption-hardening/quickstart.md`
 - [x] T010 Validate module wiring with `bin/sync-custom-module-hooks --check && bin/sync-custom-module-hooks --audit`
 - [x] T011 Run RuboCop validation across `custom/` codebase via `bundle exec rubocop custom/`
 

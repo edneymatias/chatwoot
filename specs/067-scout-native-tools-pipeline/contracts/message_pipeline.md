@@ -1,6 +1,6 @@
 # Contracts: Message Pipeline, Debounce & Fail-Safe
 
-**Branch**: `043-scout-native-tools-pipeline` | **Date**: 2026-08-19 | **Spec**: [spec.md](file:///home/matias/dev/chatwoot/specs/043-scout-native-tools-pipeline/spec.md)
+**Branch**: `067-scout-native-tools-pipeline` | **Date**: 2026-08-19 | **Spec**: [spec.md](file:///home/matias/dev/chatwoot/specs/067-scout-native-tools-pipeline/spec.md)
 
 This contract defines the interfaces for the incoming message pipeline, debounce buffer, fail-safe handoff, and contact memory generation.
 

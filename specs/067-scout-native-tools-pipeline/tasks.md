@@ -1,8 +1,8 @@
 # Tasks: Scout Native Tools & Message Pipeline
 
-**Input**: Design documents from `/specs/043-scout-native-tools-pipeline/` (`plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`)  
-**Feature Branch**: `043-scout-native-tools-pipeline`  
-**Prerequisites**: Phase 1 (`specs/042-scout-core-data-model/`) complete
+**Input**: Design documents from `/specs/067-scout-native-tools-pipeline/` (`plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`)  
+**Feature Branch**: `067-scout-native-tools-pipeline`  
+**Prerequisites**: Phase 1 (`specs/066-scout-core-data-model/`) complete
 
 ---
 
@@ -98,7 +98,7 @@
 - [x] T026 [P] Create listener spec in `custom/spec/listeners/custom/scout_listener_spec.rb`
 - [x] T027 Validate module wiring with `bin/sync-custom-module-hooks --check && bin/sync-custom-module-hooks --audit`
 - [x] T028 Run RuboCop auto-formatting and validation on custom codebase via `bundle exec rubocop custom/`
-- [x] T029 Execute end-to-end quickstart validation scenarios from `specs/043-scout-native-tools-pipeline/quickstart.md`
+- [x] T029 Execute end-to-end quickstart validation scenarios from `specs/067-scout-native-tools-pipeline/quickstart.md`
 
 ---
 

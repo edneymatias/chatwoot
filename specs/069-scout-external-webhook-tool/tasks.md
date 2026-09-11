@@ -5,7 +5,7 @@ description: "Task list for Scout External REST/Webhook Tool implementation"
 
 # Tasks: Scout External REST/Webhook Tool
 
-**Input**: Design documents from `/specs/045-scout-external-webhook-tool/` (`spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`)
+**Input**: Design documents from `/specs/069-scout-external-webhook-tool/` (`spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`)
 
 **Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `quickstart.md`
 
@@ -106,7 +106,7 @@ description: "Task list for Scout External REST/Webhook Tool implementation"
 
 - [X] T014 [P] Run RuboCop check and auto-fix across new and modified files in custom/app/services/custom/scout/tools/call_custom_api.rb, custom/app/services/custom/scout/agent_runner.rb, and custom/spec/
 - [X] T015 Execute full Scout test suite via RSpec in custom/spec/services/custom/scout/
-- [X] T016 Validate manual test scenarios against quickstart guide in specs/045-scout-external-webhook-tool/quickstart.md
+- [X] T016 Validate manual test scenarios against quickstart guide in specs/069-scout-external-webhook-tool/quickstart.md
 
 ---
 
@@ -184,4 +184,4 @@ Task: "Add RSpec tests verifying CallCustomApi tool registration and its enabled
 
 ## Phase 7: Convergence
 
-- [X] T017 Update data-model.md §2's "Non-success HTTP status" row to describe the actual generic-failure-string behavior (status/reason only, no response body) implemented in CallCustomApi#execute's `rescue SafeFetch::HttpError` branch — matching research.md §5 and the Captain::Tools::HttpTool precedent — instead of the stale "surfaced as-is" wording, in specs/045-scout-external-webhook-tool/data-model.md (contradicts)
+- [X] T017 Update data-model.md §2's "Non-success HTTP status" row to describe the actual generic-failure-string behavior (status/reason only, no response body) implemented in CallCustomApi#execute's `rescue SafeFetch::HttpError` branch — matching research.md §5 and the Captain::Tools::HttpTool precedent — instead of the stale "surfaced as-is" wording, in specs/069-scout-external-webhook-tool/data-model.md (contradicts)

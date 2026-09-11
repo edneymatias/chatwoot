@@ -1,8 +1,8 @@
 # Implementation Plan: Scout External REST/Webhook Tool
 
-**Branch**: `045-scout-external-webhook-tool` | **Date**: 2026-08-19 | **Spec**: [spec.md](spec.md)
+**Branch**: `069-scout-external-webhook-tool` | **Date**: 2026-08-19 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/045-scout-external-webhook-tool/spec.md`
+**Input**: Feature specification from `/specs/069-scout-external-webhook-tool/spec.md`
 
 ## Summary
 
@@ -56,7 +56,7 @@ No violations requiring Complexity Tracking.
 ### Documentation (this feature)
 
 ```text
-specs/045-scout-external-webhook-tool/
+specs/069-scout-external-webhook-tool/
 ├── plan.md              # This file (/speckit-plan command output)
 ├── research.md          # Phase 0 output (/speckit-plan command)
 ├── data-model.md        # Phase 1 output (/speckit-plan command)

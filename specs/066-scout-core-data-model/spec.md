@@ -1,6 +1,6 @@
 # Feature Specification: Scout Core & Data Model
 
-**Feature Branch**: `042-scout-core-data-model`
+**Feature Branch**: `066-scout-core-data-model`
 
 **Created**: 2026-08-19
 

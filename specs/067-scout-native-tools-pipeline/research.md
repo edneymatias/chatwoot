@@ -1,10 +1,10 @@
 # Research: Scout Native Tools & Message Pipeline
 
-**Branch**: `043-scout-native-tools-pipeline` | **Date**: 2026-08-19 | **Spec**: [spec.md](file:///home/matias/dev/chatwoot/specs/043-scout-native-tools-pipeline/spec.md)
+**Branch**: `067-scout-native-tools-pipeline` | **Date**: 2026-08-19 | **Spec**: [spec.md](file:///home/matias/dev/chatwoot/specs/067-scout-native-tools-pipeline/spec.md)
 
 ## Context & Objectives
 
-This research document consolidates validated technical decisions for Phase 2 of the Scout AI agent engine, verified against Phase 1 (`specs/042-scout-core-data-model/`), the fork's existing features, upstream Chatwoot (`app/` and `enterprise/`), and `ruby_llm` (1.15.0):
+This research document consolidates validated technical decisions for Phase 2 of the Scout AI agent engine, verified against Phase 1 (`specs/066-scout-core-data-model/`), the fork's existing features, upstream Chatwoot (`app/` and `enterprise/`), and `ruby_llm` (1.15.0):
 1. Debounce and sliding window buffering in Redis + Sidekiq for incoming WhatsApp messages.
 2. Scout runner execution loop, context building, multimodal attachments, and Out-of-Office integration.
 3. Fail-Safe handoff architecture (pre-call quota & API key checks + runtime LLM error wrapper).

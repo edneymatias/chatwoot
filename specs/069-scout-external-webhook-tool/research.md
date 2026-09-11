@@ -1,6 +1,6 @@
 # Research: Scout External REST/Webhook Tool
 
-**Branch**: `045-scout-external-webhook-tool` | **Date**: 2026-08-19 | **Spec**: [spec.md](spec.md)
+**Branch**: `069-scout-external-webhook-tool` | **Date**: 2026-08-19 | **Spec**: [spec.md](spec.md)
 
 All items below were `NEEDS CLARIFICATION` candidates in the Technical Context; each is resolved
 by an existing, in-repo precedent rather than a new choice, consistent with Constitution

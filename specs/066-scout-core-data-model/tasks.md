@@ -5,7 +5,7 @@ description: "Task list for Scout Core & Data Model implementation"
 
 # Tasks: Scout Core & Data Model
 
-**Input**: Design documents from `/specs/042-scout-core-data-model/`
+**Input**: Design documents from `/specs/066-scout-core-data-model/`
 - Specification: [spec.md](./spec.md)
 - Implementation Plan: [plan.md](./plan.md)
 - Data Model: [data-model.md](./data-model.md)

@@ -1,8 +1,8 @@
 # Implementation Plan: Scout Native Tools & Message Pipeline
 
-**Branch**: `043-scout-native-tools-pipeline` | **Date**: 2026-08-19 | **Spec**: [spec.md](file:///home/matias/dev/chatwoot/specs/043-scout-native-tools-pipeline/spec.md)
+**Branch**: `067-scout-native-tools-pipeline` | **Date**: 2026-08-19 | **Spec**: [spec.md](file:///home/matias/dev/chatwoot/specs/067-scout-native-tools-pipeline/spec.md)
 
-**Input**: Feature specification from `/specs/043-scout-native-tools-pipeline/spec.md` (Phase 2 of Scout AI agent engine, master spec `docs/kanban/ciclo 9/scout/spec60.md` §2, §4, §5, §8, §10).
+**Input**: Feature specification from `/specs/067-scout-native-tools-pipeline/spec.md` (Phase 2 of Scout AI agent engine, master spec `docs/kanban/ciclo 9/scout/spec60.md` §2, §4, §5, §8, §10).
 
 ## Summary
 
@@ -37,7 +37,7 @@ Phase 2 connects incoming WhatsApp messages to the Scout AI agent via a sliding 
 ### Documentation (this feature)
 
 ```text
-specs/043-scout-native-tools-pipeline/
+specs/067-scout-native-tools-pipeline/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output

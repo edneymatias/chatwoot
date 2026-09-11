@@ -3,7 +3,7 @@
 ## Summary
 
 This feature introduces **no new entities, columns, or migrations**. It reuses the `Scout` and
-`ScoutTool` models delivered in Phase 1 (`specs/042-scout-core-data-model`) unchanged.
+`ScoutTool` models delivered in Phase 1 (`specs/066-scout-core-data-model`) unchanged.
 
 ## Entities (existing, referenced only)
 
@@ -21,7 +21,7 @@ Field of interest: `auth_headers` (jsonb, `encrypts` unconditionally — see
 
 This feature's actual changes live outside the data model:
 - `docker-compose.production.yaml` — deployment configuration (see research.md §3).
-- `specs/044-scout-production-encryption-hardening/quickstart.md` — operator verification runbook
+- `specs/068-scout-production-encryption-hardening/quickstart.md` — operator verification runbook
   (see research.md §4).
 
 No `contracts/` are produced: this feature exposes no new API endpoint, CLI command, or UI

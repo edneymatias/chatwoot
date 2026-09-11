@@ -1,6 +1,6 @@
 # Contracts: Scout Native Tools
 
-**Branch**: `043-scout-native-tools-pipeline` | **Date**: 2026-08-19 | **Spec**: [spec.md](file:///home/matias/dev/chatwoot/specs/043-scout-native-tools-pipeline/spec.md)
+**Branch**: `067-scout-native-tools-pipeline` | **Date**: 2026-08-19 | **Spec**: [spec.md](file:///home/matias/dev/chatwoot/specs/067-scout-native-tools-pipeline/spec.md)
 
 All native tools inherit from `RubyLLM::Tool` and are instantiated per turn with the active `scout` and `conversation` context.
 
