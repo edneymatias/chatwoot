@@ -59,6 +59,12 @@ export const routes = [
     meta,
   },
   {
+    path: frontendURL('accounts/:accountId/scout/:scoutId/audience'),
+    component: () => import('./pages/ScoutDetail.vue'),
+    name: 'scout_audience',
+    meta,
+  },
+  {
     path: frontendURL('accounts/:accountId/scout/:scoutId/playground'),
     component: () => import('./pages/ScoutPlayground.vue'),
     name: 'scout_playground',

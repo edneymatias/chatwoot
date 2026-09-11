@@ -189,4 +189,48 @@ RSpec.describe Scout, type: :model do
       expect { scout.llm_chat }.to raise_error(/Configuração de LLM não encontrada/)
     end
   end
+
+  describe '#engages?' do
+    let(:scout) { described_class.create!(valid_attributes) }
+    let(:contact) { create(:contact, account: account, phone_number: '+5511999999999') }
+
+    it 'returns true when audience is empty' do
+      scout.update!(audience: [])
+      expect(scout.engages?(contact)).to be(true)
+    end
+
+    it 'delegates to Custom::Scout::AudienceMatcherService when audience is present' do
+      scout.update!(audience: [
+                      {
+                        'attribute_key' => 'phone_number',
+                        'filter_operator' => 'equal_to',
+                        'values' => ['+5511999999999']
+                      }
+                    ])
+      expect(scout.engages?(contact)).to be(true)
+
+      other_contact = create(:contact, account: account, phone_number: '+5511888888888')
+      expect(scout.engages?(other_contact)).to be(false)
+    end
+
+    it 'does not alter already-pending conversations when audience changes (forward-only FR-011)' do
+      scout.update!(audience: [
+                      {
+                        'attribute_key' => 'phone_number',
+                        'filter_operator' => 'equal_to',
+                        'values' => ['+5511999999999']
+                      }
+                    ])
+      conversation = create(:conversation, account: account, inbox: inbox, contact: contact, status: :pending)
+
+      scout.update!(audience: [
+                      {
+                        'attribute_key' => 'phone_number',
+                        'filter_operator' => 'equal_to',
+                        'values' => ['+5511000000000']
+                      }
+                    ])
+      expect(conversation.reload.status).to eq('pending')
+    end
+  end
 end

@@ -12,6 +12,7 @@ import ScoutInboxesTab from 'dashboard/components-next/Scout/pageComponents/Scou
 import ScoutProductsTab from 'dashboard/components-next/Scout/pageComponents/ScoutProductsTab.vue';
 import ScoutKnowledgeTab from 'dashboard/components-next/Scout/pageComponents/ScoutKnowledgeTab.vue';
 import ScoutFunnelTab from 'dashboard/components-next/Scout/pageComponents/ScoutFunnelTab.vue';
+import ScoutAudienceTab from 'dashboard/components-next/Scout/pageComponents/ScoutAudienceTab.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -29,6 +30,7 @@ const tabIndexMap = {
   products: 2,
   knowledge: 3,
   funnel: 4,
+  audience: 5,
 };
 
 const currentTab = computed(() => {
@@ -37,6 +39,7 @@ const currentTab = computed(() => {
   if (name === 'scout_products') return 'products';
   if (name === 'scout_knowledge') return 'knowledge';
   if (name === 'scout_funnel') return 'funnel';
+  if (name === 'scout_audience') return 'audience';
   return 'general';
 });
 
@@ -52,6 +55,11 @@ const tabs = computed(() => [
   { key: 'products', label: t('SCOUT.TABS.PRODUCTS') },
   { key: 'knowledge', label: t('SCOUT.TABS.KNOWLEDGE') },
   { key: 'funnel', label: t('SCOUT.TABS.FUNNEL') },
+  {
+    key: 'audience',
+    label: t('SCOUT.TABS.AUDIENCE'),
+    count: scout.value?.audience?.length || 0,
+  },
 ]);
 
 const fetchScout = async (showLoading = true) => {
@@ -76,6 +84,7 @@ const handleTabChanged = tab => {
     products: 'scout_products',
     knowledge: 'scout_knowledge',
     funnel: 'scout_funnel',
+    audience: 'scout_audience',
   };
 
   const targetRouteName = routeMap[tab.key] || 'scout_detail';
@@ -209,6 +218,13 @@ onMounted(() => {
           <!-- Funnel Tab -->
           <ScoutFunnelTab
             v-else-if="currentTab === 'funnel'"
+            :scout="scout"
+            @updated="data => (data ? (scout = data) : fetchScout(false))"
+          />
+
+          <!-- Audience Tab -->
+          <ScoutAudienceTab
+            v-else-if="currentTab === 'audience'"
             :scout="scout"
             @updated="data => (data ? (scout = data) : fetchScout(false))"
           />

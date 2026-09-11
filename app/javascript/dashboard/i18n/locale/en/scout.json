@@ -45,6 +45,7 @@
       "PRODUCTS": "Products & Offers",
       "KNOWLEDGE": "Knowledge Base",
       "FUNNEL": "Funnel & Qualification",
+      "AUDIENCE": "Target Audience",
       "TOOLS": "Tools",
       "PLAYGROUND": "Playground"
     },
@@ -155,6 +156,22 @@
       "AREA_CODE_LABEL": "Default Area Code",
       "AREA_CODE_PLACEHOLDER": "e.g., 41",
       "AREA_CODE_HINT": "Prepended when the lead's number has no area code (common when the lead is calling from the same city). Leave blank to require the area code instead of guessing it."
+    },
+    "AUDIENCE": {
+      "TITLE": "Target Audience",
+      "SUBTITLE": "Define conditions to restrict which contacts this Scout automatically engages. Non-matching contacts are routed to the human queue.",
+      "EMPTY_STATE": {
+        "TITLE": "No target audience configured",
+        "DESCRIPTION": "This Scout currently engages every contact in the inbox. Add conditions to limit engagement to specific contacts.",
+        "BUTTON": "Add Condition"
+      },
+      "ADD_CONDITION": "Add Condition",
+      "CLEAR_AUDIENCE": "Clear Audience",
+      "SAVE": "Save Target Audience",
+      "SUCCESS_MESSAGE": "Target audience updated successfully.",
+      "ERROR_MESSAGE": "Failed to update target audience.",
+      "CLEAR_CONFIRM_TITLE": "Clear Target Audience",
+      "CLEAR_CONFIRM_MESSAGE": "Are you sure you want to remove all targeting conditions? The Scout will revert to engaging every contact."
     },
     "TOOLS": {
       "TITLE": "Tools",

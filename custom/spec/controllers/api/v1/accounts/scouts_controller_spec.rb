@@ -138,6 +138,47 @@ RSpec.describe 'Api::V1::Accounts::Scouts', type: :request do
       expect(json['required_custom_attribute_definitions']).to be_empty
       expect(scout.reload.required_custom_attribute_definitions).to be_empty
     end
+
+    it 'updates audience conditions when passed' do
+      conditions = [
+        {
+          'attribute_key' => 'phone_number',
+          'filter_operator' => 'equal_to',
+          'values' => ['+5511999999999'],
+          'query_operator' => 'and'
+        }
+      ]
+
+      patch "/api/v1/accounts/#{account.id}/scouts/#{scout.id}",
+            params: {
+              scout: {
+                audience: conditions
+              }
+            },
+            headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:success)
+      json = response.parsed_body
+      expect(json['audience']).to eq(conditions)
+      expect(scout.reload.audience).to eq(conditions)
+    end
+
+    it 'clears audience when empty array is passed' do
+      scout.update!(audience: [{ 'attribute_key' => 'phone_number', 'filter_operator' => 'equal_to', 'values' => ['+5511999999999'] }])
+
+      patch "/api/v1/accounts/#{account.id}/scouts/#{scout.id}",
+            params: {
+              scout: {
+                audience: []
+              }
+            },
+            headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:success)
+      json = response.parsed_body
+      expect(json['audience']).to eq([])
+      expect(scout.reload.audience).to eq([])
+    end
   end
 
   describe 'POST /api/v1/accounts/{account.id}/scouts/{scout.id}/sync_required_attributes' do

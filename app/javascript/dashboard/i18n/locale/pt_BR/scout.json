@@ -45,6 +45,7 @@
       "PRODUCTS": "Produtos e Ofertas",
       "KNOWLEDGE": "Base de Conhecimento",
       "FUNNEL": "Funil e Qualificação",
+      "AUDIENCE": "Público-Alvo",
       "TOOLS": "Ferramentas",
       "PLAYGROUND": "Playground"
     },
@@ -155,6 +156,22 @@
       "AREA_CODE_LABEL": "DDD Padrão",
       "AREA_CODE_PLACEHOLDER": "ex: 41",
       "AREA_CODE_HINT": "Adicionado quando o número do lead vem sem DDD (comum quando o lead liga da mesma cidade). Deixe em branco para exigir o DDD em vez de adivinhar."
+    },
+    "AUDIENCE": {
+      "TITLE": "Público-Alvo",
+      "SUBTITLE": "Defina condições para restringir quais contatos este Scout atende automaticamente. Contatos fora do público-alvo são encaminhados para a fila humana.",
+      "EMPTY_STATE": {
+        "TITLE": "Sem público-alvo configurado",
+        "DESCRIPTION": "O Scout atende todos os contatos desta caixa de entrada. Adicione condições para limitar o atendimento a contatos específicos.",
+        "BUTTON": "Adicionar Condição"
+      },
+      "ADD_CONDITION": "Adicionar Condição",
+      "CLEAR_AUDIENCE": "Limpar Público-Alvo",
+      "SAVE": "Salvar Público-Alvo",
+      "SUCCESS_MESSAGE": "Público-alvo atualizado com sucesso.",
+      "ERROR_MESSAGE": "Erro ao atualizar público-alvo.",
+      "CLEAR_CONFIRM_TITLE": "Limpar Público-Alvo",
+      "CLEAR_CONFIRM_MESSAGE": "Tem certeza que deseja remover todas as condições de público-alvo? O Scout voltará a atender todos os contatos."
     },
     "TOOLS": {
       "TITLE": "Ferramentas",

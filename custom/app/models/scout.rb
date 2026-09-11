@@ -79,6 +79,12 @@ class Scout < ApplicationRecord
     end
   end
 
+  def engages?(contact, _conversation = nil)
+    return true if audience.blank?
+
+    Custom::Scout::AudienceMatcherService.new(audience: audience, contact: contact).matches?
+  end
+
   private
 
   def validate_follow_up_delays_hours

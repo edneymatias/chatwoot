@@ -69,7 +69,12 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
     ]
 
     scout_source = params.key?(:scout) ? params.require(:scout) : params
-    scout_source.permit(*allowed, follow_up_delays_hours: [], required_custom_attribute_definition_ids: [])
+    scout_source.permit(
+      *allowed,
+      follow_up_delays_hours: [],
+      required_custom_attribute_definition_ids: [],
+      audience: [:attribute_key, :filter_operator, :query_operator, { values: [] }]
+    )
   end
 
   def sync_attributes_requested?

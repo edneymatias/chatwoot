@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2126_09_07_000000) do
+ActiveRecord::Schema[7.2].define(version: 2126_09_10_145200) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1374,6 +1374,7 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_07_000000) do
     t.string "default_area_code"
     t.bigint "rescue_stage_id"
     t.jsonb "follow_up_delays_hours", default: [2, 12, 24], null: false
+    t.jsonb "audience", default: [], null: false
     t.index ["account_id"], name: "index_ichatr_scouts_on_account_id"
     t.index ["default_pipeline_stage_id"], name: "index_ichatr_scouts_on_default_pipeline_stage_id"
     t.index ["handover_team_id"], name: "index_ichatr_scouts_on_handover_team_id"
@@ -1952,6 +1953,7 @@ AS $function$ begin perform pg_notify('n8n_channel_db4b51bf_31cf_44d0_87df_3e614
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute("CREATE TRIGGER n8n_trigger_db4b51bf_31cf_44d0_87df_3e614e45cdea AFTER DELETE ON \"channel_api\" FOR EACH ROW EXECUTE FUNCTION n8n_trigger_function_db4b51bf_31cf_44d0_87df_3e614e45cdea()")
+
 
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").
