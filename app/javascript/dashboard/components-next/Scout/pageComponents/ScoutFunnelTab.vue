@@ -1,8 +1,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useStore } from 'vuex';
 import { useI18n } from 'vue-i18n';
+import AttributeAPI from 'dashboard/api/attributes';
 import ScoutAPI from 'dashboard/api/scout';
+import { useStore, useMapGetter } from 'dashboard/composables/store';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
@@ -29,35 +30,152 @@ const selectedAttributeIds = ref(
     Number(a.id)
   )
 );
+const resolveAttributeId = (id, obj) => {
+  if (id) return String(id);
+  if (obj?.id) return String(obj.id);
+  return '';
+};
+
+const interestAttributeDefinitionId = ref(
+  resolveAttributeId(
+    props.scout.interest_attribute_definition_id,
+    props.scout.interest_attribute_definition
+  )
+);
+const valueByInterest = ref({ ...(props.scout.value_by_interest || {}) });
 
 const isSaving = ref(false);
 const saveSuccess = ref(false);
 const errorMessage = ref('');
 
-const pipelineStages = computed(
-  () => store.getters['pipelineStages/stagesSortedByPosition'] || []
-);
-const teams = computed(() => store.getters['teams/getTeams'] || []);
-const customAttributes = computed(
-  () => store.getters['attributes/getAttributes'] || []
-);
+const rawCustomAttributes = ref([]);
+
+const fetchCustomAttributes = async () => {
+  try {
+    const accountId =
+      props.scout?.account_id ||
+      (typeof window !== 'undefined' && window.location?.pathname
+        ? window.location.pathname.split('/')[3]
+        : undefined);
+    const res = await AttributeAPI.getAttributesByModel(accountId);
+    if (Array.isArray(res?.data) && res.data.length > 0) {
+      rawCustomAttributes.value = res.data;
+    }
+  } catch (error) {
+    // Ignore error
+  }
+};
+
+const pipelineStages = useMapGetter('pipelineStages/stagesSortedByPosition');
+const teams = useMapGetter('teams/getTeams');
+const storeCustomAttributes = useMapGetter('attributes/getAttributes');
+
+const getAttrModel = attr => attr.attribute_model ?? attr.attributeModel;
+const getAttrType = attr =>
+  attr.attribute_display_type ?? attr.attributeDisplayType;
+const getAttrDisplayName = attr =>
+  attr.attribute_display_name ?? attr.attributeDisplayName ?? attr.name ?? '';
+
+const isOpportunityModel = attr => {
+  if (!attr) return false;
+  const model = getAttrModel(attr);
+  return model === 'opportunity_attribute' || model === 3 || model === '3';
+};
+
+const isListType = attr => {
+  if (!attr) return false;
+  const type = getAttrType(attr);
+  return type === 'list' || type === 6 || type === '6';
+};
+
+const allCustomAttributes = computed(() => {
+  const map = new Map();
+  const addAttr = attr => {
+    if (attr && attr.id != null && !map.has(Number(attr.id))) {
+      map.set(Number(attr.id), attr);
+    }
+  };
+
+  (rawCustomAttributes.value || []).forEach(addAttr);
+  (storeCustomAttributes.value || []).forEach(addAttr);
+  (props.scout?.required_custom_attribute_definitions || []).forEach(addAttr);
+  if (props.scout?.interest_attribute_definition) {
+    addAttr(props.scout.interest_attribute_definition);
+  }
+
+  return Array.from(map.values());
+});
 
 const qualificationAttributes = computed(() => {
-  return customAttributes.value.filter(
-    attr =>
-      attr.attribute_model === 'contact_attribute' ||
-      attr.attribute_model === 'opportunity_attribute'
+  return allCustomAttributes.value.filter(attr => {
+    const model = getAttrModel(attr);
+    return (
+      model === 'contact_attribute' ||
+      model === 'opportunity_attribute' ||
+      model === 1 ||
+      model === 3 ||
+      model === '1' ||
+      model === '3'
+    );
+  });
+});
+
+const listOpportunityAttributes = computed(() => {
+  return allCustomAttributes.value.filter(
+    attr => isOpportunityModel(attr) && isListType(attr)
   );
+});
+
+const selectedInterestAttribute = computed(() => {
+  if (!interestAttributeDefinitionId.value) return null;
+  const targetId = Number(interestAttributeDefinitionId.value);
+  if (!targetId) return null;
+
+  const foundInList = listOpportunityAttributes.value.find(
+    attr => Number(attr.id) === targetId
+  );
+  if (
+    foundInList &&
+    (foundInList.attribute_values || foundInList.attributeValues)
+  ) {
+    return foundInList;
+  }
+
+  const foundInAll = allCustomAttributes.value.find(
+    attr => Number(attr.id) === targetId
+  );
+  if (
+    foundInAll &&
+    (foundInAll.attribute_values || foundInAll.attributeValues)
+  ) {
+    return foundInAll;
+  }
+
+  const scoutAttr = props.scout?.interest_attribute_definition;
+  if (scoutAttr && Number(scoutAttr.id) === targetId) {
+    return scoutAttr;
+  }
+
+  return foundInList || foundInAll || null;
+});
+
+const interestOptions = computed(() => {
+  if (!selectedInterestAttribute.value) return [];
+  const rawVals =
+    selectedInterestAttribute.value.attribute_values ??
+    selectedInterestAttribute.value.attributeValues ??
+    [];
+  return Array.isArray(rawVals) ? rawVals : [];
 });
 
 const stageOptions = computed(() => [
   { value: '', label: t('SCOUT.FUNNEL.NONE_SELECTED') },
-  ...pipelineStages.value.map(s => ({ value: s.id, label: s.name })),
+  ...(pipelineStages.value || []).map(s => ({ value: s.id, label: s.name })),
 ]);
 
 const teamOptions = computed(() => [
   { value: '', label: t('SCOUT.FUNNEL.NO_TEAM_SELECTED') },
-  ...teams.value.map(tm => ({ value: tm.id, label: tm.name })),
+  ...(teams.value || []).map(tm => ({ value: tm.id, label: tm.name })),
 ]);
 
 watch(
@@ -73,6 +191,11 @@ watch(
     selectedAttributeIds.value = (
       newVal.required_custom_attribute_definitions || []
     ).map(a => Number(a.id));
+    interestAttributeDefinitionId.value = resolveAttributeId(
+      newVal.interest_attribute_definition_id,
+      newVal.interest_attribute_definition
+    );
+    valueByInterest.value = { ...(newVal.value_by_interest || {}) };
   },
   { deep: true }
 );
@@ -92,11 +215,34 @@ const toggleAttribute = id => {
   }
 };
 
+const updateOptionValue = (option, val) => {
+  const trimmed = typeof val === 'string' ? val.trim() : val;
+  if (trimmed === '' || trimmed === null || trimmed === undefined) {
+    const updated = { ...valueByInterest.value };
+    delete updated[option];
+    valueByInterest.value = updated;
+  } else {
+    const num = Number(trimmed);
+    valueByInterest.value = {
+      ...valueByInterest.value,
+      [option]: Number.isNaN(num) ? trimmed : num,
+    };
+  }
+};
+
 const handleSave = async () => {
   isSaving.value = true;
   saveSuccess.value = false;
   errorMessage.value = '';
   try {
+    const cleanedValueByInterest = {};
+    Object.entries(valueByInterest.value).forEach(([k, v]) => {
+      if (v !== '' && v !== null && v !== undefined) {
+        const num = Number(v);
+        cleanedValueByInterest[k] = Number.isNaN(num) ? v : num;
+      }
+    });
+
     const payload = {
       default_pipeline_stage_id: defaultStageId.value
         ? Number(defaultStageId.value)
@@ -113,6 +259,12 @@ const handleSave = async () => {
       default_country_code: defaultCountryCode.value || null,
       default_area_code: defaultAreaCode.value || null,
       required_custom_attribute_definition_ids: [...selectedAttributeIds.value],
+      interest_attribute_definition_id: interestAttributeDefinitionId.value
+        ? Number(interestAttributeDefinitionId.value)
+        : null,
+      value_by_interest: interestAttributeDefinitionId.value
+        ? cleanedValueByInterest
+        : {},
     };
 
     const { data } = await ScoutAPI.update(props.scout.id, payload);
@@ -120,6 +272,15 @@ const handleSave = async () => {
     if (data?.required_custom_attribute_definitions) {
       selectedAttributeIds.value =
         data.required_custom_attribute_definitions.map(a => Number(a.id));
+    }
+    if (data && 'interest_attribute_definition_id' in data) {
+      interestAttributeDefinitionId.value = resolveAttributeId(
+        data.interest_attribute_definition_id,
+        data.interest_attribute_definition
+      );
+    }
+    if (data?.value_by_interest) {
+      valueByInterest.value = { ...data.value_by_interest };
     }
     emit('updated', data);
     setTimeout(() => {
@@ -136,11 +297,15 @@ const handleSave = async () => {
 };
 
 onMounted(async () => {
+  fetchCustomAttributes();
   await Promise.all([
     store.dispatch('pipelineStages/fetch'),
     store.dispatch('teams/get'),
-    store.dispatch('attributes/get'),
+    store.dispatch('attributes/get', props.scout?.account_id),
   ]);
+  if (rawCustomAttributes.value.length === 0) {
+    fetchCustomAttributes();
+  }
 });
 </script>
 
@@ -301,7 +466,7 @@ onMounted(async () => {
             "
           />
           {{
-            `${attr.attribute_display_name} (${attr.attribute_model === 'contact_attribute' ? 'Contact' : 'Opportunity'})`
+            `${getAttrDisplayName(attr)} (${getAttrModel(attr) === 'contact_attribute' || getAttrModel(attr) === 1 || getAttrModel(attr) === '1' ? 'Contact' : 'Opportunity'})`
           }}
         </button>
       </div>
@@ -309,6 +474,114 @@ onMounted(async () => {
       <p v-else class="text-xs text-n-slate-10 mt-2">
         {{ t('SCOUT.FUNNEL.NO_ATTRIBUTES_AVAILABLE') }}
       </p>
+    </div>
+
+    <!-- Opportunity Value Estimation -->
+    <div class="pt-4 border-t border-n-weak">
+      <div>
+        <h3 class="text-sm font-medium text-n-slate-12">
+          {{ t('SCOUT.FUNNEL.VALUE_ESTIMATION_TITLE') }}
+        </h3>
+        <p class="text-xs text-n-slate-11 mt-0.5">
+          {{ t('SCOUT.FUNNEL.VALUE_ESTIMATION_SUBTITLE') }}
+        </p>
+      </div>
+
+      <div class="mt-3">
+        <label class="block text-xs font-medium text-n-slate-11 mb-1.5">
+          {{ t('SCOUT.FUNNEL.INTEREST_ATTRIBUTE_LABEL') }}
+        </label>
+
+        <!-- Visual chips listing the available list opportunity attributes, matching the section above -->
+        <div
+          v-if="listOpportunityAttributes.length > 0"
+          class="flex flex-wrap gap-2"
+        >
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+            :class="
+              !interestAttributeDefinitionId
+                ? 'bg-n-brand text-white shadow-sm'
+                : 'bg-n-surface-1 border border-n-weak text-n-slate-11 hover:border-n-brand/40'
+            "
+            @click="interestAttributeDefinitionId = ''"
+          >
+            <span
+              v-if="!interestAttributeDefinitionId"
+              class="i-lucide-check size-3.5"
+            />
+            {{ t('SCOUT.FUNNEL.NONE_SELECTED') }}
+          </button>
+
+          <button
+            v-for="attr in listOpportunityAttributes"
+            :key="attr.id"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+            :class="
+              Number(interestAttributeDefinitionId) === Number(attr.id)
+                ? 'bg-n-brand text-white shadow-sm'
+                : 'bg-n-surface-1 border border-n-weak text-n-slate-11 hover:border-n-brand/40'
+            "
+            @click="interestAttributeDefinitionId = String(attr.id)"
+          >
+            <span
+              v-if="Number(interestAttributeDefinitionId) === Number(attr.id)"
+              class="i-lucide-check size-3.5"
+            />
+            {{ getAttrDisplayName(attr) }}
+          </button>
+        </div>
+
+        <p v-else class="text-xs text-n-slate-10">
+          {{ t('SCOUT.FUNNEL.NO_LIST_ATTRIBUTES_AVAILABLE') }}
+        </p>
+
+        <span class="text-[11px] text-n-slate-10 mt-1.5 block">
+          {{ t('SCOUT.FUNNEL.INTEREST_ATTRIBUTE_HINT') }}
+        </span>
+      </div>
+
+      <!-- Values table for selected interest attribute options -->
+      <div v-if="selectedInterestAttribute" class="mt-4">
+        <h4 class="text-xs font-medium text-n-slate-12">
+          {{ t('SCOUT.FUNNEL.VALUE_TABLE_TITLE') }}
+        </h4>
+        <p class="text-xs text-n-slate-11 mt-0.5 mb-3">
+          {{ t('SCOUT.FUNNEL.VALUE_TABLE_SUBTITLE') }}
+        </p>
+
+        <div
+          v-if="interestOptions.length > 0"
+          class="max-w-lg border border-n-weak rounded-lg overflow-hidden divide-y divide-n-weak"
+        >
+          <div
+            class="grid grid-cols-2 bg-n-surface-1 px-3 py-2 text-xs font-medium text-n-slate-11"
+          >
+            <span>{{ t('SCOUT.FUNNEL.OPTION_HEADER') }}</span>
+            <span>{{ t('SCOUT.FUNNEL.VALUE_HEADER') }}</span>
+          </div>
+          <div
+            v-for="option in interestOptions"
+            :key="option"
+            class="grid grid-cols-2 items-center px-3 py-2 gap-3"
+          >
+            <span class="text-xs font-medium text-n-slate-12 truncate">{{
+              option
+            }}</span>
+            <div>
+              <Input
+                type="number"
+                :model-value="valueByInterest[option] ?? ''"
+                :placeholder="t('SCOUT.FUNNEL.VALUE_PLACEHOLDER')"
+                class="w-full"
+                @update:model-value="val => updateOptionValue(option, val)"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="w-full flex justify-end items-center py-4 mt-2">

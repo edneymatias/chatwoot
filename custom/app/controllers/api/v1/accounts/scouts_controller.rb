@@ -7,7 +7,8 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
   before_action :set_scout, only: %i[show update destroy sync_required_attributes]
 
   def index
-    @scouts = Current.account.scouts.includes(:inboxes, :required_custom_attribute_definitions).order(created_at: :desc)
+    @scouts = Current.account.scouts.includes(:inboxes, :required_custom_attribute_definitions, :interest_attribute_definition)
+                     .order(created_at: :desc)
     render json: @scouts.as_json(include_associations)
   end
 
@@ -65,7 +66,7 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
     allowed = %i[
       name persona debounce_delay_seconds responses_quota enabled
       default_pipeline_stage_id qualified_stage_id unqualified_stage_id rescue_stage_id handover_team_id
-      default_country_code default_area_code
+      default_country_code default_area_code interest_attribute_definition_id
     ]
 
     scout_source = params.key?(:scout) ? params.require(:scout) : params
@@ -73,7 +74,8 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
       *allowed,
       follow_up_delays_hours: [],
       required_custom_attribute_definition_ids: [],
-      audience: [:attribute_key, :filter_operator, :query_operator, { values: [] }]
+      audience: [:attribute_key, :filter_operator, :query_operator, { values: [] }],
+      value_by_interest: {}
     )
   end
 
@@ -96,7 +98,10 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
       include: {
         inboxes: { only: %i[id name channel_type] },
         required_custom_attribute_definitions: {
-          only: %i[id attribute_key attribute_display_name attribute_display_type attribute_model]
+          only: %i[id attribute_key attribute_display_name attribute_display_type attribute_model attribute_values]
+        },
+        interest_attribute_definition: {
+          only: %i[id attribute_key attribute_display_name attribute_display_type attribute_model attribute_values]
         }
       }
     }

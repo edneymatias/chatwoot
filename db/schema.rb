@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2126_09_10_145200) do
+ActiveRecord::Schema[7.2].define(version: 2126_09_11_140000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1375,9 +1375,12 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_10_145200) do
     t.bigint "rescue_stage_id"
     t.jsonb "follow_up_delays_hours", default: [2, 12, 24], null: false
     t.jsonb "audience", default: [], null: false
+    t.bigint "interest_attribute_definition_id"
+    t.jsonb "value_by_interest", default: {}, null: false
     t.index ["account_id"], name: "index_ichatr_scouts_on_account_id"
     t.index ["default_pipeline_stage_id"], name: "index_ichatr_scouts_on_default_pipeline_stage_id"
     t.index ["handover_team_id"], name: "index_ichatr_scouts_on_handover_team_id"
+    t.index ["interest_attribute_definition_id"], name: "index_ichatr_scouts_on_interest_attribute_definition_id"
     t.index ["qualified_stage_id"], name: "index_ichatr_scouts_on_qualified_stage_id"
     t.index ["rescue_stage_id"], name: "index_ichatr_scouts_on_rescue_stage_id"
     t.index ["unqualified_stage_id"], name: "index_ichatr_scouts_on_unqualified_stage_id"
@@ -1925,6 +1928,7 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_10_145200) do
   add_foreign_key "ichatr_scout_required_fields", "ichatr_scouts", column: "scout_id", on_delete: :cascade
   add_foreign_key "ichatr_scout_tools", "accounts", on_delete: :cascade
   add_foreign_key "ichatr_scouts", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scouts", "custom_attribute_definitions", column: "interest_attribute_definition_id", on_delete: :nullify
   add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "default_pipeline_stage_id", on_delete: :nullify
   add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "qualified_stage_id", on_delete: :nullify
   add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "rescue_stage_id", on_delete: :nullify

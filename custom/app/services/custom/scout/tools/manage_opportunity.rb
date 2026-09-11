@@ -65,8 +65,7 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
       status: :open
     )
 
-    referral_message = find_referral_message
-    Custom::ReferralAttributionService.process(opp, referral_message) if referral_message
+    process_referral_attribution(opp)
 
     reminder = scoped_confirmation_reminder(custom_attribute_labels(sanitized_attrs.keys, attribute_model: :opportunity_attribute))
     return "Opportunity created successfully (ID: #{opp.id}, Stage: #{default_stage_id}).#{reminder}" if stage_id.blank?
@@ -80,6 +79,7 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
   def update_opportunity(opp, stage_id: nil, **params)
     opp.attach_conversation!(conversation)
     sanitized_attrs = apply_opportunity_fields(opp, params)
+    Custom::Scout::ValueEstimationService.new(scout: scout).sync!(opp)
 
     # Persist field updates before attempting any stage transition: a rejected
     # transition (missing required fields) must not discard data the model
@@ -153,5 +153,28 @@ class Custom::Scout::Tools::ManageOpportunity < Custom::Scout::Tools::BaseTool
                 .where("(content_attributes #>> '{}')::jsonb -> 'referral' IS NOT NULL")
                 .order(created_at: :asc)
                 .first || conversation.messages.incoming.order(created_at: :asc).first
+  end
+
+  def process_referral_attribution(opp)
+    referral_message = find_referral_message
+    return unless referral_message
+
+    Custom::ReferralAttributionService.process(opp, referral_message)
+    classify_and_estimate_referral_interest(opp) if referral_message.content_attributes&.dig('referral').present?
+  end
+
+  def classify_and_estimate_referral_interest(opp)
+    return unless scout&.interest_attribute_definition
+
+    matched_interest = Custom::Scout::ReferralInterestClassifierService.new(
+      scout: scout,
+      conversation: conversation
+    ).classify(opportunity: opp)
+    return if matched_interest.blank?
+
+    interest_key = scout.interest_attribute_definition.attribute_key
+    opp.custom_attributes = (opp.custom_attributes || {}).merge(interest_key => matched_interest)
+    Custom::Scout::ValueEstimationService.new(scout: scout).sync!(opp)
+    opp.save!
   end
 end

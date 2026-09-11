@@ -114,6 +114,78 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
         end
       end
 
+      context 'with value estimation from paid referral (US2)' do
+        let(:interest_attr) do
+          CustomAttributeDefinition.create!(
+            account: account,
+            attribute_key: 'interesse',
+            attribute_display_name: 'Interesse',
+            attribute_display_type: 'list',
+            attribute_model: 'opportunity_attribute',
+            attribute_values: %w[Implante Clareamento Outro]
+          )
+        end
+
+        before do
+          scout.update!(
+            interest_attribute_definition: interest_attr,
+            value_by_interest: { 'Implante' => 2500.0, 'Clareamento' => 400.0 }
+          )
+        end
+
+        it 'pre-fills interest custom attribute and mapped opportunity value when ad content matches' do
+          classifier = instance_double(Custom::Scout::ReferralInterestClassifierService, classify: 'Implante')
+          allow(Custom::Scout::ReferralInterestClassifierService).to receive(:new).and_return(classifier)
+
+          tool.execute(action: 'create', title: 'Lead com Anúncio')
+
+          opp = Opportunity.find_by(origin_conversation_id: conversation.id)
+          expect(opp.custom_attributes['interesse']).to eq('Implante')
+          expect(opp.value).to eq(2500.0)
+        end
+
+        it 'leaves value as nil (never 0) when ad content matches an unmapped option' do
+          classifier = instance_double(Custom::Scout::ReferralInterestClassifierService, classify: 'Outro')
+          allow(Custom::Scout::ReferralInterestClassifierService).to receive(:new).and_return(classifier)
+
+          tool.execute(action: 'create', title: 'Lead com Anúncio Outro')
+
+          opp = Opportunity.find_by(origin_conversation_id: conversation.id)
+          expect(opp.custom_attributes['interesse']).to eq('Outro')
+          expect(opp.value).to be_nil
+        end
+
+        it 'leaves interest and value unset when ad content is ambiguous or classifier returns nil' do
+          classifier = instance_double(Custom::Scout::ReferralInterestClassifierService, classify: nil)
+          allow(Custom::Scout::ReferralInterestClassifierService).to receive(:new).and_return(classifier)
+
+          tool.execute(action: 'create', title: 'Lead Anúncio Ambíguo')
+
+          opp = Opportunity.find_by(origin_conversation_id: conversation.id)
+          expect(opp.custom_attributes['interesse']).to be_nil
+          expect(opp.value).to be_nil
+        end
+
+        it 'skips ad classification for organic conversations without referral metadata' do
+          organic_conv = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+          organic_conv.messages.create!(
+            account: account,
+            inbox: inbox,
+            sender: contact,
+            message_type: :incoming,
+            content: 'Olá, gostaria de informações'
+          )
+          organic_tool = described_class.new(scout, organic_conv)
+
+          expect(Custom::Scout::ReferralInterestClassifierService).not_to receive(:new)
+          organic_tool.execute(action: 'create', title: 'Lead Orgânico')
+
+          opp = Opportunity.find_by(origin_conversation_id: organic_conv.id)
+          expect(opp.custom_attributes['interesse']).to be_nil
+          expect(opp.value).to be_nil
+        end
+      end
+
       context 'when creating directly with a stage_id targeting the scout qualified stage' do
         let(:stage_qualified) { PipelineStage.create!(account: account, name: 'Qualified', position: 2) }
 
@@ -325,6 +397,69 @@ RSpec.describe Custom::Scout::Tools::ManageOpportunity do
           expect(Custom::Scout::HandoffService).not_to receive(:new)
 
           tool.execute(action: 'update', opportunity_id: existing_opportunity.id, title: 'Novo título')
+        end
+      end
+
+      context 'with value estimation sync on update (US3)' do
+        let(:interest_attr) do
+          CustomAttributeDefinition.create!(
+            account: account,
+            attribute_key: 'interesse',
+            attribute_display_name: 'Interesse',
+            attribute_display_type: 'list',
+            attribute_model: 'opportunity_attribute',
+            attribute_values: %w[Implante Clareamento Outro]
+          )
+        end
+
+        before do
+          scout.update!(
+            interest_attribute_definition: interest_attr,
+            value_by_interest: { 'Implante' => 2500.0, 'Clareamento' => 400.0 }
+          )
+        end
+
+        it 'updates opportunity value when lead answer sets a mapped interest attribute' do
+          tool.execute(
+            action: 'update',
+            opportunity_id: existing_opportunity.id,
+            custom_attributes: { 'interesse' => 'Implante' }
+          )
+
+          expect(existing_opportunity.reload.value).to eq(2500.0)
+          expect(existing_opportunity.custom_attributes['interesse']).to eq('Implante')
+        end
+
+        it 'updates opportunity value when lead answer changes interest attribute to another mapped option' do
+          existing_opportunity.update!(
+            custom_attributes: { 'interesse' => 'Implante' },
+            value: 2500.0
+          )
+
+          tool.execute(
+            action: 'update',
+            opportunity_id: existing_opportunity.id,
+            custom_attributes: { 'interesse' => 'Clareamento' }
+          )
+
+          expect(existing_opportunity.reload.value).to eq(400.0)
+          expect(existing_opportunity.custom_attributes['interesse']).to eq('Clareamento')
+        end
+
+        it 'preserves existing value when lead selects an unmapped option' do
+          existing_opportunity.update!(
+            custom_attributes: { 'interesse' => 'Implante' },
+            value: 2500.0
+          )
+
+          tool.execute(
+            action: 'update',
+            opportunity_id: existing_opportunity.id,
+            custom_attributes: { 'interesse' => 'Outro' }
+          )
+
+          expect(existing_opportunity.reload.value).to eq(2500.0)
+          expect(existing_opportunity.custom_attributes['interesse']).to eq('Outro')
         end
       end
     end

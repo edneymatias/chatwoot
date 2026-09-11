@@ -6,7 +6,12 @@ class AttributeAPI extends ApiClient {
     super('custom_attribute_definitions', { accountScoped: true });
   }
 
-  getAttributesByModel() {
+  getAttributesByModel(accountId) {
+    if (accountId) {
+      return axios.get(
+        `${this.apiVersion}/accounts/${accountId}/${this.resource}`
+      );
+    }
     return axios.get(this.url);
   }
 }

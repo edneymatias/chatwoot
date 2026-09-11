@@ -155,7 +155,18 @@
       "COUNTRY_CODE_HINT": "Adicionado quando o número do lead não começa com +.",
       "AREA_CODE_LABEL": "DDD Padrão",
       "AREA_CODE_PLACEHOLDER": "ex: 41",
-      "AREA_CODE_HINT": "Adicionado quando o número do lead vem sem DDD (comum quando o lead liga da mesma cidade). Deixe em branco para exigir o DDD em vez de adivinhar."
+      "AREA_CODE_HINT": "Adicionado quando o número do lead vem sem DDD (comum quando o lead liga da mesma cidade). Deixe em branco para exigir o DDD em vez de adivinhar.",
+      "VALUE_ESTIMATION_TITLE": "Estimativa de Valor da Oportunidade",
+      "VALUE_ESTIMATION_SUBTITLE": "Estime automaticamente o valor do negócio mapeando um atributo de qualificação de interesse para valores monetários.",
+      "INTEREST_ATTRIBUTE_LABEL": "Atributo de Interesse para Qualificação",
+      "INTEREST_ATTRIBUTE_PLACEHOLDER": "Selecione um atributo do tipo lista",
+      "INTEREST_ATTRIBUTE_HINT": "Apenas atributos de oportunidade do tipo lista podem ser selecionados.",
+      "NO_LIST_ATTRIBUTES_AVAILABLE": "Nenhum atributo de oportunidade do tipo lista disponível nas configurações da conta.",
+      "VALUE_TABLE_TITLE": "Valores por Opção de Interesse",
+      "VALUE_TABLE_SUBTITLE": "Defina o valor monetário esperado para cada opção. Opções em branco não terão valor atribuído automaticamente.",
+      "OPTION_HEADER": "Opção",
+      "VALUE_HEADER": "Valor Estimado",
+      "VALUE_PLACEHOLDER": "ex: 2500"
     },
     "AUDIENCE": {
       "TITLE": "Público-Alvo",

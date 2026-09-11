@@ -11,6 +11,7 @@ class Scout < ApplicationRecord
   belongs_to :unqualified_stage, class_name: 'PipelineStage', optional: true
   belongs_to :rescue_stage, class_name: 'PipelineStage', optional: true
   belongs_to :handover_team, class_name: 'Team', optional: true
+  belongs_to :interest_attribute_definition, class_name: 'CustomAttributeDefinition', optional: true
 
   has_many :scout_inboxes, class_name: 'ScoutInbox', dependent: :destroy
   has_many :inboxes, through: :scout_inboxes
@@ -24,6 +25,7 @@ class Scout < ApplicationRecord
   validates :responses_quota, numericality: { only_integer: true, greater_than_or_equal_to: -1 }
   validates :responses_consumed, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validate :validate_follow_up_delays_hours
+  validate :validate_interest_attribute_definition
 
   def quota_available?
     return true if responses_quota == -1
@@ -99,5 +101,12 @@ class Scout < ApplicationRecord
       delays.length == 3 &&
       delays.all? { |d| d.is_a?(Integer) && d.positive? } &&
       delays.each_cons(2).all? { |a, b| a < b }
+  end
+
+  def validate_interest_attribute_definition
+    return if interest_attribute_definition.blank?
+    return if interest_attribute_definition.list? && interest_attribute_definition.opportunity_attribute?
+
+    errors.add(:interest_attribute_definition, :invalid)
   end
 end

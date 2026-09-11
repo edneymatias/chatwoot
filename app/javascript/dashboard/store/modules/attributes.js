@@ -48,10 +48,16 @@ export const getters = {
 };
 
 export const actions = {
-  get: async function getAttributesByModel({ commit }) {
+  get: async function getAttributesByModel({ commit }, accountId) {
     commit(types.SET_CUSTOM_ATTRIBUTE_UI_FLAG, { isFetching: true });
     try {
-      const response = await AttributeAPI.getAttributesByModel();
+      let validAccountId;
+      if (typeof accountId === 'number' && accountId > 0) {
+        validAccountId = accountId;
+      } else if (typeof accountId === 'string' && Number(accountId) > 0) {
+        validAccountId = Number(accountId);
+      }
+      const response = await AttributeAPI.getAttributesByModel(validAccountId);
       commit(types.SET_CUSTOM_ATTRIBUTE, response.data);
     } catch (error) {
       // Ignore error

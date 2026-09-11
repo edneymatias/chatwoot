@@ -155,7 +155,18 @@
       "COUNTRY_CODE_HINT": "Prepended when the lead's number has no leading +.",
       "AREA_CODE_LABEL": "Default Area Code",
       "AREA_CODE_PLACEHOLDER": "e.g., 41",
-      "AREA_CODE_HINT": "Prepended when the lead's number has no area code (common when the lead is calling from the same city). Leave blank to require the area code instead of guessing it."
+      "AREA_CODE_HINT": "Prepended when the lead's number has no area code (common when the lead is calling from the same city). Leave blank to require the area code instead of guessing it.",
+      "VALUE_ESTIMATION_TITLE": "Opportunity Value Estimation",
+      "VALUE_ESTIMATION_SUBTITLE": "Automatically estimate deal value by mapping an interest qualification attribute to monetary values.",
+      "INTEREST_ATTRIBUTE_LABEL": "Interest Qualification Attribute",
+      "INTEREST_ATTRIBUTE_PLACEHOLDER": "Select a list-type attribute",
+      "INTEREST_ATTRIBUTE_HINT": "Only list-type opportunity attributes can be selected.",
+      "NO_LIST_ATTRIBUTES_AVAILABLE": "No list-type opportunity attributes available in account settings.",
+      "VALUE_TABLE_TITLE": "Interest Option Values",
+      "VALUE_TABLE_SUBTITLE": "Set expected monetary value for each option. Options left blank will not have a value automatically assigned.",
+      "OPTION_HEADER": "Option",
+      "VALUE_HEADER": "Estimated Value",
+      "VALUE_PLACEHOLDER": "e.g., 2500"
     },
     "AUDIENCE": {
       "TITLE": "Target Audience",

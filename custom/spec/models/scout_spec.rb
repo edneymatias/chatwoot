@@ -46,6 +46,12 @@ RSpec.describe Scout, type: :model do
       expect(scout.rescue_stage).to eq(stage)
     end
 
+    it 'belongs to interest_attribute_definition optionally' do
+      interest_attr = create(:custom_attribute_definition, account: account, attribute_model: :opportunity_attribute, attribute_display_type: :list)
+      scout = described_class.create!(valid_attributes.merge(interest_attribute_definition: interest_attr))
+      expect(scout.reload.interest_attribute_definition).to eq(interest_attr)
+    end
+
     it 'cascade-deletes associated ScoutInbox records on destroy' do
       scout = described_class.create!(valid_attributes)
       scout_inbox = ScoutInbox.create!(scout: scout, inbox: inbox)
@@ -119,6 +125,38 @@ RSpec.describe Scout, type: :model do
       scout = described_class.new(valid_attributes.merge(follow_up_delays_hours: %w[2 12 24]))
       expect(scout).to be_valid
       expect(scout.follow_up_delays_hours).to eq([2, 12, 24])
+    end
+
+    it 'accepts interest_attribute_definition when display type is list and model is opportunity_attribute' do
+      interest_attr = create(:custom_attribute_definition, account: account, attribute_model: :opportunity_attribute, attribute_display_type: :list)
+      scout = described_class.new(valid_attributes.merge(interest_attribute_definition: interest_attr))
+      expect(scout).to be_valid
+    end
+
+    it 'rejects interest_attribute_definition when display type is not list' do
+      text_attr = create(:custom_attribute_definition, account: account, attribute_model: :opportunity_attribute, attribute_display_type: :text)
+      scout = described_class.new(valid_attributes.merge(interest_attribute_definition: text_attr))
+      expect(scout).not_to be_valid
+      expect(scout.errors[:interest_attribute_definition]).to be_present
+    end
+
+    it 'rejects interest_attribute_definition when attribute_model is not opportunity_attribute' do
+      contact_attr = create(:custom_attribute_definition, account: account, attribute_model: :contact_attribute, attribute_display_type: :list)
+      scout = described_class.new(valid_attributes.merge(interest_attribute_definition: contact_attr))
+      expect(scout).not_to be_valid
+      expect(scout.errors[:interest_attribute_definition]).to be_present
+    end
+  end
+
+  describe 'value_by_interest' do
+    it 'defaults to an empty hash' do
+      scout = described_class.create!(valid_attributes)
+      expect(scout.value_by_interest).to eq({})
+    end
+
+    it 'persists option to value mapping' do
+      scout = described_class.create!(valid_attributes.merge(value_by_interest: { 'Implante' => 2500, 'Clareamento' => 400 }))
+      expect(scout.reload.value_by_interest).to eq({ 'Implante' => 2500, 'Clareamento' => 400 })
     end
   end
 
