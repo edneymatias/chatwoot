@@ -12,4 +12,6 @@ pnpm install --force
 
 echo "Ready to run Vite development server."
 
+bundle check || bundle install
+
 exec "$@"

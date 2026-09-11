@@ -281,3 +281,5 @@ group :development, :test do
   gem 'spring'
   gem 'spring-watcher-listen'
 end
+
+gem 'pdf-reader', '~> 2.16'

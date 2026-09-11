@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2126_09_03_100000) do
+ActiveRecord::Schema[7.2].define(version: 2126_09_10_145200) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1372,10 +1372,14 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_03_100000) do
     t.boolean "feature_response_auditor", default: false, null: false
     t.string "default_country_code", default: "+55"
     t.string "default_area_code"
+    t.bigint "rescue_stage_id"
+    t.jsonb "follow_up_delays_hours", default: [2, 12, 24], null: false
+    t.jsonb "audience", default: [], null: false
     t.index ["account_id"], name: "index_ichatr_scouts_on_account_id"
     t.index ["default_pipeline_stage_id"], name: "index_ichatr_scouts_on_default_pipeline_stage_id"
     t.index ["handover_team_id"], name: "index_ichatr_scouts_on_handover_team_id"
     t.index ["qualified_stage_id"], name: "index_ichatr_scouts_on_qualified_stage_id"
+    t.index ["rescue_stage_id"], name: "index_ichatr_scouts_on_rescue_stage_id"
     t.index ["unqualified_stage_id"], name: "index_ichatr_scouts_on_unqualified_stage_id"
   end
 
@@ -1923,6 +1927,7 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_03_100000) do
   add_foreign_key "ichatr_scouts", "accounts", on_delete: :cascade
   add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "default_pipeline_stage_id", on_delete: :nullify
   add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "qualified_stage_id", on_delete: :nullify
+  add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "rescue_stage_id", on_delete: :nullify
   add_foreign_key "ichatr_scouts", "ichatr_pipeline_stages", column: "unqualified_stage_id", on_delete: :nullify
   add_foreign_key "ichatr_scouts", "teams", column: "handover_team_id", on_delete: :nullify
   add_foreign_key "inboxes", "portals"

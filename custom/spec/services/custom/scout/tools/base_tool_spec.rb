@@ -1,0 +1,144 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe Custom::Scout::Tools::BaseTool do
+  let(:account) { create(:account) }
+  let(:inbox) { create(:inbox, account: account) }
+  let(:contact) { create(:contact, account: account) }
+  let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: inbox) }
+  let(:conversation) { create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox) }
+  let(:scout) do
+    Scout.create!(
+      account: account,
+      name: 'Test Scout',
+      enabled: true
+    )
+  end
+
+  let(:test_tool_class) do
+    Class.new(described_class) do
+      description 'Sample test tool'
+      param :query, type: :string, desc: 'Query parameter'
+
+      def name
+        'sample_test'
+      end
+
+      def execute(query:)
+        raise StandardError, 'Network connection failed' if query == 'fail'
+
+        "Executed with query: #{query}"
+      end
+    end
+  end
+
+  let(:tool) { test_tool_class.new(scout, conversation) }
+
+  describe '#call' do
+    context 'when otel is enabled' do
+      before do
+        allow(ChatwootApp).to receive(:otel_enabled?).and_return(true)
+      end
+
+      it 'wraps call in instrument_tool_call with tool name and arguments on success' do
+        expect(tool).to receive(:instrument_tool_call).with('sample_test', { query: 'hello' }).and_call_original
+
+        mock_span = instance_double(OpenTelemetry::Trace::Span)
+        allow(mock_span).to receive(:set_attribute)
+        mock_tracer = instance_double(OpenTelemetry::Trace::Tracer)
+        allow(tool).to receive(:tracer).and_return(mock_tracer)
+        allow(mock_tracer).to receive(:in_span).with('tool.sample_test').and_yield(mock_span)
+
+        result = tool.call(query: 'hello')
+        expect(result).to eq('Executed with query: hello')
+      end
+
+      it 'surfaces tool execution failures through instrument_tool_call when tool raises error' do
+        expect(tool).to receive(:instrument_tool_call).with('sample_test', { query: 'fail' }).and_call_original
+
+        expect do
+          tool.call(query: 'fail')
+        end.to raise_error(StandardError, 'Network connection failed')
+      end
+    end
+
+    context 'when otel is disabled' do
+      before do
+        allow(ChatwootApp).to receive(:otel_enabled?).and_return(false)
+      end
+
+      it 'returns tool result cleanly without invoking tracing' do
+        expect(tool).not_to receive(:tracer)
+        result = tool.call(query: 'hello')
+        expect(result).to eq('Executed with query: hello')
+      end
+    end
+  end
+
+  describe '#coerce_hash_param' do
+    it 'returns a Hash argument unchanged' do
+      expect(tool.send(:coerce_hash_param, { 'a' => 1 })).to eq({ 'a' => 1 })
+    end
+
+    it 'parses a JSON-encoded String into a Hash (observed OpenAI function-calling behavior for hash-typed params)' do
+      expect(tool.send(:coerce_hash_param, '{"origem_da_oportunidade":"Orgânico","interesse":"Outros"}'))
+        .to eq({ 'origem_da_oportunidade' => 'Orgânico', 'interesse' => 'Outros' })
+    end
+
+    it 'returns an empty Hash for a malformed JSON String instead of raising' do
+      expect(tool.send(:coerce_hash_param, '{not valid json')).to eq({})
+    end
+
+    it 'returns an empty Hash for nil' do
+      expect(tool.send(:coerce_hash_param, nil)).to eq({})
+    end
+
+    it 'converts an ActionController::Parameters-like argument via to_unsafe_h' do
+      params_like = ActionController::Parameters.new({ 'a' => 1 })
+      expect(tool.send(:coerce_hash_param, params_like)).to eq({ 'a' => 1 })
+    end
+  end
+
+  describe '#custom_attribute_labels' do
+    before do
+      CustomAttributeDefinition.create!(
+        account: account,
+        attribute_key: 'budget',
+        attribute_display_name: 'Orçamento',
+        attribute_display_type: 'currency',
+        attribute_model: 'opportunity_attribute'
+      )
+    end
+
+    it 'returns the display name for a known key scoped to the given attribute_model' do
+      expect(tool.send(:custom_attribute_labels, %w[budget], attribute_model: :opportunity_attribute)).to eq(['Orçamento'])
+    end
+
+    it 'falls back to a humanized version of the key when no definition matches' do
+      expect(tool.send(:custom_attribute_labels, %w[decision_maker], attribute_model: :opportunity_attribute)).to eq(['Decision maker'])
+    end
+
+    it 'does not resolve a definition scoped to a different attribute_model' do
+      expect(tool.send(:custom_attribute_labels, %w[budget], attribute_model: :contact_attribute)).to eq(['Budget'])
+    end
+
+    it 'returns an empty array for blank keys' do
+      expect(tool.send(:custom_attribute_labels, [], attribute_model: :opportunity_attribute)).to eq([])
+      expect(tool.send(:custom_attribute_labels, nil, attribute_model: :opportunity_attribute)).to eq([])
+    end
+  end
+
+  describe '#scoped_confirmation_reminder' do
+    it 'returns a blank string when field_labels is blank' do
+      expect(tool.send(:scoped_confirmation_reminder, [])).to eq('')
+      expect(tool.send(:scoped_confirmation_reminder, nil)).to eq('')
+    end
+
+    it 'builds a reminder naming only the given fields and forbidding repetition of earlier turns' do
+      reminder = tool.send(:scoped_confirmation_reminder, %w[Orçamento Interesse])
+      expect(reminder).to include('Orçamento, Interesse')
+      expect(reminder).to include('não repita dados já confirmados em mensagens anteriores desta conversa')
+    end
+  end
+end

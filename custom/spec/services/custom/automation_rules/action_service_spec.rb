@@ -125,4 +125,54 @@ RSpec.describe Custom::AutomationRules::ActionService do
       end
     end
   end
+
+  describe '#create_opportunity' do
+    let(:rule) { create(:automation_rule, account: account) }
+    let(:action_service) { AutomationRules::ActionService.new(rule, account, test_conversation) }
+
+    context 'when contact has zero open deals' do
+      let(:new_contact) { create(:contact, account: account) }
+      let(:test_conversation) { create(:conversation, account: account, contact: new_contact) }
+
+      it 'creates a new opportunity for the conversation without private note' do
+        expect do
+          action_service.send(:create_opportunity, [stage.id, nil])
+        end.to change(Opportunity, :count).by(1)
+
+        created_opp = Opportunity.where(contact_id: new_contact.id, status: :open).last
+        expect(created_opp.origin_conversation_id).to eq(test_conversation.id)
+        expect(created_opp.pipeline_stage_id).to eq(stage.id)
+        expect(created_opp.title).to eq("Oportunidade ##{test_conversation.display_id}")
+        expect(test_conversation.messages.where(private: true)).to be_empty
+      end
+
+      it 'assigns same assignee as conversation when requested' do
+        agent = create(:user, account: account)
+        test_conversation.update!(assignee: agent)
+
+        action_service.send(:create_opportunity, [stage.id, 'same_as_conversation'])
+
+        created_opp = Opportunity.where(contact_id: new_contact.id, status: :open).last
+        expect(created_opp.assignee_id).to eq(agent.id)
+      end
+    end
+
+    context 'when contact already has one or more open deals' do
+      let(:test_conversation) { create(:conversation, account: account, contact: contact) }
+
+      it 'does not create a duplicate deal or modify existing, and adds an ambiguity private note' do
+        expect do
+          action_service.send(:create_opportunity, [stage.id, nil])
+        end.not_to change(Opportunity, :count)
+
+        opportunity.reload
+        expect(opportunity.title).to eq('Test Opportunity')
+
+        private_note = test_conversation.messages.where(private: true).last
+        expect(private_note).to be_present
+        expect(private_note.content).to include('⚠️ [Continuidade de Oportunidade]')
+        expect(private_note.content).to include('1 open opportunity candidate(s)')
+      end
+    end
+  end
 end

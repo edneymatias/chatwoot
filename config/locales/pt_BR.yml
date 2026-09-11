@@ -61,6 +61,13 @@ pt_BR:
     pipeline_stage_required_field:
       already_required: 'já é obrigatório neste estágio do funil'
       must_be_opportunity_attribute: 'deve ser um atributo de oportunidade'
+    scout_required_field:
+      already_required: 'já está selecionado para este Scout'
+      must_be_contact_or_opportunity_attribute: 'deve ser um atributo de Contato ou Oportunidade'
+    scout_knowledge_source:
+      invalid_url: 'deve ser uma URL HTTP(S) válida'
+      must_be_pdf: 'deve ser um documento PDF'
+      file_too_large: 'deve ter menos de 10MB'
     pipeline_closing_required_field:
       already_required: 'já é obrigatório para este fechamento'
       not_an_opportunity_attribute: 'deve ser um atributo de oportunidade'
@@ -284,6 +291,10 @@ pt_BR:
   conversations:
     captain:
       handoff: 'Transferindo para que outro agente dê assistência.'
+    scout:
+      handoff: 'Transferindo para que outro agente dê assistência.'
+      follow_up_nudge: 'Passando para ver se você tem alguma dúvida ou gostaria de continuar nosso atendimento!'
+      follow_up_handoff: 'Estou conectando você com um membro da nossa equipe para dar continuidade ao seu atendimento.'
     messages:
       instagram_story_content: '%{story_sender} mencionou você na conversa: '
       instagram_deleted_story_content: Este Story não está mais disponível.
@@ -658,4 +669,18 @@ pt_BR:
         button: 'Reenviar e-mail de confirmação'
         sent: 'E-mail de confirmação enviado.'
         already_confirmed: 'O usuário já está confirmado.'
+  activerecord:
+    errors:
+      models:
+        scout_tool:
+          attributes:
+            auth_type:
+              inclusion: 'não está incluído na lista de tipos de autenticação válidos (none, bearer, basic, api_key)'
+            auth_headers:
+              bearer_token_required: 'deve incluir um token para autenticação Bearer'
+              basic_credentials_required: 'deve incluir usuário e senha para autenticação Basic'
+              api_key_credentials_required: 'deve incluir nome do cabeçalho e valor para autenticação API Key'
+            parameter_schema:
+              invalid_property_name: "contém nome de propriedade inválido: '%{name}'. Apenas caracteres alfanuméricos e sublinhados são permitidos."
+              not_valid_json: 'não é um JSON válido'
 
