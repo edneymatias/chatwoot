@@ -1,11 +1,5 @@
 class Whatsapp::LiquidTemplateProcessorService
-  LIQUID_EXPRESSION = /\{\{\s*(.+?)\s*\}\}/
-
-  module JsonEscapeFilter
-    def json_escape(input)
-      input.to_s.to_json[1..-2]
-    end
-  end
+  LIQUID_EXPRESSION = /\{\{|\{%/
 
   pattr_initialize [:campaign!, :contact!]
 
@@ -26,12 +20,24 @@ class Whatsapp::LiquidTemplateProcessorService
   private
 
   def render_liquid(processed_params)
-    raw = processed_params.to_json
-    rewritten = raw.gsub(LIQUID_EXPRESSION) { "{{ #{Regexp.last_match(1)} | json_escape }}" }
-    rendered = Liquid::Template.parse(rewritten).render!(drops, filters: [JsonEscapeFilter])
-    JSON.parse(rendered)
-  rescue Liquid::Error, JSON::ParserError
+    render_value(processed_params)
+  rescue Liquid::Error
     processed_params
+  end
+
+  def render_value(value)
+    case value
+    when Hash then value.transform_values { |v| render_value(v) }
+    when Array then value.map { |v| render_value(v) }
+    when String then render_string(value)
+    else value
+    end
+  end
+
+  def render_string(string)
+    return string unless string.match?(LIQUID_EXPRESSION)
+
+    Liquid::Template.parse(string).render!(drops)
   end
 
   def drops
