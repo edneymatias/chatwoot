@@ -1,3 +1,9 @@
+## [4.17.1-ichatr.4] - 2026-09-15
+
+### 🐛 Bug Fixes
+
+- *(whatsapp)* Render liquid template params without JSON-escaping filter arguments
+
 ## [4.17.1-ichatr.3] - 2026-09-04
 
 ### 🚀 Features
