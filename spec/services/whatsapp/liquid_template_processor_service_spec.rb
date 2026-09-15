@@ -275,6 +275,28 @@ describe Whatsapp::LiquidTemplateProcessorService do
       end
     end
 
+    context 'with a filter argument containing quotes (e.g. date format)' do
+      let(:contact) do
+        create(:contact, account: account, name: 'John Doe', custom_attributes: { 'ultima_visita' => '2026-01-15' })
+      end
+      let(:template_params) do
+        {
+          'name' => 'test_template',
+          'processed_params' => {
+            'body' => {
+              'visita' => '{{ contact.custom_attribute.ultima_visita | date: "%d/%m/%Y" }}'
+            }
+          }
+        }
+      end
+
+      it 'applies the filter using the quoted argument instead of dropping it' do
+        result = service.process_template_params(template_params)
+
+        expect(result['processed_params']['body']['visita']).to eq('15/01/2026')
+      end
+    end
+
     context 'with invalid liquid syntax' do
       let(:template_params) do
         {

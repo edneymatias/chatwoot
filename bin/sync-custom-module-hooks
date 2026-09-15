@@ -113,6 +113,24 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  anchor: "    performed_by_automation?(event) || message.activity? || message.auto_reply_email?\n  end\nend",
                  insert: "\nAutomationRuleListener.prepend_mod_with('AutomationRuleListener')"
                },
+               # Upstream `Whatsapp::LiquidTemplateProcessorService#render_liquid` JSON-round-tripped
+               # the whole processed_params tree before Liquid-parsing it, so quoted filter args (e.g.
+               # `date: "%d/%m/%Y"`) got their quotes escaped to `\"` by `.to_json`, corrupting Liquid's
+               # string-literal syntax and silently dropping the filter argument. Fixed upstream (accepted
+               # direct-upstream patch, see AGENTS.md "Direct Upstream Patches") by rendering the Hash/Array
+               # tree recursively instead of round-tripping through JSON text.
+               {
+                 file: 'app/services/whatsapp/liquid_template_processor_service.rb',
+                 anchor: "  LIQUID_EXPRESSION = /\\{\\{\\s*(.+?)\\s*\\}\\}/\n\n  module JsonEscapeFilter\n    def json_escape(input)\n      input.to_s.to_json[1..-2]\n    end\n  end",
+                 insert: '  LIQUID_EXPRESSION = /\\{\\{|\\{%/',
+                 replace: true
+               },
+               {
+                 file: 'app/services/whatsapp/liquid_template_processor_service.rb',
+                 anchor: "  def render_liquid(processed_params)\n    raw = processed_params.to_json\n    rewritten = raw.gsub(LIQUID_EXPRESSION) { \"{{ \#{Regexp.last_match(1)} | json_escape }}\" }\n    rendered = Liquid::Template.parse(rewritten).render!(drops, filters: [JsonEscapeFilter])\n    JSON.parse(rendered)\n  rescue Liquid::Error, JSON::ParserError\n    processed_params\n  end",
+                 insert: "  def render_liquid(processed_params)\n    render_value(processed_params)\n  rescue Liquid::Error\n    processed_params\n  end\n\n  def render_value(value)\n    case value\n    when Hash then value.transform_values { |v| render_value(v) }\n    when Array then value.map { |v| render_value(v) }\n    when String then render_string(value)\n    else value\n    end\n  end\n\n  def render_string(string)\n    return string unless string.match?(LIQUID_EXPRESSION)\n\n    Liquid::Template.parse(string).render!(drops)\n  end",
+                 replace: true
+               },
                {
                  file: 'app/javascript/dashboard/i18n/locale/en/settings.json',
                  anchor: '  "SIDEBAR": {',

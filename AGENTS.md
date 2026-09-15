@@ -26,6 +26,19 @@ on this host is the `podman-docker` shim, transparently execing `podman`/`podman
   on the host: `docker compose exec vite git commit -m "..."`. The container also has no git
   identity configured (no host `~/.gitconfig` mount), so pass it inline the first time or whenever
   it's missing: `docker compose exec vite git -c user.name="Your Name" -c user.email="you@example.com" commit -m "..."`.
+- **Never restore a raw production dump directly into `chatwoot_dev`/`chatwoot_test`.** A prod
+  copy can carry externally-managed Postgres objects (e.g. n8n's Postgres-trigger node creates
+  LISTEN/NOTIFY triggers/functions directly on tables like `channel_api`) that don't come from
+  our migrations. `db/schema.rb` is auto-regenerated from whichever database `db:migrate`/
+  `db:schema:dump` last ran against, so a contaminated `chatwoot_dev` silently reintroduces those
+  objects into the committed schema the next time anyone migrates — even though nothing about it
+  looks like a real schema change (this happened twice: commit `125778020f` and an uncommitted
+  working-tree leak from a stale `chatwoot_dev` cleaned up 2026-09-15). If you need real prod data
+  locally, restore it into an isolated, disposable database name (never `chatwoot_dev`/
+  `chatwoot_test`), or strip trigger/function objects not defined by our migrations
+  (`SELECT tgname FROM pg_trigger WHERE ...`) before pointing Rails at it. `spec/config/
+  schema_spec.rb` fails the suite immediately if `db/schema.rb` ever picks up an `n8n` reference
+  again — treat that failure as "go clean the dev DB", not "edit schema.rb and move on".
 
 ## Build / Test / Lint
 
@@ -136,6 +149,33 @@ commands with `docker compose exec <service>`.
      file the fork patches, or extend the script's exclusion list if the flagged path is a
      wholesale fork-original file (no upstream equivalent to protect). Never defer this to "a
      future cleanup" — the commits that create a gap are also the ones responsible for closing it.
+
+## Direct Upstream Patches
+
+- **Default is still: never edit upstream/Enterprise files directly.** Use `custom/` overlays and
+  `prepend_mod_with`/`include_mod_with` extension points (see Enterprise Edition Notes below).
+  Direct edits to an unmodified upstream file are a deliberate, tracked exception — not the norm.
+- **Exception:** a direct edit to an upstream/Enterprise file is acceptable only when (a) the fix is
+  to logic *internal* to an existing upstream method (not addable via `prepend_mod_with`, which can
+  only wrap/override public entry points, not rewrite a private method body in place) **and** (b) it
+  went through explicit prior analysis and was explicitly accepted by the user in-session — never
+  applied unilaterally.
+- **Every accepted direct-upstream edit MUST get a MANIFEST entry in `bin/sync-custom-module-hooks`**,
+  even though the change lives in the upstream file itself rather than in `custom/`/`enterprise/`:
+  - `anchor`: the exact original (pre-patch) upstream text being replaced.
+  - `insert`: the patched text.
+  - `replace: true`.
+  - A comment above the entry explaining *why* upstream's own logic was wrong and what the patch does,
+    so a future sync can judge whether the upstream fix landed the same way (in which case the entry
+    can be retired) or still needs to be reapplied.
+  This makes the patch visible to `--check` (flags `missing` if a merge reverts it, and `apply`
+  reinserts it automatically) and to `--audit` (the file shows as `covered`, not a silent `gap`).
+  A direct-upstream edit with no MANIFEST entry is incomplete work, not a smaller change.
+- At each upstream sync, treat every `covered` file that came from this mechanism as a merge
+  conflict candidate: if upstream touched the same method in the new tag, resolve the conflict by
+  re-deriving the fix against upstream's new version (don't blindly take either side), then update
+  the MANIFEST `anchor`/`insert` to match. If upstream shipped an equivalent fix itself, delete the
+  MANIFEST entry instead of carrying dead patch logic forward.
 
 ## Fork Versioning Scheme
 
