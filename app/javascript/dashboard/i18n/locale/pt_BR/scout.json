@@ -300,6 +300,69 @@
       "TITLE": "Configuração de LLM Obrigatória",
       "DESCRIPTION": "Antes de criar Scouts ou configurar ferramentas, um administrador precisa configurar o provedor de LLM e a chave de API da conta.",
       "BUTTON": "Configurar Provedor de IA"
+    },
+    "OVERVIEW": {
+      "TITLE": "Visão Geral do Scout",
+      "METRICS": {
+        "TOTAL_HANDLED": "Total Atendidas",
+        "QUALIFICATION_RATE": "Taxa de Qualificação",
+        "DISQUALIFICATION_RATE": "Taxa de Desqualificação",
+        "ABANDONMENT_RATE": "Taxa de Abandono",
+        "AVG_MESSAGES": "Média de Msgs / Conversa"
+      },
+      "PIPELINE_DISTRIBUTION": "Distribuição no Funil",
+      "PIPELINE_DISTRIBUTION_DESCRIPTION": "Distribuição de conversas e oportunidades atendidas pelas etapas do funil.",
+      "INTEREST_BY_STAGE": "Interesse por Etapa",
+      "INTEREST_BY_STAGE_DESCRIPTION": "Distribuição dos interesses e produtos dos leads pelas etapas do funil.",
+      "INTEREST_UNSPECIFIED": "Não especificado",
+      "TABLES": {
+        "STAGE": "Etapa",
+        "COUNT": "Total",
+        "PERCENTAGE": "Proporção",
+        "INTERESTS": "Distribuição de Interesses",
+        "TOTAL": "Total"
+      },
+      "INTEREST_BY_STAGE_NAME": "{name} por Etapa",
+      "INTEREST_NOT_CONFIGURED_DESC": "Configure um campo de interesse para acompanhar os interesses dos leads pelo funil de vendas.",
+      "CONFIGURE_INTEREST_BTN": "Configurar Campo de Interesse",
+      "EMPTY_STATE": {
+        "TITLE": "Nenhuma Oportunidade Atendida",
+        "DESCRIPTION": "Nenhuma oportunidade foi atendida por este Scout no período selecionado."
+      },
+      "RECENT_CONVERSATIONS": {
+        "TITLE": "Conversas Recentes",
+        "SUBTITLE": "Conversas atendidas pelo Scout no período selecionado.",
+        "COLUMNS": {
+          "CONTACT": "Contato",
+          "START_TIME": "Início",
+          "DURATION": "Duração",
+          "MESSAGES": "Mensagens",
+          "STATUS": "Status"
+        },
+        "FILTERS": {
+          "ALL": "Todas",
+          "QUALIFIED": "Qualificadas",
+          "DISQUALIFIED": "Desqualificadas",
+          "ABANDONED": "Abandonadas",
+          "IN_PROGRESS": "Em Andamento",
+          "TRANSFERRED_WITHOUT_OPPORTUNITY": "Transferidas sem oportunidade"
+        },
+        "STATUS_BADGES": {
+          "QUALIFIED": "Qualificada",
+          "DISQUALIFIED": "Desqualificada",
+          "ABANDONED": "Abandonada",
+          "IN_PROGRESS": "Em Andamento",
+          "TRANSFERRED_WITHOUT_OPPORTUNITY": "Transferida sem oportunidade"
+        },
+        "EMPTY_STATE": {
+          "TITLE": "Nenhuma Conversa Encontrada",
+          "DESCRIPTION": "Nenhuma conversa corresponde aos filtros ou período selecionados."
+        },
+        "ERRORS": {
+          "INVALID_ID": "Não foi possível abrir a conversa. O ID da conversa está ausente ou é inválido.",
+          "POPUP_BLOCKED": "Não foi possível abrir a conversa. A janela popup foi bloqueada pelo seu navegador."
+        }
+      }
     }
   }
 }

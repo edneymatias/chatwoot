@@ -300,6 +300,69 @@
       "TITLE": "LLM Configuration Required",
       "DESCRIPTION": "Before creating Scouts or configuring tools, an administrator must configure the account LLM provider and API key.",
       "BUTTON": "Configure LLM Settings"
+    },
+    "OVERVIEW": {
+      "TITLE": "Scout Overview",
+      "METRICS": {
+        "TOTAL_HANDLED": "Total Handled",
+        "QUALIFICATION_RATE": "Qualification Rate",
+        "DISQUALIFICATION_RATE": "Disqualification Rate",
+        "ABANDONMENT_RATE": "Abandonment Rate",
+        "AVG_MESSAGES": "Avg Messages / Conv"
+      },
+      "PIPELINE_DISTRIBUTION": "Pipeline Stage Distribution",
+      "PIPELINE_DISTRIBUTION_DESCRIPTION": "Distribution of handled conversations and opportunities across pipeline stages.",
+      "INTEREST_BY_STAGE": "Interest by Stage",
+      "INTEREST_BY_STAGE_DESCRIPTION": "Distribution of lead interests and products across pipeline stages.",
+      "INTEREST_UNSPECIFIED": "Unspecified",
+      "TABLES": {
+        "STAGE": "Stage",
+        "COUNT": "Count",
+        "PERCENTAGE": "Share",
+        "INTERESTS": "Interests Breakdown",
+        "TOTAL": "Total"
+      },
+      "INTEREST_BY_STAGE_NAME": "{name} by Stage",
+      "INTEREST_NOT_CONFIGURED_DESC": "Configure an interest field to track lead interests across your sales funnel.",
+      "CONFIGURE_INTEREST_BTN": "Configure Interest Field",
+      "EMPTY_STATE": {
+        "TITLE": "No Handled Opportunities",
+        "DESCRIPTION": "No opportunities were handled by this Scout in the selected period."
+      },
+      "RECENT_CONVERSATIONS": {
+        "TITLE": "Recent Conversations",
+        "SUBTITLE": "Conversations handled by Scout in the selected period.",
+        "COLUMNS": {
+          "CONTACT": "Contact",
+          "START_TIME": "Start Time",
+          "DURATION": "Duration",
+          "MESSAGES": "Messages",
+          "STATUS": "Status"
+        },
+        "FILTERS": {
+          "ALL": "All",
+          "QUALIFIED": "Qualified",
+          "DISQUALIFIED": "Disqualified",
+          "ABANDONED": "Abandoned",
+          "IN_PROGRESS": "In Progress",
+          "TRANSFERRED_WITHOUT_OPPORTUNITY": "Transferred without opportunity"
+        },
+        "STATUS_BADGES": {
+          "QUALIFIED": "Qualified",
+          "DISQUALIFIED": "Disqualified",
+          "ABANDONED": "Abandoned",
+          "IN_PROGRESS": "In Progress",
+          "TRANSFERRED_WITHOUT_OPPORTUNITY": "Transferred without opportunity"
+        },
+        "EMPTY_STATE": {
+          "TITLE": "No Conversations Found",
+          "DESCRIPTION": "No conversations match the selected filters or period."
+        },
+        "ERRORS": {
+          "INVALID_ID": "Unable to open conversation. The conversation ID is missing or invalid.",
+          "POPUP_BLOCKED": "Unable to open conversation. Popup window was blocked by your browser."
+        }
+      }
     }
   }
 }

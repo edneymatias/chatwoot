@@ -1,15 +1,22 @@
 <!--
 Sync Impact Report
-Version change: 1.1.1 → 1.2.0
-Modified principles: none
-Added sections: none (expanded Personalization Boundaries translation guideline to align with fork-wide AGENTS.md rule)
+Version change: 1.2.0 → 1.3.0
+Modified principles: none removed or renumbered
+Added principles: VI. Test-Driven Development (NON-NEGOTIABLE)
+Modified sections: Development Workflow & Quality Gates — replaced the "avoid writing specs
+  unless explicitly asked" bullet, which contradicted the new TDD principle, with a rule that a
+  genuine behavior change ships with a test that failed first
 Removed sections: none
-Rationale: The fork does not use Crowdin; all Kanban/Opportunities module features and fork-specific changes maintain synchronous en and pt-BR translations per project guidelines.
+Rationale: /speckit.tdd.setup detected and verified this fork's dual test stack (RSpec + Vitest,
+  profile at .specify/memory/tdd-profile.md) and found the constitution had no TDD principle,
+  plus one direct conflict with TDD in the existing Quality Gates guidance. Resolved in favor of
+  TDD per explicit user decision.
 Templates requiring updates:
   - .specify/templates/plan-template.md ✅ no edit needed
   - .specify/templates/spec-template.md ✅ no edit needed
   - .specify/templates/tasks-template.md ✅ no edit needed
   - .specify/templates/checklist-template.md ✅ no edit needed
+  - .specify/extensions/tdd/** ✅ already carries the TDD workflow this principle points at
 Follow-up TODOs: none
 -->
 
@@ -92,6 +99,36 @@ files directly.
 **Rationale**: Chatwoot's enterprise overlay is a first-class part of the architecture; ignoring
 it silently breaks the enterprise build even when the OSS build looks fine.
 
+### VI. Test-Driven Development (NON-NEGOTIABLE)
+Every behavior change — new feature, bugfix, or behavioral refactor — is driven by a test that
+failed first, for the right reason, before the code that makes it pass exists. This applies to
+both of this fork's stacks: RSpec under `spec/` and `custom/spec/`, and Vitest under
+`app/javascript/`; the verified commands and conventions for each live in
+`.specify/memory/tdd-profile.md`.
+- A test exists and has been observed failing before its implementation lands. Work done through
+  `/speckit.tdd.*` records that failure in `specs/<feature>/tdd/cycle-log.md`; work done outside
+  that workflow must still make the red-then-green sequence demonstrable (commit order, or the
+  session transcript).
+- Tests are never weakened, skipped, deleted, or filtered out to reach green. When a test and the
+  code disagree, the feature's `spec.md` — or, absent one, the stated requirement — decides which
+  is wrong.
+- Every acceptance criterion in a feature's `spec.md` has at least one test exercising the real
+  entry point (an RSpec `type: :request` spec, or a Vitest component/store test), not only a test
+  of an internal implementation detail.
+- Refactoring happens only on a green suite and never changes a test in the same commit as a
+  behavior change.
+- Test strength is verified, not assumed. Neither RSpec nor Vitest has a mutation-testing tool
+  wired up in this repo; until one is added, a deliberate-mutant spot check on the highest-risk
+  changed behavior substitutes for it (see `.specify/memory/tdd-profile.md`).
+- This supersedes the former blanket "avoid writing specs unless explicitly asked" guidance: a
+  test accompanying a genuine behavior change is expected, not optional. Restraint still applies
+  to code the change does not touch — do not add specs for untouched behavior as a drive-by.
+**Rationale**: This fork has no host-level toolchain and no CI safety net beyond the suites
+themselves (rootless Podman, container-only dev). A behavior change exercised once by hand in dev
+is a regression waiting for the next upstream sync; a test that failed first and now passes is
+the only durable evidence the behavior was ever built correctly, and the only thing that catches
+it breaking again when `develop` is merged in.
+
 ## Personalization Boundaries
 
 Personal customizations (branding, workflow tweaks, integrations, UI adjustments) are welcome,
@@ -117,8 +154,10 @@ but MUST be built so they can be toggled or lifted out without surgery on core f
 - Follow the repo's commit message convention (Conventional Commits: `type(scope): subject`) and
   PR description format (user-facing summary, `Closes`, `How to test`/`How to reproduce`, optional
   `What changed`) as already documented for this project.
-- Avoid writing specs unless explicitly asked; when specs are written, follow the existing spec
-  conventions (favor `let` and per-example setup over bespoke helpers).
+- Every genuine behavior change ships with a test that failed first (Principle VI); when specs
+  are written, follow the existing conventions (favor `let` and per-example setup over bespoke
+  helpers) recorded in `.specify/memory/tdd-profile.md`. Do not add specs for behavior the change
+  does not touch.
 - Any exploratory or experimental environment setup (e.g., local Docker/Podman overrides,
   `.env` values, SELinux relabeling) that diverges from the documented dev workflow stays local
   and untracked (e.g., `docker-compose.override.yaml`) — it is not committed as if it were the
@@ -143,4 +182,4 @@ Every plan or feature produced under Spec Kit MUST pass a Constitution Check aga
 principles above before implementation begins; violations must be justified explicitly (see the
 Complexity Tracking section of the plan template) or the approach must be revised.
 
-**Version**: 1.2.0 | **Ratified**: 2026-07-29 | **Last Amended**: 2026-08-14
+**Version**: 1.3.0 | **Ratified**: 2026-07-29 | **Last Amended**: 2026-09-13

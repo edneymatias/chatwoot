@@ -123,26 +123,31 @@ RSpec.describe Custom::Scout::SystemPromptsService do
       expect(prompt).to include('nunca faça perguntas ao transferir')
     end
 
-    it 'instructs immediate handover_to_human upon recognizing existing customer or ongoing treatment without self-resolution' do
+    it 'instructs immediate handover_to_human upon recognizing existing customer with product or service in progress' do
       expect(prompt).to include('Reconhecimento de intenção fora de prospecção:')
-      expect(prompt).to include('afirma já ser cliente, menciona tratamento em andamento')
+      expect(prompt).to include('já é cliente com um produto ou serviço em andamento')
       expect(prompt).to include('não tente resolver a questão por conta própria, mesmo que pareça simples')
       expect(prompt).to include('Utilize `handover_to_human` imediatamente')
       expect(prompt.index('Fallback para humano:')).to be < prompt.index('Reconhecimento de intenção fora de prospecção:')
       expect(prompt.index('Reconhecimento de intenção fora de prospecção:')).to be < prompt.index('Idioma e Estilo:')
     end
 
-    it 'instructs immediate handover_to_human for reschedule, cancellation, or complaint requests without self-resolution' do
+    it 'instructs immediate handover_to_human for change, cancel, or complaint requests without self-resolution' do
       expect(prompt).to include('Reconhecimento de intenção fora de prospecção:')
-      expect(prompt).to include('quer reagendar/cancelar, tem uma reclamação')
+      expect(prompt).to include('quer alterar ou cancelar algo que já existe (não uma nova solicitação), tem uma reclamação')
       expect(prompt).to include('não tente resolver a questão por conta própria, mesmo que pareça simples')
       expect(prompt).to include('Utilize `handover_to_human` imediatamente')
     end
 
-    it 'instructs immediate handover_to_human when contact answers triage question with quick question unrelated to evaluation' do
+    it 'instructs immediate handover_to_human for purely informational question with no signal of new interest' do
       expect(prompt).to include('Reconhecimento de intenção fora de prospecção:')
-      expect(prompt).to include('responde a uma pergunta de triagem indicando ser "só uma dúvida rápida" não relacionada a agendar avaliação')
+      expect(prompt).to include('faz uma pergunta puramente informativa sem nenhum sinal de interesse em um novo produto ou serviço')
       expect(prompt).to include('Utilize `handover_to_human` imediatamente')
+    end
+
+    it 'uses domain-agnostic wording in non-prospecting guardrail without niche or segment vocabulary' do
+      guardrail = prompt[/^- Reconhecimento de intenção fora de prospecção:.*$/]
+      expect(guardrail).not_to match(/odont|dental|clinic|avaliação (odont|dentária)|consulta (odont|médica)/i)
     end
 
     it 'instructs that external customer status lookup is optional reinforcement and never blocks handoff' do
@@ -151,12 +156,48 @@ RSpec.describe Custom::Scout::SystemPromptsService do
       expect(prompt).to include('um sinal claro na própria fala do cliente já é suficiente para transferir, sem exigir confirmação do ERP')
     end
 
+    it 'specifies exhaustive non-prospecting criteria introduced by apenas quando and explicitly carves out routine requests' do
+      expect(prompt).to include(
+        '- Reconhecimento de intenção fora de prospecção: Se em qualquer momento ficar claro que o contato ' \
+        'não busca uma nova oportunidade comercial — apenas quando:'
+      )
+      expect(prompt).not_to include('— ex.:')
+      expect(prompt).to include(
+        'Uma nova solicitação de baixa complexidade, preventiva, recorrente ou sem um problema específico descrito ' \
+        'continua sendo uma oportunidade comercial nova e válida — siga o funil de qualificação normalmente nesses casos.'
+      )
+    end
+
+    it 'phrases the routine-request qualification unconditionally without turn or phrasing dependency' do
+      expect(prompt).not_to include('se mencionado na primeira resposta')
+      expect(prompt).not_to include('se esclarecido depois')
+      expect(prompt).not_to include('dependendo do turno')
+      expect(prompt).not_to include('responde a uma pergunta de triagem')
+    end
+
     it 'wraps operator custom instructions in subordinate tags with override prohibition' do
       expect(prompt).to include('[Instruções Personalizadas da Conta]')
       expect(prompt).to include('<account_custom_instructions>')
       expect(prompt).to include('Foque em qualificar para o plano Enterprise.')
       expect(prompt).to include('</account_custom_instructions>')
-      expect(prompt).to include('Siga-as apenas quando não conflitarem com o formato de resposta JSON')
+      expect(prompt).to include('Siga-as, exceto quando conflitarem com o formato de resposta JSON')
+    end
+
+    it 'allows persona instructions to refine only the non-prospecting-intent guardrail even on subject-matter overlap' do
+      expect(prompt).to include(
+        'A diretriz "Reconhecimento de intenção fora de prospecção" é a única exceção: ' \
+        'estas instruções podem refinar ou expandir o que conta como uma nova oportunidade comercial válida ' \
+        'especificamente nesse critério, mesmo que pareçam, à primeira vista, tocar no mesmo assunto dessa diretriz.'
+      )
+    end
+
+    it 'preserves non-negotiable guardrails and forbids altering any other guardrail from persona instructions' do
+      expect(prompt).to include(
+        'Siga-as, exceto quando conflitarem com o formato de resposta JSON, com a exigência de responder exclusivamente ' \
+        'a partir do contexto fornecido, ou com as diretrizes inegociáveis de segurança e resposta descritas acima — ' \
+        'no mínimo, Anti-alucinação, Anti-falsa-promessa e Confirmação de ação.'
+      )
+      expect(prompt).to include('Nenhuma outra diretriz da seção acima pode ser alterada por estas instruções.')
     end
 
     it 'repeats the no-question handoff closing reminder right before the response format section, for recency' do

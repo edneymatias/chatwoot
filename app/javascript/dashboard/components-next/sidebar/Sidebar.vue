@@ -786,6 +786,12 @@ const menuItems = computed(() => {
             icon: 'i-lucide-bot',
             children: [
               {
+                name: 'Scout Overview',
+                label: t('SIDEBAR.SCOUT_OVERVIEW'),
+                activeOn: ['scout_overview'],
+                to: accountScopedRoute('scout_overview'),
+              },
+              {
                 name: 'Scout Agents',
                 label: t('SIDEBAR.SCOUT_AGENTS'),
                 activeOn: [

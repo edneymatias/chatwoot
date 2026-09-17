@@ -6,6 +6,13 @@ class ScoutAPI extends ApiClient {
     super('scouts', { accountScoped: true });
   }
 
+  get(accountId) {
+    if (accountId) {
+      return axios.get(`/api/v1/accounts/${accountId}/scouts`);
+    }
+    return axios.get(this.url);
+  }
+
   // Inboxes
   getInboxes(scoutId) {
     return axios.get(`${this.url}/${scoutId}/scout_inboxes`);

@@ -8,6 +8,12 @@ const meta = {
 
 export const routes = [
   {
+    path: frontendURL('accounts/:accountId/scout/overview'),
+    component: () => import('./pages/ScoutOverview.vue'),
+    name: 'scout_overview',
+    meta,
+  },
+  {
     path: frontendURL('accounts/:accountId/scout'),
     component: () => import('./pages/ScoutList.vue'),
     name: 'scouts_index',
