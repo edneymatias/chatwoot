@@ -241,7 +241,7 @@
         "PARAM_MOVE_UP": "Move parameter up",
         "PARAM_MOVE_DOWN": "Move parameter down",
         "RESPONSE_TEMPLATE_LABEL": "Response Template (Liquid)",
-        "RESPONSE_TEMPLATE_PLACEHOLDER": "e.g., Order {{ r.id }} is {{ r.status }}",
+        "RESPONSE_TEMPLATE_PLACEHOLDER": "e.g., Order {'{'}{'{'} r.id {'}'}{'}'} is {'{'}{'{'} r.status {'}'}{'}'}",
         "RESPONSE_TEMPLATE_HINT": "Use Liquid tags to shape the external response before passing it to the AI agent. Access response attributes via 'r' or 'response'.",
         "TEST_SECTION_TITLE": "Test Tool Configuration",
         "TEST_SECTION_DESC": "Execute a live test request with sample parameters without saving the tool.",
