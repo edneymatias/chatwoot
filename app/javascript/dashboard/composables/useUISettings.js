@@ -6,6 +6,7 @@ export const DEFAULT_CONVERSATION_SIDEBAR_ITEMS_ORDER = Object.freeze([
   { name: 'macros' },
   { name: 'conversation_info' },
   { name: 'contact_attributes' },
+  { name: 'erp_data' },
   { name: 'contact_notes' },
   { name: 'shared_files' },
   { name: 'previous_conversation' },
@@ -72,8 +73,14 @@ const useContactSidebarItemsOrder = uiSettings => {
  * @param {Object} uiSettings - Reactive UI settings object.
  * @param {Function} updateUISettings - Function to update UI settings.
  */
-const toggleSidebarUIState = (key, uiSettings, updateUISettings) => {
-  updateUISettings({ [key]: !uiSettings.value[key] });
+const toggleSidebarUIState = (
+  key,
+  uiSettings,
+  updateUISettings,
+  defaultValue = false
+) => {
+  const currentValue = uiSettings.value[key] ?? defaultValue;
+  updateUISettings({ [key]: !currentValue });
 };
 
 /**
@@ -156,9 +163,10 @@ export function useUISettings() {
     updateUISettings,
     conversationSidebarItemsOrder: useConversationSidebarItemsOrder(uiSettings),
     contactSidebarItemsOrder: useContactSidebarItemsOrder(uiSettings),
-    isContactSidebarItemOpen: key => !!uiSettings.value[key],
-    toggleSidebarUIState: key =>
-      toggleSidebarUIState(key, uiSettings, updateUISettings),
+    isContactSidebarItemOpen: (key, defaultValue = false) =>
+      uiSettings.value[key] ?? defaultValue,
+    toggleSidebarUIState: (key, defaultValue = false) =>
+      toggleSidebarUIState(key, uiSettings, updateUISettings, defaultValue),
     setSignatureFlagForInbox: (channelType, value) =>
       setSignatureFlagForInbox(channelType, value, updateUISettings),
     fetchSignatureFlagFromUISettings: channelType =>

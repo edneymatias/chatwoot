@@ -1,6 +1,7 @@
 <script setup>
 import { useStoreGetters, useStore } from 'dashboard/composables/store';
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useBranding } from 'shared/composables/useBranding';
 import { picoSearch } from '@chatwoot/pico-search';
 import IntegrationItem from './IntegrationItem.vue';
@@ -10,13 +11,33 @@ import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 const store = useStore();
 const getters = useStoreGetters();
 const { replaceInstallationName } = useBranding();
-
+const { t } = useI18n();
 const searchQuery = ref('');
 const uiFlags = getters['integrations/getUIFlags'];
 
-const integrationList = computed(
-  () => getters['integrations/getAppIntegrations'].value
-);
+const integrationList = computed(() => {
+  const rawList = getters['integrations/getAppIntegrations'].value || [];
+  const erpApps = rawList.filter(app => app.category === 'erp');
+  const nonErpApps = rawList.filter(app => app.category !== 'erp');
+
+  if (erpApps.length === 0) {
+    return nonErpApps;
+  }
+
+  const isAnyErpConnected = erpApps.some(
+    app => (app.hooks && app.hooks.length > 0) || app.enabled
+  );
+
+  const synthesizedErpCard = {
+    id: 'erp',
+    name: t('INTEGRATION_APPS.ERP.NAME'),
+    description: t('INTEGRATION_APPS.ERP.DESCRIPTION'),
+    enabled: isAnyErpConnected,
+    logo: 'erp.png',
+  };
+
+  return [...nonErpApps, synthesizedErpCard];
+});
 
 const filteredIntegrationList = computed(() => {
   const query = searchQuery.value.trim();

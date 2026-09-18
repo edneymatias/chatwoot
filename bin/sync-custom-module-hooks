@@ -50,6 +50,38 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  anchor: '    ...macros.routes,',
                  insert: '    ...pipelineStages.routes,'
                },
+               # Integrations routes
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/integrations/integrations.routes.js',
+                 anchor: "import Shopify from './Shopify.vue';",
+                 insert: "import ErpIndex from './Erp/Index.vue';\nimport store from '../../../../store';"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/integrations/integrations.routes.js',
+                 anchor: "          props: route => ({ error: route.query.error }),\n        },",
+                 insert: "        {\n          path: 'erp',\n          name: 'settings_integrations_erp',\n          component: ErpIndex,\n          meta: {\n            featureFlag: FEATURE_FLAGS.ERP_INTEGRATION,\n            permissions: ['administrator'],\n          },\n          beforeEnter: (to, _from, next) => {\n            const { accountId } = to.params;\n            const isErpEnabled = store.getters[\n              'accounts/isFeatureEnabledonAccount'\n            ](accountId, FEATURE_FLAGS.ERP_INTEGRATION);\n            if (isErpEnabled) {\n              next();\n            } else {\n              next({ name: 'home', params: { accountId } });\n            }\n          },\n        },"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/integrations/Index.vue',
+                 anchor: "import { computed, onMounted, ref } from 'vue';",
+                 insert: "import { useI18n } from 'vue-i18n';"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/integrations/Index.vue',
+                 anchor: 'const { replaceInstallationName } = useBranding();',
+                 insert: 'const { t } = useI18n();'
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/integrations/Index.vue',
+                 anchor: "const integrationList = computed(\n  () => getters['integrations/getAppIntegrations'].value\n);",
+                 insert: "const integrationList = computed(() => {\n  const rawList = getters['integrations/getAppIntegrations'].value || [];\n  const erpApps = rawList.filter(app => app.category === 'erp');\n  const nonErpApps = rawList.filter(app => app.category !== 'erp');\n\n  if (erpApps.length === 0) {\n    return nonErpApps;\n  }\n\n  const isAnyErpConnected = erpApps.some(\n    app => (app.hooks && app.hooks.length > 0) || app.enabled\n  );\n\n  const synthesizedErpCard = {\n    id: 'erp',\n    name: t('INTEGRATION_APPS.ERP.NAME'),\n    description: t('INTEGRATION_APPS.ERP.DESCRIPTION'),\n    enabled: isAnyErpConnected,\n    logo: 'erp.png',\n  };\n\n  return [...nonErpApps, synthesizedErpCard];\n});",
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/integrations/SingleIntegrationHooks.vue',
+                 anchor: "        <p class=\"text-n-slate-11 text-body-main\">\n          {{ replaceInstallationName(integration.description) }}\n        </p>",
+                 insert: "        <div\n          v-if=\"hasConnectedHooks && integration.hooks?.[0]?.settings\"\n          class=\"mt-3 pt-3 border-t border-n-weak flex flex-col gap-1 text-sm text-n-slate-11\"\n        >\n          <div\n            v-for=\"(value, key) in integration.hooks[0].settings\"\n            :key=\"key\"\n            class=\"flex items-center gap-2\"\n            :data-property=\"key\"\n          >\n            <span class=\"font-medium text-n-slate-12\">\n              {{\n                key === 'id_empresa'\n                  ? 'Company ID'\n                  : key === 'token'\n                    ? 'API Token'\n                    : key\n              }}:\n            </span>\n            <span>{{ value }}</span>\n          </div>\n        </div>"
+               },
                # store/index.js
                {
                  file: 'app/javascript/dashboard/store/index.js',
@@ -61,11 +93,22 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  anchor: '    captainCustomTools,',
                  insert: "    pipelineStages,\n    pipelineClosingRequiredFields,\n    pipelineCardFieldConfigs,\n    pipelineCurrencySetting,\n    opportunities,"
                },
+               # store/modules/integrations.js
+               {
+                 file: 'app/javascript/dashboard/store/modules/integrations.js',
+                 anchor: "  getUIFlags($state) {\n    return $state.uiFlags;\n  },",
+                 insert: "  getEnabledErpIntegration($state) {\n    return $state.records.find(record => {\n      if (record.category !== 'erp') {\n        return false;\n      }\n      if (Array.isArray(record.hooks) && record.hooks.length > 0) {\n        return record.hooks.some(\n          hook =>\n            hook.status === true ||\n            hook.status === 'enabled' ||\n            hook.status === 1\n        );\n      }\n      return Boolean(record.enabled);\n    });\n  },"
+               },
                # featureFlags.js
                {
                  file: 'app/javascript/dashboard/featureFlags.js',
                  anchor: 'export const FEATURE_FLAGS = {',
                  insert: "  OPPORTUNITIES: 'opportunities',"
+               },
+               {
+                 file: 'app/javascript/dashboard/featureFlags.js',
+                 anchor: "  SCOUT: 'scout',",
+                 insert: "  ERP_INTEGRATION: 'erp_integration',"
                },
                # i18n index.js
                {
@@ -102,6 +145,52 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  file: 'config/features.yml',
                  anchor: "  display_name: WhatsApp Embedded Signup Flow\n  enabled: false\n  column: feature_flags_ext_1",
                  insert: "- name: opportunities\n  display_name: Opportunities (Kanban)\n  enabled: true\n  column: feature_flags_ext_1"
+               },
+               {
+                 file: 'config/features.yml',
+                 anchor: "- name: delayed_automations\n  display_name: Delayed Automations\n  enabled: false\n  column: feature_flags_ext_1",
+                 insert: "- name: erp_integration\n  display_name: ERP Integration\n  enabled: false\n  column: feature_flags_ext_1"
+               },
+               {
+                 file: 'app/models/integrations/app.rb',
+                 anchor: "  def notion_enabled?(account)\n    account.feature_enabled?('notion_integration') && GlobalConfigService.load('NOTION_CLIENT_ID', nil).present?\n  end\nend",
+                 insert: "\nIntegrations::App.prepend_mod_with('Integrations::App')"
+               },
+               {
+                 file: 'app/models/integrations/hook.rb',
+                 anchor: "  def crm_integration?\n    %w[leadsquared].include?(app_id)\n  end\nend",
+                 insert: "\nIntegrations::Hook.prepend_mod_with('Integrations::Hook')"
+               },
+               {
+                 file: 'app/views/api/v1/models/_hook.json.jbuilder',
+                 anchor: '  settings = (resource.settings || {}).select { |key, _| visible_properties.include?(key.to_s) }',
+                 insert: "  source_settings = resource.respond_to?(:masked_settings) ? resource.masked_settings : resource.settings\n  settings = (source_settings || {}).select { |key, _| visible_properties.include?(key.to_s) }",
+                 replace: true
+               },
+               {
+                 file: 'config/locales/en.yml',
+                 anchor: "    openai:\n      invalid_api_key: 'OpenAI API key is invalid or revoked. Please check your key in your OpenAI dashboard.'",
+                 insert: "    erp:\n      invalid_credentials: 'Invalid credentials'\n      connection_error: 'Could not connect to ERP'"
+               },
+               {
+                 file: 'config/locales/en.yml',
+                 anchor: "    openai:\n      name: 'OpenAI'\n      short_description: 'AI-powered reply suggestions, summarization, and message enhancement.'\n      description: 'Leverage the power of large language models from OpenAI with the features such as reply suggestions, summarization, message rephrasing, spell-checking, and label classification.'",
+                 insert: "    younus:\n      name: 'Younus'\n      short_description: 'Connect Younus ERP to view customer and financial information.'\n      description: 'Integrate your Younus ERP system with Chatwoot to access customer and financial data directly in conversation views.'"
+               },
+               {
+                 file: 'config/locales/pt_BR.yml',
+                 anchor: "    openai:\n      invalid_api_key: 'A chave da API da OpenAI é inválida ou revogada. Por favor, verifique sua chave no seu painel da OpenAI.'",
+                 insert: "    erp:\n      invalid_credentials: 'Credenciais inválidas'\n      connection_error: 'Não foi possível conectar ao ERP'"
+               },
+               {
+                 file: 'config/locales/pt_BR.yml',
+                 anchor: "    openai:\n      name: 'OpenAI'\n      short_description: 'Sugestões, resumos e aprimoramento de mensagem e resposta com IA.'\n      description: 'Aproveite o poder dos grandes modelos de linguagem do OpenAI com recursos como sugestões de resposta, resumo, reformulação de mensagens, verificação ortográfica e classificação de rótulos.'",
+                 insert: "    younus:\n      name: 'Younus'\n      short_description: 'Conecte o ERP Younus para visualizar dados de clientes e financeiros.'\n      description: 'Integre seu sistema ERP Younus com o Chatwoot para acessar dados de clientes e financeiros diretamente nas visualizações de conversas.'"
+               },
+               {
+                 file: 'config/integration/apps.yml',
+                 anchor: "      'conversation_activity_score',\n      'transcript_activity_score',\n    ]",
+                 insert: "\n\nyounus:\n  id: younus\n  logo: younus.png\n  i18n_key: younus\n  action: /younus\n  hook_type: account\n  allow_multiple_hooks: false\n  category: erp\n  feature_flag: erp_integration\n  visible_properties: ['id_empresa', 'token']\n  settings_json_schema:\n    {\n      'type': 'object',\n      'properties':\n        {\n          'token': { 'type': 'string' },\n          'id_empresa': { 'type': 'string' },\n        },\n      'required': ['token', 'id_empresa'],\n      'additionalProperties': false,\n    }\n  settings_form_schema:\n    [\n      {\n        'label': 'API Token',\n        'type': 'text',\n        'name': 'token',\n        'validation': 'required',\n      },\n      {\n        'label': 'Company ID',\n        'type': 'text',\n        'name': 'id_empresa',\n        'validation': 'required',\n      },\n    ]"
                },
                {
                  file: 'app/services/automation_rules/action_service.rb',
@@ -186,9 +275,41 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  insert: "\n  { name: 'previous_opportunities' },"
                },
                {
+                 file: 'app/javascript/dashboard/composables/useUISettings.js',
+                 anchor: "  { name: 'contact_attributes' },",
+                 insert: "\n  { name: 'erp_data' },"
+               },
+               {
+                 file: 'app/javascript/dashboard/composables/useUISettings.js',
+                 anchor: "const toggleSidebarUIState = (key, uiSettings, updateUISettings) => {\n  updateUISettings({ [key]: !uiSettings.value[key] });\n};",
+                 insert: "const toggleSidebarUIState = (\n  key,\n  uiSettings,\n  updateUISettings,\n  defaultValue = false\n) => {\n  const currentValue = uiSettings.value[key] ?? defaultValue;\n  updateUISettings({ [key]: !currentValue });\n};",
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/composables/useUISettings.js',
+                 anchor: "    isContactSidebarItemOpen: key => !!uiSettings.value[key],\n    toggleSidebarUIState: key =>\n      toggleSidebarUIState(key, uiSettings, updateUISettings),",
+                 insert: "    isContactSidebarItemOpen: (key, defaultValue = false) =>\n      uiSettings.value[key] ?? defaultValue,\n    toggleSidebarUIState: (key, defaultValue = false) =>\n      toggleSidebarUIState(key, uiSettings, updateUISettings, defaultValue),",
+                 replace: true
+               },
+               {
                  file: 'app/javascript/dashboard/routes/dashboard/conversation/ContactPanel.vue',
                  anchor: "import LinearSetupCTA from 'dashboard/components/widgets/conversation/linear/LinearSetupCTA.vue';",
                  insert: "\nimport ContactOpportunities from './ContactOpportunities.vue';"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/conversation/ContactPanel.vue',
+                 anchor: "import ContactOpportunities from './ContactOpportunities.vue';",
+                 insert: "\nimport ErpDataCard from 'dashboard/components/widgets/conversation/ErpDataCard.vue';"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/conversation/ContactPanel.vue',
+                 anchor: "const isLinearConnected = computed(\n  () => linearIntegration.value?.enabled || false\n);",
+                 insert: "\n\nconst erpDataCardRef = ref(null);\nconst enabledErpIntegration = useMapGetter(\n  'integrations/getEnabledErpIntegration'\n);\nconst isErpIntegrationEnabled = computed(() => !!enabledErpIntegration.value);\n\nconst refreshErpData = () => {\n  erpDataCardRef.value?.fetchErpData?.();\n};"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/conversation/ContactPanel.vue',
+                 anchor: "          <div v-else-if=\"element.name === 'contact_attributes'\">\n            <AccordionItem\n              :title=\"$t('CONVERSATION_SIDEBAR.ACCORDION.CONTACT_ATTRIBUTES')\"\n              :is-open=\"isContactSidebarItemOpen('is_contact_attributes_open')\"\n              compact\n              @toggle=\"\n                value =>\n                  toggleSidebarUIState('is_contact_attributes_open', value)\n              \"\n            >\n              <CustomAttributes\n                attribute-type=\"contact_attribute\"\n                attribute-from=\"conversation_contact_panel\"\n                :contact-id=\"contact.id\"\n                :empty-state-message=\"\n                  $t('CONVERSATION_CUSTOM_ATTRIBUTES.NO_RECORDS_FOUND')\n                \"\n              />\n            </AccordionItem>\n          </div>",
+                 insert: "\n          <div\n            v-else-if=\"element.name === 'erp_data' && isErpIntegrationEnabled\"\n          >\n            <AccordionItem\n              :title=\"$t('CONVERSATION_SIDEBAR.ACCORDION.ERP_DATA')\"\n              :is-open=\"isContactSidebarItemOpen('is_erp_data_open', true)\"\n              compact\n              @toggle=\"() => toggleSidebarUIState('is_erp_data_open', true)\"\n            >\n              <template #button>\n                <woot-button\n                  size=\"tiny\"\n                  variant=\"clear\"\n                  color-scheme=\"secondary\"\n                  icon=\"arrow-clockwise\"\n                  class=\"p-0 mr-1 text-n-slate-11 hover:text-n-slate-12\"\n                  @click.stop=\"refreshErpData\"\n                />\n              </template>\n              <ErpDataCard\n                ref=\"erpDataCardRef\"\n                :contact-id=\"contactId\"\n                :contact=\"contact\"\n              />\n            </AccordionItem>\n          </div>"
                },
                {
                  file: 'app/javascript/dashboard/routes/dashboard/settings/automation/Index.vue',
@@ -208,7 +329,7 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'app/javascript/dashboard/i18n/locale/en/conversation.json',
                  anchor: '      "SHARED_FILES": "Attachments",',
-                 insert: "\n      \"PREVIOUS_OPPORTUNITIES\": \"Opportunities\"\n    },\n    \"PREVIOUS_OPPORTUNITIES\": {\n      \"EMPTY\": \"No opportunities found for this contact\""
+                 insert: "\n      \"PREVIOUS_OPPORTUNITIES\": \"Opportunities\",\n      \"ERP_DATA\": \"ERP Data\"\n    },\n    \"ERP_DATA\": {\n      \"LOADING\": \"Loading customer data from ERP...\",\n      \"MULTIPLE_MATCHES_BADGE\": \"Multiple records found for this phone in the ERP.\",\n      \"NO_PHONE\": \"A phone number is required to search for records in the ERP.\",\n      \"NOT_FOUND_TITLE\": \"No customer found\",\n      \"NOT_FOUND_DESC\": \"No customer record was found for this phone number in the ERP. Consider registering this contact in the ERP.\",\n      \"ERROR_TITLE\": \"Error loading ERP data\",\n      \"ERROR_DESC\": \"Could not connect to the ERP service. Please check your integration settings or try again.\",\n      \"RETRY_BUTTON\": \"Retry\",\n      \"REFRESH\": \"Refresh\",\n      \"BIRTHDAY_BADGE\": \"🎂 Birthday today\",\n      \"EMPTY_VALUE\": \"None\",\n      \"FIELDS\": {\n        \"NM_PESSOA\": \"Name\",\n        \"NR_CPFCNPJPESSOA\": \"CPF\",\n        \"NR_RGPESSOA\": \"RG\",\n        \"NM_ENDPESSOA\": \"Street\",\n        \"NR_ENDPESSOA\": \"Number\",\n        \"COMP_ENDPESSOA\": \"Complement\",\n        \"NM_BAIPESSOA\": \"Neighborhood\",\n        \"NM_CIDPESSOA\": \"City\",\n        \"UF_ENDPESSOA\": \"State\",\n        \"NR_CEPPESSOA\": \"Postal code\",\n        \"NR_TELRESPESSOA\": \"Home phone\",\n        \"NR_TELCELPESSOA\": \"Mobile phone\",\n        \"NR_TELCOMPESSOA\": \"Work phone\",\n        \"EMAIL_PESSOA\": \"Email\",\n        \"TP_SXPESSOA\": \"Gender\",\n        \"DT_NASCPESSOA\": \"Birth date\",\n        \"NM_NACPESSOA\": \"Nationality\",\n        \"DS_CONVENIO\": \"Insurance\",\n        \"NR_CONVENIO\": \"Card number\",\n        \"NR_FICHA\": \"Prontuário\",\n        \"DS_PROFISSAO\": \"Profession\",\n        \"DESCRICAO_ORIGEM\": \"Origin\"\n      },\n      \"APPOINTMENTS\": {\n        \"TITLE\": \"Appointments\",\n        \"LAST_VISIT\": \"Last visit\",\n        \"NEXT_VISIT\": \"Next visit\",\n        \"PROFESSIONAL\": \"With\",\n        \"ATTENDED\": \"Attended\",\n        \"DID_NOT_ATTEND\": \"Did not attend\",\n        \"CONFIRMED\": \"Confirmed\",\n        \"NOT_CONFIRMED\": \"Not confirmed\",\n        \"NO_PAST_APPOINTMENTS\": \"None\",\n        \"NO_FUTURE_APPOINTMENTS\": \"No upcoming appointments\"\n      },\n      \"FINANCIAL\": {\n        \"TITLE\": \"Financial\",\n        \"DEBTOR_BADGE\": \"Debtor\",\n        \"OLDEST_OVERDUE_INSTALLMENT\": \"Oldest overdue installment\",\n        \"NEXT_INSTALLMENT\": \"Next installment\",\n        \"DUE_DATE\": \"Due date\",\n        \"ORIGINAL_VALUE\": \"Original value\",\n        \"CORRECTED_VALUE\": \"Updated value\",\n        \"TOTAL_FINANCIAL\": \"Contracted total\",\n        \"TOTAL_RECEIVED\": \"Total received\",\n        \"TOTAL_OPEN\": \"Total open\",\n        \"TOTAL_OVERDUE\": \"Total overdue\",\n        \"NO_OVERDUE_INSTALLMENTS\": \"None\",\n        \"NO_NEXT_INSTALLMENT\": \"None\"\n      },\n      \"FOOTNOTES\": {\n        \"CREATED_AT\": \"Registered at\",\n        \"UPDATED_AT\": \"Updated at\"\n      }\n    },\n    \"PREVIOUS_OPPORTUNITIES\": {\n      \"EMPTY\": \"No opportunities found for this contact\""
                },
                {
                  file: 'app/javascript/dashboard/i18n/locale/en/report.json',
@@ -347,6 +468,11 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  file: 'app/javascript/dashboard/routes/dashboard/campaigns/pages/WhatsAppCampaignAnalyticsPage.vue',
                  anchor: "import CampaignDeliveryBreakdown from 'dashboard/components-next/Campaigns/Pages/CampaignAnalyticsPage/CampaignDeliveryBreakdown.vue';",
                  insert: "import CampaignReplyBreakdown from 'dashboard/components-next/Campaigns/Pages/CampaignAnalyticsPage/CampaignReplyBreakdown.vue';"
+               },
+               {
+                 file: 'config/routes.rb',
+                 anchor: "            resource :shopify, controller: 'shopify', only: [:destroy] do\n              collection do\n                post :auth\n                get :orders\n              end\n            end",
+                 insert: "            resource :erp, only: [] do\n              get 'data', to: 'erp#data'\n            end"
                }
              ]
            end
@@ -375,7 +501,7 @@ if mode == :audit
   excluded = lambda do |path|
     return true if path == 'db/schema.rb'
     return true if path.start_with?(
-      'custom/', 'spec/', 'specs/', 'docs/', 'db/migrate/2026', 'db/migrate/2126',
+      'custom/', 'spec/', 'specs/', 'docs/', '.specify/', 'db/migrate/2026', 'db/migrate/2126',
       'app/javascript/dashboard/components-next/Opportunities/',
       'app/javascript/dashboard/routes/dashboard/opportunities/',
       'app/javascript/dashboard/store/modules/opportunities/',
@@ -422,6 +548,10 @@ if mode == :audit
       'config/installation_config.yml',
       'config/locales/en.yml',
       'config/locales/pt_BR.yml',
+      'app/javascript/dashboard/i18n/locale/en/integrationApps.json',
+      'app/javascript/dashboard/i18n/locale/pt_BR/integrationApps.json',
+      'app/javascript/dashboard/i18n/locale/en/integrations.json',
+      'app/javascript/dashboard/i18n/locale/pt_BR/integrations.json',
       'config/schedule.yml',
       'db/migrate/20231211010807_add_cached_labels_list.rb',
       'docker/entrypoints/helpers/pg_database_url.rb',

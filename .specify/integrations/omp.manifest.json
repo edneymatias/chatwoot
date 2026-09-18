@@ -1,7 +1,7 @@
 {
   "integration": "omp",
-  "version": "1.0.7",
-  "installed_at": "2026-09-15T23:56:30.623282+00:00",
+  "version": "1.0.8",
+  "installed_at": "2026-09-17T18:50:10.797275+00:00",
   "files": {
     ".omp/commands/speckit.analyze.md": "91fe16257ededdea9cc21d3cb27d539fcdd12d93ddcea52332cd4b68176b6a8d",
     ".omp/commands/speckit.clarify.md": "dd11eb5b9759f7d3cd18c9d7f23a0ae2fe7973fc6ca2486dbfaf53a5569224b1",

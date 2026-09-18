@@ -73,6 +73,30 @@ describe('useUISettings', () => {
     });
   });
 
+  it('toggles default-open sidebar UI state correctly', () => {
+    const { toggleSidebarUIState } = useUISettings();
+    toggleSidebarUIState('is_erp_data_open', true);
+    expect(mockDispatch).toHaveBeenCalledWith('updateUISettings', {
+      uiSettings: {
+        is_ct_labels_open: true,
+        conversation_sidebar_items_order:
+          DEFAULT_CONVERSATION_SIDEBAR_ITEMS_ORDER,
+        contact_sidebar_items_order: DEFAULT_CONTACT_SIDEBAR_ITEMS_ORDER,
+        editor_message_key: 'enter',
+        channel_email_quoted_reply_enabled: true,
+        is_erp_data_open: false,
+      },
+    });
+  });
+
+  it('includes erp_data after contact_attributes in default sidebar order', () => {
+    const contactAttrIndex = DEFAULT_CONVERSATION_SIDEBAR_ITEMS_ORDER.findIndex(
+      item => item.name === 'contact_attributes'
+    );
+    expect(
+      DEFAULT_CONVERSATION_SIDEBAR_ITEMS_ORDER[contactAttrIndex + 1]
+    ).toEqual({ name: 'erp_data' });
+  });
   it('returns correct conversation sidebar items order', () => {
     const { conversationSidebarItemsOrder } = useUISettings();
     expect(conversationSidebarItemsOrder.value).toEqual(
@@ -91,6 +115,7 @@ describe('useUISettings', () => {
     const { isContactSidebarItemOpen } = useUISettings();
     expect(isContactSidebarItemOpen('is_ct_labels_open')).toBe(true);
     expect(isContactSidebarItemOpen('non_existent_key')).toBe(false);
+    expect(isContactSidebarItemOpen('is_erp_data_open', true)).toBe(true);
   });
 
   it('sets signature flag for inbox correctly', () => {

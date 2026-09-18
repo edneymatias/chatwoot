@@ -16,6 +16,9 @@
       },
       "ERROR": "Ocorreu um erro ao tentar conectar com o Shopify. Por favor, tente novamente ou entre em contato com o suporte se o problema persistir."
     },
+    "ERP": {
+      "HEADER": "Integrações de ERP"
+    },
     "HEADER": "Integrações",
     "DESCRIPTION": "Chatwoot se integra com várias ferramentas e serviços para melhorar a eficiência de seu time. Explore a lista abaixo para configurar seus aplicativos favoritos.",
     "LEARN_MORE": "Aprenda mais sobre integrações",

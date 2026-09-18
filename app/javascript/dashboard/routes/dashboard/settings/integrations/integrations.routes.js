@@ -9,6 +9,8 @@ import Slack from './Slack.vue';
 import Linear from './Linear.vue';
 import Notion from './Notion.vue';
 import Shopify from './Shopify.vue';
+import ErpIndex from './Erp/Index.vue';
+import store from '../../../../store';
 
 export default {
   routes: [
@@ -87,6 +89,26 @@ export default {
             permissions: ['administrator'],
           },
           props: route => ({ error: route.query.error }),
+        },
+        {
+          path: 'erp',
+          name: 'settings_integrations_erp',
+          component: ErpIndex,
+          meta: {
+            featureFlag: FEATURE_FLAGS.ERP_INTEGRATION,
+            permissions: ['administrator'],
+          },
+          beforeEnter: (to, _from, next) => {
+            const { accountId } = to.params;
+            const isErpEnabled = store.getters[
+              'accounts/isFeatureEnabledonAccount'
+            ](accountId, FEATURE_FLAGS.ERP_INTEGRATION);
+            if (isErpEnabled) {
+              next();
+            } else {
+              next({ name: 'home', params: { accountId } });
+            }
+          },
         },
         {
           path: ':integration_id',

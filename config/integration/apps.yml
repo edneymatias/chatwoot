@@ -328,3 +328,40 @@ leadsquared:
       'conversation_activity_score',
       'transcript_activity_score',
     ]
+
+younus:
+  id: younus
+  logo: younus.png
+  i18n_key: younus
+  action: /younus
+  hook_type: account
+  allow_multiple_hooks: false
+  category: erp
+  feature_flag: erp_integration
+  visible_properties: ['id_empresa', 'token']
+  settings_json_schema:
+    {
+      'type': 'object',
+      'properties':
+        {
+          'token': { 'type': 'string' },
+          'id_empresa': { 'type': 'string' },
+        },
+      'required': ['token', 'id_empresa'],
+      'additionalProperties': false,
+    }
+  settings_form_schema:
+    [
+      {
+        'label': 'API Token',
+        'type': 'text',
+        'name': 'token',
+        'validation': 'required',
+      },
+      {
+        'label': 'Company ID',
+        'type': 'text',
+        'name': 'id_empresa',
+        'validation': 'required',
+      },
+    ]

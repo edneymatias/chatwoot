@@ -41,6 +41,28 @@ const { replaceInstallationName } = useBranding();
         <p class="text-n-slate-11 text-body-main">
           {{ replaceInstallationName(integration.description) }}
         </p>
+        <div
+          v-if="hasConnectedHooks && integration.hooks?.[0]?.settings"
+          class="mt-3 pt-3 border-t border-n-weak flex flex-col gap-1 text-sm text-n-slate-11"
+        >
+          <div
+            v-for="(value, key) in integration.hooks[0].settings"
+            :key="key"
+            class="flex items-center gap-2"
+            :data-property="key"
+          >
+            <span class="font-medium text-n-slate-12">
+              {{
+                key === 'id_empresa'
+                  ? 'Company ID'
+                  : key === 'token'
+                    ? 'API Token'
+                    : key
+              }}:
+            </span>
+            <span>{{ value }}</span>
+          </div>
+        </div>
       </div>
       <div class="flex justify-center items-center mb-0 w-[15%]">
         <div v-if="hasConnectedHooks">

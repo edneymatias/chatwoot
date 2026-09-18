@@ -280,3 +280,7 @@
   display_name: Delayed Automations
   enabled: false
   column: feature_flags_ext_1
+- name: erp_integration
+  display_name: ERP Integration
+  enabled: false
+  column: feature_flags_ext_1

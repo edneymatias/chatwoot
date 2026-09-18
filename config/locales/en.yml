@@ -185,6 +185,12 @@ en:
         permission_request_failed: 'Failed to send call permission request'
     openai:
       invalid_api_key: 'OpenAI API key is invalid or revoked. Please check your key in your OpenAI dashboard.'
+    erp:
+      invalid_credentials: 'Invalid credentials'
+      connection_error: 'Could not connect to ERP'
+      service_unavailable: 'ERP service unavailable'
+      not_enabled: 'ERP integration not found or not enabled'
+      contact_not_found: 'Contact not found'
     inboxes:
       imap:
         socket_error: Please check the network connection, IMAP address and try again.
@@ -434,6 +440,10 @@ en:
       name: 'OpenAI'
       short_description: 'AI-powered reply suggestions, summarization, and message enhancement.'
       description: 'Leverage the power of large language models from OpenAI with the features such as reply suggestions, summarization, message rephrasing, spell-checking, and label classification.'
+    younus:
+      name: 'Younus'
+      short_description: 'Connect Younus ERP to view customer and financial information.'
+      description: 'Integrate your Younus ERP system with Chatwoot to access customer and financial data directly in conversation views.'
     linear:
       name: 'Linear'
       short_description: 'Create and link Linear issues directly from conversations.'

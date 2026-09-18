@@ -25,6 +25,7 @@ import SidebarActionsHeader from 'dashboard/components-next/SidebarActionsHeader
 import LinearIssuesList from 'dashboard/components/widgets/conversation/linear/IssuesList.vue';
 import LinearSetupCTA from 'dashboard/components/widgets/conversation/linear/LinearSetupCTA.vue';
 import ContactOpportunities from './ContactOpportunities.vue';
+import ErpDataCard from 'dashboard/components/widgets/conversation/ErpDataCard.vue';
 
 const props = defineProps({
   conversationId: {
@@ -78,6 +79,16 @@ const isLinearClientIdConfigured = computed(() => {
 const isLinearConnected = computed(
   () => linearIntegration.value?.enabled || false
 );
+
+const erpDataCardRef = ref(null);
+const enabledErpIntegration = useMapGetter(
+  'integrations/getEnabledErpIntegration'
+);
+const isErpIntegrationEnabled = computed(() => !!enabledErpIntegration.value);
+
+const refreshErpData = () => {
+  erpDataCardRef.value?.fetchErpData?.();
+};
 
 const store = useStore();
 const currentChat = useMapGetter('getSelectedChat');
@@ -222,6 +233,32 @@ onMounted(() => {
                 :empty-state-message="
                   $t('CONVERSATION_CUSTOM_ATTRIBUTES.NO_RECORDS_FOUND')
                 "
+              />
+            </AccordionItem>
+          </div>
+          <div
+            v-else-if="element.name === 'erp_data' && isErpIntegrationEnabled"
+          >
+            <AccordionItem
+              :title="$t('CONVERSATION_SIDEBAR.ACCORDION.ERP_DATA')"
+              :is-open="isContactSidebarItemOpen('is_erp_data_open', true)"
+              compact
+              @toggle="() => toggleSidebarUIState('is_erp_data_open', true)"
+            >
+              <template #button>
+                <woot-button
+                  size="tiny"
+                  variant="clear"
+                  color-scheme="secondary"
+                  icon="arrow-clockwise"
+                  class="p-0 mr-1 text-n-slate-11 hover:text-n-slate-12"
+                  @click.stop="refreshErpData"
+                />
+              </template>
+              <ErpDataCard
+                ref="erpDataCardRef"
+                :contact-id="contactId"
+                :contact="contact"
               />
             </AccordionItem>
           </div>

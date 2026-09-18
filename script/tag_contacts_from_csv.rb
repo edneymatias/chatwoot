@@ -133,6 +133,19 @@ rescue ArgumentError, TypeError
   nil
 end
 
+def apply_contact_change(contact, mode, label_name, attribute_key, attribute_value)
+  if mode == 'label'
+    account = contact.account
+    account.labels.find_or_create_by!(title: label_name) do |l|
+      l.color = '#1f93ff'
+    end
+    contact.label_list.add(label_name)
+  else
+    contact.custom_attributes = contact.custom_attributes.merge(attribute_key => attribute_value)
+  end
+  contact.save!
+end
+
 stats = {
   total_lines: lines.size,
   found_contacts: 0,
@@ -194,18 +207,7 @@ lines.each_with_index do |line, idx|
           stats[:changed] += 1
           acc_stats[:changed] += 1
 
-          unless dry_run
-            if mode == 'label'
-              account = contact.account
-              account.labels.find_or_create_by!(title: label_name) do |l|
-                l.color = '#1f93ff'
-              end
-              contact.label_list.add(label_name)
-            else
-              contact.custom_attributes = contact.custom_attributes.merge(attribute_key => attribute_value)
-            end
-            contact.save!
-          end
+          apply_contact_change(contact, mode, label_name, attribute_key, attribute_value) unless dry_run
         end
       end
     end

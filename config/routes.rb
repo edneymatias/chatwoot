@@ -462,6 +462,9 @@ Rails.application.routes.draw do
                 get :orders
               end
             end
+            resource :erp, only: [] do
+              get 'data', to: 'erp#data'
+            end
             resource :linear, controller: 'linear', only: [] do
               collection do
                 delete :destroy

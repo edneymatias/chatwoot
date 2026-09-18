@@ -34,6 +34,22 @@ export const getters = {
   getUIFlags($state) {
     return $state.uiFlags;
   },
+  getEnabledErpIntegration($state) {
+    return $state.records.find(record => {
+      if (record.category !== 'erp') {
+        return false;
+      }
+      if (Array.isArray(record.hooks) && record.hooks.length > 0) {
+        return record.hooks.some(
+          hook =>
+            hook.status === true ||
+            hook.status === 'enabled' ||
+            hook.status === 1
+        );
+      }
+      return Boolean(record.enabled);
+    });
+  },
 };
 
 export const actions = {

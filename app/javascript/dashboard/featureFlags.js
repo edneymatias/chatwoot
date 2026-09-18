@@ -56,6 +56,7 @@ export const FEATURE_FLAGS = {
   UNREAD_COUNT_FOR_FILTERS: 'unread_count_for_filters',
   OPPORTUNITIES: 'opportunities',
   SCOUT: 'scout',
+  ERP_INTEGRATION: 'erp_integration',
 };
 
 export const PREMIUM_FEATURES = [

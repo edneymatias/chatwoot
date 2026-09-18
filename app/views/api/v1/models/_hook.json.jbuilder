@@ -7,7 +7,8 @@ json.hook_type resource.hook_type
 
 if Current.account_user&.administrator?
   visible_properties = resource.app&.visible_properties || []
-  settings = (resource.settings || {}).select { |key, _| visible_properties.include?(key.to_s) }
+  source_settings = resource.respond_to?(:masked_settings) ? resource.masked_settings : resource.settings
+  settings = (source_settings || {}).select { |key, _| visible_properties.include?(key.to_s) }
 
   json.settings settings
   json.reference_id resource.reference_id

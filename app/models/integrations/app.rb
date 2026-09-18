@@ -131,3 +131,5 @@ class Integrations::App
     account.feature_enabled?('notion_integration') && GlobalConfigService.load('NOTION_CLIENT_ID', nil).present?
   end
 end
+
+Integrations::App.prepend_mod_with('Integrations::App')

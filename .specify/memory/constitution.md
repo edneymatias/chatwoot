@@ -1,25 +1,3 @@
-<!--
-Sync Impact Report
-Version change: 1.2.0 → 1.3.0
-Modified principles: none removed or renumbered
-Added principles: VI. Test-Driven Development (NON-NEGOTIABLE)
-Modified sections: Development Workflow & Quality Gates — replaced the "avoid writing specs
-  unless explicitly asked" bullet, which contradicted the new TDD principle, with a rule that a
-  genuine behavior change ships with a test that failed first
-Removed sections: none
-Rationale: /speckit.tdd.setup detected and verified this fork's dual test stack (RSpec + Vitest,
-  profile at .specify/memory/tdd-profile.md) and found the constitution had no TDD principle,
-  plus one direct conflict with TDD in the existing Quality Gates guidance. Resolved in favor of
-  TDD per explicit user decision.
-Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ no edit needed
-  - .specify/templates/spec-template.md ✅ no edit needed
-  - .specify/templates/tasks-template.md ✅ no edit needed
-  - .specify/templates/checklist-template.md ✅ no edit needed
-  - .specify/extensions/tdd/** ✅ already carries the TDD workflow this principle points at
-Follow-up TODOs: none
--->
-
 # Chatwoot (Personal Fork) Constitution
 
 ## Core Principles
@@ -103,12 +81,11 @@ it silently breaks the enterprise build even when the OSS build looks fine.
 Every behavior change — new feature, bugfix, or behavioral refactor — is driven by a test that
 failed first, for the right reason, before the code that makes it pass exists. This applies to
 both of this fork's stacks: RSpec under `spec/` and `custom/spec/`, and Vitest under
-`app/javascript/`; the verified commands and conventions for each live in
-`.specify/memory/tdd-profile.md`.
-- A test exists and has been observed failing before its implementation lands. Work done through
-  `/speckit.tdd.*` records that failure in `specs/<feature>/tdd/cycle-log.md`; work done outside
-  that workflow must still make the red-then-green sequence demonstrable (commit order, or the
-  session transcript).
+`app/javascript/`, following the container-based commands and conventions documented in `AGENTS.md`.
+- A test exists and has been observed failing before its implementation lands. The red-then-green
+  sequence is verified directly through targeted test execution in the active session or clean commit
+  history, without creating or maintaining intermediate step-tracking files or bookkeeping journals
+  (see Principle VIII).
 - Tests are never weakened, skipped, deleted, or filtered out to reach green. When a test and the
   code disagree, the feature's `spec.md` — or, absent one, the stated requirement — decides which
   is wrong.
@@ -117,9 +94,9 @@ both of this fork's stacks: RSpec under `spec/` and `custom/spec/`, and Vitest u
   of an internal implementation detail.
 - Refactoring happens only on a green suite and never changes a test in the same commit as a
   behavior change.
-- Test strength is verified, not assumed. Neither RSpec nor Vitest has a mutation-testing tool
-  wired up in this repo; until one is added, a deliberate-mutant spot check on the highest-risk
-  changed behavior substitutes for it (see `.specify/memory/tdd-profile.md`).
+- Test strength is verified, not assumed. Tests MUST be resistant to mutation (see Principle VII);
+  where automated mutation tooling is absent, high-risk logic is verified by deliberate-mutant checks
+  against production invariants.
 - This supersedes the former blanket "avoid writing specs unless explicitly asked" guidance: a
   test accompanying a genuine behavior change is expected, not optional. Restraint still applies
   to code the change does not touch — do not add specs for untouched behavior as a drive-by.
@@ -128,6 +105,70 @@ themselves (rootless Podman, container-only dev). A behavior change exercised on
 is a regression waiting for the next upstream sync; a test that failed first and now passes is
 the only durable evidence the behavior was ever built correctly, and the only thing that catches
 it breaking again when `develop` is merged in.
+
+### VII. Observable Behavior and Mutation Resistance (NON-NEGOTIABLE)
+Tests exist solely to guarantee observable behavior and detect real business regressions, never
+to fulfill vanity coverage metrics or validate synthetic mock contracts.
+- Rigid Boundary for Test Doubles: Test doubles (`mocks`, `stubs`, `spies`, `doubles`) are
+  strictly restricted to uncontrollable external boundaries of the system: external third-party
+  APIs/HTTP endpoints, external payment/SMS gateways, operating system time/clock helpers
+  (`travel_to`), and hardware/filesystem drivers. Mocking database models, Active Record
+  persistence layers, internal domain services, business logic, or the component under test itself
+  is STRICTLY FORBIDDEN. Internal classes and collaborator services MUST interact using their real
+  implementations and standard test database fixtures/factories.
+- Validation by Observable State: Every assertion MUST validate a result observable by the client
+  of the component — return values, actual changes in persisted database state, emitted events or
+  enqueued jobs, or typed contract errors. Cosmetic assertions (e.g. asserting only `be_present`/
+  non-nil, asserting a method was called with parameters without verifying its concrete effect, or
+  tautological assertions testing only what a mock was programmed to return) are strictly prohibited
+  as quality violations.
+- Resistance to Mutation: A test is valid only if a deliberate mutation of the underlying business
+  rule, condition, or edge case in production code causes the test to fail unequivocally.
+**Rationale**: Tests coupled to internal mocks or method-call sequences break during valid
+refactorings and continue passing when real business rules fail. Testing real behavior through
+observable inputs and state changes makes the test suite durable, refactor-proof, and capable of
+catching genuine regressions.
+
+### VIII. Pragmatic Test-First by Functional Slice
+Every new behavior, feature, or bugfix MUST be planned from a test-first perspective before
+implementation, but executed in atomic, cohesive functional slices rather than mechanical
+micro-steps.
+- Delivery in Cohesive Functional Units: Development MUST NOT be fragmented into robotic
+  micro-cycles (e.g. writing one line of code or one assertion at a time). A complete functional unit
+  (such as a domain module, service, endpoint, or UI component with its complete matrix of happy-path,
+  boundary, and error scenarios) MUST be designed, specified, and constructed together in a single
+  logical work cycle.
+- Prohibition of Intermediate Accounting and Step Journals: Creating or maintaining intermediate
+  accounting files, step-by-step progress journals, execution logs (`cycle-log.md`), or audit
+  artifacts whose sole purpose is tracking the AI/developer's own workflow steps is STRICTLY
+  FORBIDDEN. The only accepted proof of quality and completion is clean, expressive test code passing
+  in the repository.
+- Failing for the Correct Reason: Every new test scenario MUST demonstrate that it fails due to
+  the absence of the intended functionality before implementation begins, guaranteeing that the
+  test is not a passive false positive.
+**Rationale**: The discipline of TDD lies in contract-driven design and specification rigor, not in
+rigid micro-steps that create artificial friction, consume unnecessary tokens and time, and inflate
+process complexity without improving software quality. Delivering complete, cohesive functional
+slices maximizes architectural clarity, maintainability, and delivery velocity.
+
+### IX. Surgical Execution Scope and Decoupled Global Gates
+Test execution during iterative development MUST be strictly scoped to the immediate context of
+the component being modified.
+- Prohibition of Global Suite Runs During Iteration: Running the complete repository test suite
+  during preflight checks, on every minor change, or after every subtask is STRICTLY FORBIDDEN.
+  Full suite validation MUST be decoupled from iterative development and reserved exclusively for
+  pre-integration, pre-release verification, or CI pipelines.
+- Targeted File or Module Execution: During the implementation of a behavior, automated test
+  execution MUST run exclusively the specific test file corresponding to the modified component or
+  the immediate functional subset (e.g. `bundle exec rspec spec/path/to/file_spec.rb` or `pnpm vitest
+  run path/to/file.spec.js`).
+- Zero Tolerance for Log Pollution: Test runners and automated tools MUST use concise output flags
+  (`--quiet`, targeted filters by test/example name, suppression of massive stack traces or
+  redundant database SQL logs) to prevent performance degradation and working context pollution.
+**Rationale**: In large-scale applications like Chatwoot, complete test suites require 16+ minutes to
+run and often contain order-dependent pollution or pre-existing flaky tests. Mandating global runs
+during iteration destroys the rapid feedback loop, overburdens container resources, and distracts
+from the task at hand.
 
 ## Personalization Boundaries
 
@@ -150,14 +191,15 @@ but MUST be built so they can be toggled or lifted out without surgery on core f
 
 - Use the build/test/lint commands already defined for this repo (`bundle exec rspec`,
   `pnpm test`, `pnpm eslint`, `bundle exec rubocop -a`) before considering work done; do not
-  invent parallel tooling.
+  invent parallel tooling. In the inner development loop, always scope test runs surgically to the
+  affected file or example (Principle IX); run full suites only as pre-release or pre-integration gates.
 - Follow the repo's commit message convention (Conventional Commits: `type(scope): subject`) and
   PR description format (user-facing summary, `Closes`, `How to test`/`How to reproduce`, optional
   `What changed`) as already documented for this project.
-- Every genuine behavior change ships with a test that failed first (Principle VI); when specs
-  are written, follow the existing conventions (favor `let` and per-example setup over bespoke
-  helpers) recorded in `.specify/memory/tdd-profile.md`. Do not add specs for behavior the change
-  does not touch.
+- Every genuine behavior change ships with a test that failed first (Principles VI, VII, VIII); when
+  specs are written, follow the existing repo conventions (favor `let` and per-example setup over bespoke
+  helpers) documented in `AGENTS.md`. Intermediate step-log files or audit diaries are forbidden
+  (Principle VIII); executable tests are the sole proof of delivery.
 - Any exploratory or experimental environment setup (e.g., local Docker/Podman overrides,
   `.env` values, SELinux relabeling) that diverges from the documented dev workflow stays local
   and untracked (e.g., `docker-compose.override.yaml`) — it is not committed as if it were the
@@ -182,4 +224,4 @@ Every plan or feature produced under Spec Kit MUST pass a Constitution Check aga
 principles above before implementation begins; violations must be justified explicitly (see the
 Complexity Tracking section of the plan template) or the approach must be revised.
 
-**Version**: 1.3.0 | **Ratified**: 2026-07-29 | **Last Amended**: 2026-09-13
+**Version**: 1.4.0 | **Ratified**: 2026-07-29 | **Last Amended**: 2026-09-18
