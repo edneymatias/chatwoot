@@ -1,3 +1,13 @@
+## [4.18.0-ichatr.3] - 2026-09-18
+
+### 🐛 Bug Fixes
+
+- *(scout)* Escape literal liquid braces in tool modal placeholder i18n
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Update changelog for 4.18.0-ichatr.2 [skip ci]
+
 ## [4.18.0-ichatr.2] - 2026-09-18
 
 ### ⚙️ Miscellaneous Tasks
