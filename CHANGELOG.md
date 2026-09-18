@@ -1,3 +1,10 @@
+## [4.18.0-ichatr.2] - 2026-09-18
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Update changelog for 4.18.0-ichatr.1 [skip ci]
+- *(sync-hooks)* Register missing Scout and core fork patches in MANIFEST
+
 ## [4.18.0-ichatr.1] - 2026-09-18
 
 ### 🚀 Features
