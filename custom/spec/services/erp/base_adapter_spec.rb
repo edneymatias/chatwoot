@@ -83,6 +83,34 @@ RSpec.describe Erp::BaseAdapter do
       expect(adapter.phone_matches?(contact, erp_data)).to be(true)
     end
 
+    it 'matches when contact has 9th digit and erp phone has 8 digits with same DDD' do
+      contact = instance_double(Contact, phone_number: '+5511987654321')
+      erp_data = { 'phone' => '1187654321' }
+
+      expect(adapter.phone_matches?(contact, erp_data)).to be(true)
+    end
+
+    it 'matches when contact has 8 digits and erp phone has 9th digit with same DDD' do
+      contact = instance_double(Contact, phone_number: '+551187654321')
+      erp_data = { 'phone' => '11987654321' }
+
+      expect(adapter.phone_matches?(contact, erp_data)).to be(true)
+    end
+
+    it 'matches when phone has leading zero in area code' do
+      contact = instance_double(Contact, phone_number: '+5511987654321')
+      erp_data = { 'phone' => '011987654321' }
+
+      expect(adapter.phone_matches?(contact, erp_data)).to be(true)
+    end
+
+    it 'returns false when area code is different even if local number matches' do
+      contact = instance_double(Contact, phone_number: '+5511987654321')
+      erp_data = { 'phone' => '21987654321' }
+
+      expect(adapter.phone_matches?(contact, erp_data)).to be(false)
+    end
+
     it 'returns false for mismatched phone digits (U15)' do
       contact = instance_double(Contact, phone_number: '11987654321')
       erp_data = { 'phone' => '11911112222' }
@@ -281,6 +309,26 @@ RSpec.describe Erp::BaseAdapter do
       expect(result).to eq({ status: 'not_found' })
       expect(adapter).to have_received(:clear_external_id).with(contact)
       expect(adapter).to have_received(:search_by_phone).with('11987654321')
+    end
+
+    it 'clears cached id and returns not_found when fallback search returns record whose phone does not match' do
+      contact = instance_double(
+        Contact,
+        phone_number: '+5511987654321',
+        additional_attributes: { 'external' => { 'testerp_id' => 'stale-id' } }
+      )
+      mismatched_record = { 'id' => 'other-id', 'phone' => '11911112222', 'name' => 'Outra Pessoa' }
+
+      allow(adapter).to receive(:find_by_id).with('stale-id').and_return(nil)
+      allow(adapter).to receive(:clear_external_id).with(contact)
+      allow(adapter).to receive(:search_by_phone).with('11987654321').and_return({ record: mismatched_record, multiple_matches: false })
+      allow(adapter).to receive(:store_external_id)
+
+      result = adapter.fetch_data(contact)
+
+      expect(result).to eq({ status: 'not_found' })
+      expect(adapter).to have_received(:clear_external_id).with(contact)
+      expect(adapter).not_to have_received(:store_external_id)
     end
 
     it 'caches first record and returns multiple_matches true on multiple results (U26)' do

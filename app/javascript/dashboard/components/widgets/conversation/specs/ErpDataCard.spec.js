@@ -247,11 +247,16 @@ describe('ErpDataCard', () => {
           true
         );
       });
+      expect(wrapper.text()).toContain('123.456.789-00');
+      expect(wrapper.text()).toContain('80010-000');
+      expect(wrapper.text()).toContain('(41) 99693-7898');
+
+      const toggle = wrapper.find('[data-testid="erp-phone-expand-toggle"]');
+      if (toggle.exists()) {
+        await toggle.trigger('click');
+      }
 
       const text = wrapper.text();
-      expect(text).toContain('123.456.789-00');
-      expect(text).toContain('80010-000');
-      expect(text).toContain('(41) 99693-7898');
       expect(text).toContain('(41) 3333-4444');
       expect(text).toContain('999'); // Fallback to raw value
     });
@@ -793,6 +798,8 @@ describe('ErpDataCard', () => {
         'REFRESH',
         'BIRTHDAY_BADGE',
         'EMPTY_VALUE',
+        'PHONE_TOGGLE_MORE',
+        'PHONE_TOGGLE_LESS',
       ];
 
       topKeys.forEach(k => {
@@ -801,6 +808,7 @@ describe('ErpDataCard', () => {
       });
 
       const fieldKeys = [
+        'ADDRESS',
         'NM_PESSOA',
         'NR_CPFCNPJPESSOA',
         'NR_RGPESSOA',
@@ -874,6 +882,845 @@ describe('ErpDataCard', () => {
         expect(enErp.FOOTNOTES[k]).toBeDefined();
         expect(ptErp.FOOTNOTES[k]).toBeDefined();
       });
+    });
+  });
+
+  // Phase 2: Foundational tests (T003, T004, FR-001..FR-006)
+  describe('Foundational helpers (T003, T004, FR-001..FR-006)', () => {
+    it('formats address cleanly across all permutations and edge cases (T003, FR-001, FR-002, FR-003)', () => {
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      expect(typeof wrapper.vm.formatAddress).toBe('function');
+
+      // Full address
+      const full = {
+        nmEndpessoa: 'Rua XV',
+        nrEndpessoa: '100',
+        compEndpessoa: 'Sl 4',
+        nmBaipessoa: 'Centro',
+        nmCidpessoa: 'Curitiba',
+        ufEndpessoa: 'PR',
+        nrCeppessoa: '80000000',
+      };
+      expect(wrapper.vm.formatAddress(full)).toBe(
+        'Rua XV, 100, Sl 4, Centro, Curitiba/PR - 80000-000'
+      );
+
+      // Missing complement
+      const noComp = {
+        nmEndpessoa: 'Rua XV',
+        nrEndpessoa: '100',
+        compEndpessoa: null,
+        nmBaipessoa: 'Centro',
+        nmCidpessoa: 'Curitiba',
+        ufEndpessoa: 'PR',
+        nrCeppessoa: '80000000',
+      };
+      expect(wrapper.vm.formatAddress(noComp)).toBe(
+        'Rua XV, 100, Centro, Curitiba/PR - 80000-000'
+      );
+
+      // City and state only
+      const cityState = {
+        nmCidpessoa: 'Curitiba',
+        ufEndpessoa: 'PR',
+      };
+      expect(wrapper.vm.formatAddress(cityState)).toBe('Curitiba/PR');
+
+      // Standalone CEP
+      const cepOnly = {
+        nrCeppessoa: '80000000',
+      };
+      expect(wrapper.vm.formatAddress(cepOnly)).toBe('80000-000');
+
+      // Null / empty fields
+      expect(wrapper.vm.formatAddress({})).toBeNull();
+      expect(wrapper.vm.formatAddress(null)).toBeNull();
+      expect(
+        wrapper.vm.formatAddress({ nmEndpessoa: '', nrCeppessoa: '   ' })
+      ).toBeNull();
+    });
+
+    it('prioritizes cell phone and tracks secondary phones and expansion state (T004, FR-004, FR-005, FR-006)', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Carlos Silva',
+            nrTelcelpessoa: '11987654321',
+            nrTelrespessoa: '1134567890',
+            nrTelcompessoa: '1133334444',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      expect(wrapper.vm.primaryPhone).toBeDefined();
+      expect(wrapper.vm.primaryPhone.key).toBe('nrTelcelpessoa');
+      expect(wrapper.vm.primaryPhone.formattedValue).toBe('(11) 98765-4321');
+      expect(wrapper.vm.secondaryPhones.length).toBe(2);
+      expect(wrapper.vm.hasMultiplePhones).toBe(true);
+      expect(wrapper.vm.isPhonesExpanded).toBe(false);
+
+      // Toggle expansion
+      wrapper.vm.isPhonesExpanded = true;
+      expect(wrapper.vm.isPhonesExpanded).toBe(true);
+
+      // Changing contactId resets isPhonesExpanded
+      await wrapper.setProps({ contactId: 102 });
+      expect(wrapper.vm.isPhonesExpanded).toBe(false);
+    });
+
+    it('falls back to residential phone when cell phone is absent (T004, FR-004)', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Carlos Silva',
+            nrTelrespessoa: '1134567890',
+            nrTelcompessoa: '1133334444',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 103,
+          contact: { id: 103, phone_number: '+551134567890' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      expect(wrapper.vm.primaryPhone).toBeDefined();
+      expect(wrapper.vm.primaryPhone.key).toBe('nrTelrespessoa');
+      expect(wrapper.vm.secondaryPhones.length).toBe(1);
+      expect(wrapper.vm.secondaryPhones[0].key).toBe('nrTelcompessoa');
+      expect(wrapper.vm.hasMultiplePhones).toBe(true);
+    });
+  });
+
+  // Phase 3: User Story 1 - Single-Line Consolidated Address (T007, US1, FR-001, FR-002, FR-003, SC-001, SC-003)
+  describe('User Story 1 - Single-Line Consolidated Address (T007, US1, FR-001, FR-002, FR-003)', () => {
+    it('renders a single consolidated Endereço attribute row and strictly excludes discrete raw address rows', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            nmEndpessoa: 'Rua XV de Novembro',
+            nrEndpessoa: '1500',
+            compEndpessoa: 'Bloco B, Ap 204',
+            nmBaipessoa: 'Centro',
+            nmCidpessoa: 'Curitiba',
+            ufEndpessoa: 'PR',
+            nrCeppessoa: '80000000',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      const rows = wrapper.findAll('[data-testid="erp-attribute-row"]');
+      const addressRow = rows.find(r => r.text().includes('Endereço'));
+      expect(addressRow).toBeDefined();
+      expect(addressRow.text()).toContain(
+        'Rua XV de Novembro, 1500, Bloco B, Ap 204, Centro, Curitiba/PR - 80000-000'
+      );
+
+      // Raw individual fields must NOT appear as separate rows
+      const text = wrapper.text();
+      expect(text).not.toContain('Logradouro');
+      expect(text).not.toContain('Número');
+      expect(text).not.toContain('Complemento');
+      expect(text).not.toContain('Bairro');
+      expect(text).not.toContain('Cidade');
+      expect(text).not.toContain('UF');
+      expect(text).not.toContain('CEP');
+    });
+
+    it('formats cleanly without double commas when complement is absent', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            nmEndpessoa: 'Rua XV de Novembro',
+            nrEndpessoa: '1500',
+            compEndpessoa: null,
+            nmBaipessoa: 'Centro',
+            nmCidpessoa: 'Curitiba',
+            ufEndpessoa: 'PR',
+            nrCeppessoa: '80000000',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      const rows = wrapper.findAll('[data-testid="erp-attribute-row"]');
+      const addressRow = rows.find(r => r.text().includes('Endereço'));
+      expect(addressRow).toBeDefined();
+      expect(addressRow.text()).toContain(
+        'Rua XV de Novembro, 1500, Centro, Curitiba/PR - 80000-000'
+      );
+      expect(addressRow.text()).not.toContain(',,');
+    });
+
+    it('renders city and state only without trailing separators', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            nmCidpessoa: 'Curitiba',
+            ufEndpessoa: 'PR',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      const rows = wrapper.findAll('[data-testid="erp-attribute-row"]');
+      const addressRow = rows.find(r => r.text().includes('Endereço'));
+      expect(addressRow).toBeDefined();
+      expect(addressRow.text()).toContain('Curitiba/PR');
+      expect(addressRow.text()).not.toContain('-');
+    });
+
+    it('renders standalone CEP without leading hyphen', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            nrCeppessoa: '80000000',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      const rows = wrapper.findAll('[data-testid="erp-attribute-row"]');
+      const addressRow = rows.find(r => r.text().includes('Endereço'));
+      expect(addressRow).toBeDefined();
+      expect(addressRow.text()).toContain('80000-000');
+      expect(addressRow.text()).not.toContain('- 80000-000');
+    });
+
+    it('omits Endereço row completely when all address fields are absent or empty', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      const rows = wrapper.findAll('[data-testid="erp-attribute-row"]');
+      const addressRow = rows.find(r => r.text().includes('Endereço'));
+      expect(addressRow).toBeUndefined();
+    });
+  });
+
+  // Phase 4: User Story 2 - Primary Phone Display with Expansion for Additional Numbers (T009, US2, FR-004, FR-005, FR-006, SC-002)
+  describe('User Story 2 - Primary Phone Display with Expansion (T009, US2, FR-004, FR-005, FR-006)', () => {
+    it('renders cell phone as primary with no toggle when only one phone is present', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            nrTelcelpessoa: '11987654321',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      const primaryRow = wrapper.find('[data-testid="erp-primary-phone-row"]');
+      expect(primaryRow.exists()).toBe(true);
+      expect(primaryRow.text()).toContain('Celular');
+      expect(primaryRow.text()).toContain('(11) 98765-4321');
+
+      const toggle = wrapper.find('[data-testid="erp-phone-expand-toggle"]');
+      expect(toggle.exists()).toBe(false);
+
+      const secondaryRows = wrapper.findAll(
+        '[data-testid="erp-secondary-phone-row"]'
+      );
+      expect(secondaryRows.length).toBe(0);
+    });
+
+    it('renders ellipsis toggle when multiple phones exist and expands/collapses secondary numbers inline on click', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            nrTelcelpessoa: '11987654321',
+            nrTelrespessoa: '1134567890',
+            nrTelcompessoa: '1133334444',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      // Initially only primary phone is visible with toggle button
+      const primaryRow = wrapper.find('[data-testid="erp-primary-phone-row"]');
+      expect(primaryRow.exists()).toBe(true);
+      expect(primaryRow.text()).toContain('(11) 98765-4321');
+
+      const toggle = wrapper.find('[data-testid="erp-phone-expand-toggle"]');
+      expect(toggle.exists()).toBe(true);
+
+      // Secondary rows collapsed initially
+      let secondaryRows = wrapper.findAll(
+        '[data-testid="erp-secondary-phone-row"]'
+      );
+      expect(secondaryRows.length).toBe(0);
+
+      // Click toggle to expand
+      await toggle.trigger('click');
+
+      secondaryRows = wrapper.findAll(
+        '[data-testid="erp-secondary-phone-row"]'
+      );
+      expect(secondaryRows.length).toBe(2);
+      expect(secondaryRows[0].text()).toContain('Telefone residencial');
+      expect(secondaryRows[0].text()).toContain('(11) 3456-7890');
+      expect(secondaryRows[1].text()).toContain('Telefone comercial');
+      expect(secondaryRows[1].text()).toContain('(11) 3333-4444');
+
+      // Click toggle again to collapse
+      await toggle.trigger('click');
+      secondaryRows = wrapper.findAll(
+        '[data-testid="erp-secondary-phone-row"]'
+      );
+      expect(secondaryRows.length).toBe(0);
+    });
+
+    it('falls back to residential as primary phone when cell is missing and displays toggle for remaining secondary phones', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            nrTelrespessoa: '1134567890',
+            nrTelcompessoa: '1133334444',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+551134567890' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      const primaryRow = wrapper.find('[data-testid="erp-primary-phone-row"]');
+      expect(primaryRow.exists()).toBe(true);
+      expect(primaryRow.text()).toContain('Telefone residencial');
+      expect(primaryRow.text()).toContain('(11) 3456-7890');
+
+      const toggle = wrapper.find('[data-testid="erp-phone-expand-toggle"]');
+      expect(toggle.exists()).toBe(true);
+
+      await toggle.trigger('click');
+      const secondaryRows = wrapper.findAll(
+        '[data-testid="erp-secondary-phone-row"]'
+      );
+      expect(secondaryRows.length).toBe(1);
+      expect(secondaryRows[0].text()).toContain('Telefone comercial');
+      expect(secondaryRows[0].text()).toContain('(11) 3333-4444');
+    });
+
+    it('resets phone expansion state when contactId changes', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            nrTelcelpessoa: '11987654321',
+            nrTelrespessoa: '1134567890',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      const toggle = wrapper.find('[data-testid="erp-phone-expand-toggle"]');
+      await toggle.trigger('click');
+      expect(
+        wrapper.findAll('[data-testid="erp-secondary-phone-row"]').length
+      ).toBe(1);
+
+      await wrapper.setProps({ contactId: 102 });
+      expect(
+        wrapper.findAll('[data-testid="erp-secondary-phone-row"]').length
+      ).toBe(0);
+    });
+  });
+
+  // Phase 5: User Story 3 - Redesigned Appointments Presentation (T011, US3, FR-007, SC-004)
+  describe('User Story 3 - Redesigned Appointments Presentation (T011, US3, FR-007)', () => {
+    it('renders clean integrated list without dark container box frames', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            atendimentos: {
+              ultimo: {
+                dataHora: '2026-08-15T14:30:00',
+                comQuem: 'Dra. Paula Oliveira',
+                compareceu: true,
+              },
+              proximo: {
+                dataHora: '2026-09-25T10:00:00',
+                comQuem: 'Dr. Fernando Costa',
+                confirmado: true,
+              },
+            },
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(
+          wrapper.find('[data-testid="erp-appointments-section"]').exists()
+        ).toBe(true);
+      });
+
+      const section = wrapper.find('[data-testid="erp-appointments-section"]');
+
+      // Removal of dark boxed container classes
+      expect(section.html()).not.toContain('bg-n-alpha-1');
+
+      // Test IDs for ultimo and proximo rows
+      const ultimoRow = section.find('[data-testid="erp-appointment-ultimo"]');
+      expect(ultimoRow.exists()).toBe(true);
+      expect(ultimoRow.text()).toContain('Dra. Paula Oliveira');
+      expect(ultimoRow.text()).toContain('Compareceu');
+
+      const proximoRow = section.find(
+        '[data-testid="erp-appointment-proximo"]'
+      );
+      expect(proximoRow.exists()).toBe(true);
+      expect(proximoRow.text()).toContain('Dr. Fernando Costa');
+      expect(proximoRow.text()).toContain('Confirmado');
+      expect(
+        proximoRow
+          .find('[data-testid="erp-appointment-confirmed-badge"]')
+          .exists()
+      ).toBe(true);
+    });
+
+    it('renders subtle empty indicator when next appointment is null without empty box container', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            atendimentos: {
+              ultimo: {
+                dataHora: '2026-08-15T14:30:00',
+                comQuem: 'Dra. Paula Oliveira',
+                compareceu: false,
+              },
+              proximo: null,
+            },
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(
+          wrapper.find('[data-testid="erp-appointments-section"]').exists()
+        ).toBe(true);
+      });
+
+      const section = wrapper.find('[data-testid="erp-appointments-section"]');
+      const ultimoRow = section.find('[data-testid="erp-appointment-ultimo"]');
+      expect(ultimoRow.text()).toContain('Não compareceu');
+
+      const proximoRow = section.find(
+        '[data-testid="erp-appointment-proximo"]'
+      );
+      expect(proximoRow.exists()).toBe(true);
+      expect(proximoRow.text()).toContain('Nenhum agendamento futuro');
+      expect(section.html()).not.toContain('bg-n-alpha-1');
+    });
+
+    it('omits appointments section when atendimentos is null', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            atendimentos: null,
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      expect(
+        wrapper.find('[data-testid="erp-appointments-section"]').exists()
+      ).toBe(false);
+    });
+
+    it('supports "quando" field from Younus ERP for appointment date/time', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Sandro Marquetti',
+            atendimentos: {
+              ultimo: {
+                quando: '2022-11-08T14:00:00+00:00',
+                comQuem: 'Cristiano Rosa',
+                compareceu: true,
+              },
+              proximo: null,
+            },
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 129,
+          contact: { id: 129, phone_number: '+5541996937898' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      const ultimoRow = wrapper.find('[data-testid="erp-appointment-ultimo"]');
+      expect(ultimoRow.text()).toContain('Cristiano Rosa');
+      expect(ultimoRow.text()).toMatch(/08\/11\/2022/);
+    });
+
+    it('supports "data" field from Younus ERP for overdue installment due date', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Sandro Marquetti',
+            financeiro: {
+              devedor: true,
+              parcelaVencida: {
+                data: '2022-11-18T03:00:00',
+                valor: 208.33,
+                valorCorrigido: 309.72,
+              },
+              totalFinanceiro: 874.99,
+              totalRecebido: 250,
+              totalAberto: 624.99,
+              totalDevedor: 624.99,
+            },
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 129,
+          contact: { id: 129, phone_number: '+5541996937898' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      const finSection = wrapper.find('[data-testid="erp-financial-section"]');
+      expect(finSection.text()).toContain('18/11/2022');
+      expect(finSection.text()).toContain('208,33');
+      expect(finSection.text()).toContain('309,72');
+    });
+  });
+
+  // Phase 6: User Story 4 - Centered and Responsive Registration Audit Timestamps (T013, US4, FR-008..FR-011, SC-005)
+  describe('User Story 4 - Centered and Responsive Audit Footnotes (T013, US4, FR-008..FR-011)', () => {
+    it('centers footer and displays bullet dot separator when both timestamps are present', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            dtCadpessoa: '2024-01-10T09:00:00',
+            dtUltaltpessoa: '2026-09-01T14:20:00',
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(
+          wrapper.find('[data-testid="erp-audit-footnotes"]').exists()
+        ).toBe(true);
+      });
+
+      const footnotes = wrapper.find('[data-testid="erp-audit-footnotes"]');
+      expect(footnotes.classes()).toContain('text-center');
+
+      const createdAt = footnotes.find('[data-testid="erp-audit-created-at"]');
+      expect(createdAt.exists()).toBe(true);
+      expect(createdAt.text()).toContain('Data de cadastro');
+
+      const separator = footnotes.find('[data-testid="erp-audit-separator"]');
+      expect(separator.exists()).toBe(true);
+      expect(separator.text().trim()).toBe('•');
+
+      const updatedAt = footnotes.find('[data-testid="erp-audit-updated-at"]');
+      expect(updatedAt.exists()).toBe(true);
+      expect(updatedAt.text()).toContain('Data de atualização');
+    });
+
+    it('centers single timestamp without bullet dot separator when only one timestamp is present', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            dtCadpessoa: '2024-01-10T09:00:00',
+            dtUltaltpessoa: null,
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(
+          wrapper.find('[data-testid="erp-audit-footnotes"]').exists()
+        ).toBe(true);
+      });
+
+      const footnotes = wrapper.find('[data-testid="erp-audit-footnotes"]');
+      expect(footnotes.classes()).toContain('text-center');
+
+      const createdAt = footnotes.find('[data-testid="erp-audit-created-at"]');
+      expect(createdAt.exists()).toBe(true);
+
+      const separator = footnotes.find('[data-testid="erp-audit-separator"]');
+      expect(separator.exists()).toBe(false);
+
+      const updatedAt = footnotes.find('[data-testid="erp-audit-updated-at"]');
+      expect(updatedAt.exists()).toBe(false);
+    });
+
+    it('omits audit footnotes section completely when both timestamps are null per FR-011', async () => {
+      ErpAPI.get.mockResolvedValue({
+        data: {
+          status: 'found',
+          data: {
+            nmPessoa: 'Maria Silva',
+            dtCadpessoa: null,
+            dtUltaltpessoa: null,
+          },
+          multiple_matches: false,
+        },
+      });
+
+      const wrapper = mount(ErpDataCard, {
+        props: {
+          contactId: 101,
+          contact: { id: 101, phone_number: '+5511987654321' },
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="erp-found-data"]').exists()).toBe(
+          true
+        );
+      });
+
+      expect(wrapper.find('[data-testid="erp-audit-footnotes"]').exists()).toBe(
+        false
+      );
     });
   });
 });

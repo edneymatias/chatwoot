@@ -57,48 +57,11 @@ const WHITELIST_FIELDS = [
     labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NR_RGPESSOA',
   },
   {
-    key: 'nmEndpessoa',
-    labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NM_ENDPESSOA',
+    key: 'address',
+    labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.ADDRESS',
   },
   {
-    key: 'nrEndpessoa',
-    labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NR_ENDPESSOA',
-  },
-  {
-    key: 'compEndpessoa',
-    labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.COMP_ENDPESSOA',
-  },
-  {
-    key: 'nmBaipessoa',
-    labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NM_BAIPESSOA',
-  },
-  {
-    key: 'nmCidpessoa',
-    labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NM_CIDPESSOA',
-  },
-  {
-    key: 'ufEndpessoa',
-    labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.UF_ENDPESSOA',
-  },
-  {
-    key: 'nrCeppessoa',
-    labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NR_CEPPESSOA',
-    mask: 'cep',
-  },
-  {
-    key: 'nrTelrespessoa',
-    labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NR_TELRESPESSOA',
-    mask: 'phone',
-  },
-  {
-    key: 'nrTelcelpessoa',
-    labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NR_TELCELPESSOA',
-    mask: 'phone',
-  },
-  {
-    key: 'nrTelcompessoa',
-    labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NR_TELCOMPESSOA',
-    mask: 'phone',
+    key: 'phones',
   },
   {
     key: 'emailPessoa',
@@ -219,6 +182,107 @@ const formatCurrency = val => {
     currency: 'BRL',
   }).format(num);
 };
+
+const formatAddress = data => {
+  if (!data) return null;
+  const logradouro = (data.nmEndpessoa || '').trim();
+  const numero = (data.nrEndpessoa || '').trim();
+  const complemento = (data.compEndpessoa || '').trim();
+  const bairro = (data.nmBaipessoa || '').trim();
+  const cidade = (data.nmCidpessoa || '').trim();
+  const uf = (data.ufEndpessoa || '').trim();
+  const cep = (data.nrCeppessoa || '').trim();
+
+  const streetSegment = [logradouro, numero, complemento]
+    .filter(Boolean)
+    .join(', ');
+
+  const neighborhoodSegment = bairro;
+
+  let cityStateSegment = '';
+  if (cidade && uf) {
+    cityStateSegment = `${cidade}/${uf}`;
+  } else if (cidade) {
+    cityStateSegment = cidade;
+  } else if (uf) {
+    cityStateSegment = uf;
+  }
+
+  const locationPrefix = [streetSegment, neighborhoodSegment, cityStateSegment]
+    .filter(Boolean)
+    .join(', ');
+
+  const postalCodeSegment = cep ? maskCep(cep) : '';
+
+  if (locationPrefix && postalCodeSegment) {
+    return `${locationPrefix} - ${postalCodeSegment}`;
+  }
+  if (locationPrefix) {
+    return locationPrefix;
+  }
+  if (postalCodeSegment) {
+    return postalCodeSegment;
+  }
+  return null;
+};
+
+const isPhonesExpanded = ref(false);
+
+const resolvedPhones = computed(() => {
+  if (!customerData.value) {
+    return {
+      primaryPhone: null,
+      secondaryPhones: [],
+      hasMultiplePhones: false,
+    };
+  }
+
+  const phoneKeys = [
+    {
+      key: 'nrTelcelpessoa',
+      labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NR_TELCELPESSOA',
+    },
+    {
+      key: 'nrTelrespessoa',
+      labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NR_TELRESPESSOA',
+    },
+    {
+      key: 'nrTelcompessoa',
+      labelKey: 'CONVERSATION_SIDEBAR.ERP_DATA.FIELDS.NR_TELCOMPESSOA',
+    },
+  ];
+
+  const available = [];
+  phoneKeys.forEach(p => {
+    const raw = customerData.value[p.key];
+    if (raw !== null && raw !== undefined) {
+      const str = String(raw).trim();
+      if (str.length > 0) {
+        available.push({
+          key: p.key,
+          labelKey: p.labelKey,
+          rawValue: str,
+          formattedValue: maskPhone(str),
+        });
+      }
+    }
+  });
+
+  const primary = available.length > 0 ? available[0] : null;
+  const secondary = available.length > 1 ? available.slice(1) : [];
+
+  return {
+    primaryPhone: primary,
+    secondaryPhones: secondary,
+    hasMultiplePhones: secondary.length > 0,
+  };
+});
+
+const primaryPhone = computed(() => resolvedPhones.value.primaryPhone);
+const secondaryPhones = computed(() => resolvedPhones.value.secondaryPhones);
+const hasMultiplePhones = computed(
+  () => resolvedPhones.value.hasMultiplePhones
+);
 const isBirthdayToday = computed(() => {
   const dtNasc = customerData.value?.dtNascpessoa;
   if (!dtNasc) return false;
@@ -248,6 +312,25 @@ const customerAttributes = computed(() => {
   if (!customerData.value) return [];
   const results = [];
   WHITELIST_FIELDS.forEach(field => {
+    if (field.key === 'address') {
+      const formattedAddress = formatAddress(customerData.value);
+      if (formattedAddress) {
+        results.push({
+          key: 'address',
+          labelKey: field.labelKey,
+          value: formattedAddress,
+        });
+      }
+      return;
+    }
+    if (field.key === 'phones') {
+      if (primaryPhone.value) {
+        results.push({
+          key: 'phones',
+        });
+      }
+      return;
+    }
     const rawVal = customerData.value[field.key];
     if (rawVal === null || rawVal === undefined) return;
     const strVal = String(rawVal).trim();
@@ -320,6 +403,9 @@ const fetchErpData = async () => {
 watch(
   [() => props.contactId, () => activeContact.value?.phone_number],
   ([newContactId, newPhone], [oldContactId, oldPhone] = []) => {
+    if (newContactId !== oldContactId) {
+      isPhonesExpanded.value = false;
+    }
     if (newContactId !== oldContactId || newPhone !== oldPhone) {
       fetchErpData();
     }
@@ -329,6 +415,11 @@ watch(
 
 defineExpose({
   fetchErpData,
+  formatAddress,
+  primaryPhone,
+  secondaryPhones,
+  hasMultiplePhones,
+  isPhonesExpanded,
 });
 </script>
 
@@ -421,23 +512,82 @@ defineExpose({
 
       <!-- Curated whitelisted personal attributes aligned by ':' -->
       <div class="flex flex-col divide-y divide-n-weak">
-        <div
-          v-for="attr in customerAttributes"
-          :key="attr.key"
-          data-testid="erp-attribute-row"
-          class="grid grid-cols-[1fr_auto_1fr] items-baseline gap-2 py-1.5 text-xs"
-        >
-          <span
-            class="font-medium text-n-slate-11 text-right truncate"
-            :title="$t(attr.labelKey)"
+        <template v-for="attr in customerAttributes" :key="attr.key">
+          <!-- Primary and expandable secondary phones -->
+          <template v-if="attr.key === 'phones'">
+            <div
+              v-if="primaryPhone"
+              data-testid="erp-primary-phone-row"
+              class="grid grid-cols-[1fr_auto_1fr] items-baseline gap-2 py-1.5 text-xs"
+            >
+              <span
+                class="font-medium text-n-slate-11 text-right truncate"
+                :title="$t(primaryPhone.labelKey)"
+              >
+                {{ $t(primaryPhone.labelKey) }}
+              </span>
+              <span class="text-n-slate-10 select-none font-semibold">:</span>
+              <div
+                class="flex items-center gap-1.5 text-left text-n-slate-12 break-all"
+              >
+                <span>{{ primaryPhone.formattedValue }}</span>
+                <button
+                  v-if="hasMultiplePhones"
+                  type="button"
+                  data-testid="erp-phone-expand-toggle"
+                  :title="
+                    isPhonesExpanded
+                      ? $t('CONVERSATION_SIDEBAR.ERP_DATA.PHONE_TOGGLE_LESS')
+                      : $t('CONVERSATION_SIDEBAR.ERP_DATA.PHONE_TOGGLE_MORE')
+                  "
+                  class="inline-flex items-center justify-center px-1 py-0.5 text-[10px] font-bold leading-none rounded hover:bg-n-alpha-2 text-n-slate-11 hover:text-n-slate-12 cursor-pointer select-none"
+                  @click="isPhonesExpanded = !isPhonesExpanded"
+                >
+                  ...
+                </button>
+              </div>
+            </div>
+
+            <!-- Secondary phones inline accordion -->
+            <template v-if="isPhonesExpanded">
+              <div
+                v-for="sec in secondaryPhones"
+                :key="sec.key"
+                data-testid="erp-secondary-phone-row"
+                class="grid grid-cols-[1fr_auto_1fr] items-baseline gap-2 py-1.5 text-xs"
+              >
+                <span
+                  class="font-medium text-n-slate-11 text-right truncate"
+                  :title="$t(sec.labelKey)"
+                >
+                  {{ $t(sec.labelKey) }}
+                </span>
+                <span class="text-n-slate-10 select-none font-semibold">:</span>
+                <span class="text-n-slate-12 break-all text-left">
+                  {{ sec.formattedValue }}
+                </span>
+              </div>
+            </template>
+          </template>
+
+          <!-- Standard personal attributes -->
+          <div
+            v-else
+            data-testid="erp-attribute-row"
+            class="grid grid-cols-[1fr_auto_1fr] items-baseline gap-2 py-1.5 text-xs"
           >
-            {{ $t(attr.labelKey) }}
-          </span>
-          <span class="text-n-slate-10 select-none font-semibold">:</span>
-          <span class="text-n-slate-12 break-all text-left">
-            {{ attr.value }}
-          </span>
-        </div>
+            <span
+              class="font-medium text-n-slate-11 text-right truncate"
+              :title="$t(attr.labelKey)"
+            >
+              {{ $t(attr.labelKey) }}
+            </span>
+            <span class="text-n-slate-10 select-none font-semibold">:</span>
+            <span class="text-n-slate-12 break-all text-left">
+              {{ attr.value }}
+            </span>
+          </div>
+        </template>
       </div>
 
       <!-- Structured Appointments Section (atendimentos) -->
@@ -450,102 +600,136 @@ defineExpose({
           {{ $t('CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.TITLE') }}
         </h4>
 
-        <!-- Last appointment -->
-        <div
-          class="p-2 mb-2 rounded bg-n-alpha-1 border border-n-weak text-xs flex flex-col gap-1"
-        >
-          <span class="font-medium text-n-slate-11">
-            {{ $t('CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.LAST_VISIT') }}
-          </span>
-          <template v-if="customerData.atendimentos.ultimo">
-            <div class="flex justify-between text-n-slate-12">
-              <span>{{
-                formatDateTime(customerData.atendimentos.ultimo.dataHora)
-              }}</span>
-              <span class="text-n-slate-11">
+        <div class="flex flex-col divide-y divide-n-weak">
+          <!-- Last appointment -->
+          <div
+            data-testid="erp-appointment-ultimo"
+            class="py-2 text-xs flex flex-col gap-1"
+          >
+            <div class="flex items-center justify-between">
+              <span class="font-medium text-n-slate-11">
                 {{
-                  customerData.atendimentos.ultimo.compareceu
-                    ? $t('CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.ATTENDED')
-                    : $t(
-                        'CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.DID_NOT_ATTEND'
-                      )
+                  $t('CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.LAST_VISIT')
                 }}
               </span>
+              <template v-if="customerData.atendimentos.ultimo">
+                <span
+                  class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-n-slate-3 text-n-slate-11"
+                >
+                  {{
+                    customerData.atendimentos.ultimo.compareceu
+                      ? $t(
+                          'CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.ATTENDED'
+                        )
+                      : $t(
+                          'CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.DID_NOT_ATTEND'
+                        )
+                  }}
+                </span>
+              </template>
             </div>
-            <div
-              v-if="customerData.atendimentos.ultimo.comQuem"
-              class="text-n-slate-11"
-            >
-              <span
-                >{{
-                  $t('CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.PROFESSIONAL')
-                }}{{ ': ' }}</span
-              >
-              <span class="text-n-slate-12">{{
-                customerData.atendimentos.ultimo.comQuem
-              }}</span>
-            </div>
-          </template>
-          <span v-else class="text-n-slate-10">
-            {{
-              $t(
-                'CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.NO_PAST_APPOINTMENTS'
-              )
-            }}
-          </span>
-        </div>
-
-        <!-- Next appointment -->
-        <div
-          class="p-2 rounded bg-n-alpha-1 border border-n-weak text-xs flex flex-col gap-1"
-        >
-          <div class="flex items-center justify-between">
-            <span class="font-medium text-n-slate-11">
-              {{ $t('CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.NEXT_VISIT') }}
-            </span>
-            <template v-if="customerData.atendimentos.proximo">
-              <span
-                v-if="customerData.atendimentos.proximo.confirmado"
-                data-testid="erp-appointment-confirmed-badge"
-                class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-n-teal-3 text-n-teal-11 border border-n-teal-6"
-              >
-                {{ $t('CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.CONFIRMED') }}
-              </span>
-              <span
-                v-else
-                class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-n-slate-3 text-n-slate-11"
-              >
+            <template v-if="customerData.atendimentos.ultimo">
+              <div class="text-n-slate-12">
                 {{
-                  $t('CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.NOT_CONFIRMED')
+                  formatDateTime(
+                    customerData.atendimentos.ultimo.quando ||
+                      customerData.atendimentos.ultimo.dataHora ||
+                      customerData.atendimentos.ultimo.data
+                  )
                 }}
-              </span>
+              </div>
+              <div
+                v-if="customerData.atendimentos.ultimo.comQuem"
+                class="text-n-slate-11"
+              >
+                <span>
+                  {{
+                    $t(
+                      'CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.PROFESSIONAL'
+                    )
+                  }}:
+                </span>
+                <span class="text-n-slate-12">
+                  {{ customerData.atendimentos.ultimo.comQuem }}
+                </span>
+              </div>
             </template>
+            <span v-else class="text-n-slate-10 italic">
+              {{
+                $t(
+                  'CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.NO_PAST_APPOINTMENTS'
+                )
+              }}
+            </span>
           </div>
-          <template v-if="customerData.atendimentos.proximo">
-            <div class="text-n-slate-12">
-              {{ formatDateTime(customerData.atendimentos.proximo.dataHora) }}
+
+          <!-- Next appointment -->
+          <div
+            data-testid="erp-appointment-proximo"
+            class="py-2 text-xs flex flex-col gap-1"
+          >
+            <div class="flex items-center justify-between">
+              <span class="font-medium text-n-slate-11">
+                {{
+                  $t('CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.NEXT_VISIT')
+                }}
+              </span>
+              <template v-if="customerData.atendimentos.proximo">
+                <span
+                  v-if="customerData.atendimentos.proximo.confirmado"
+                  data-testid="erp-appointment-confirmed-badge"
+                  class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-n-teal-3 text-n-teal-11 border border-n-teal-6"
+                >
+                  {{
+                    $t('CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.CONFIRMED')
+                  }}
+                </span>
+                <span
+                  v-else
+                  class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-n-slate-3 text-n-slate-11"
+                >
+                  {{
+                    $t(
+                      'CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.NOT_CONFIRMED'
+                    )
+                  }}
+                </span>
+              </template>
             </div>
-            <div
-              v-if="customerData.atendimentos.proximo.comQuem"
-              class="text-n-slate-11"
-            >
-              <span
-                >{{
-                  $t('CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.PROFESSIONAL')
-                }}{{ ': ' }}</span
+            <template v-if="customerData.atendimentos.proximo">
+              <div class="text-n-slate-12">
+                {{
+                  formatDateTime(
+                    customerData.atendimentos.proximo.quando ||
+                      customerData.atendimentos.proximo.dataHora ||
+                      customerData.atendimentos.proximo.data
+                  )
+                }}
+              </div>
+              <div
+                v-if="customerData.atendimentos.proximo.comQuem"
+                class="text-n-slate-11"
               >
-              <span class="text-n-slate-12">{{
-                customerData.atendimentos.proximo.comQuem
-              }}</span>
-            </div>
-          </template>
-          <span v-else class="text-n-slate-10">
-            {{
-              $t(
-                'CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.NO_FUTURE_APPOINTMENTS'
-              )
-            }}
-          </span>
+                <span>
+                  {{
+                    $t(
+                      'CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.PROFESSIONAL'
+                    )
+                  }}:
+                </span>
+                <span class="text-n-slate-12">
+                  {{ customerData.atendimentos.proximo.comQuem }}
+                </span>
+              </div>
+            </template>
+            <span v-else class="text-n-slate-10 italic">
+              {{
+                $t(
+                  'CONVERSATION_SIDEBAR.ERP_DATA.APPOINTMENTS.NO_FUTURE_APPOINTMENTS'
+                )
+              }}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -589,7 +773,9 @@ defineExpose({
             <span class="text-n-slate-12 font-medium">
               {{
                 formatDateWithoutTime(
-                  customerData.financeiro.parcelaVencida.dtVencimento
+                  customerData.financeiro.parcelaVencida.data ||
+                    customerData.financeiro.parcelaVencida.dtVencimento ||
+                    customerData.financeiro.parcelaVencida.dtVencimentoparcela
                 )
               }}
             </span>
@@ -651,7 +837,9 @@ defineExpose({
             <span class="text-n-slate-12">
               {{
                 formatDateWithoutTime(
-                  customerData.financeiro.proximaParcela.dtVencimento
+                  customerData.financeiro.proximaParcela.data ||
+                    customerData.financeiro.proximaParcela.dtVencimento ||
+                    customerData.financeiro.proximaParcela.dtVencimentoparcela
                 )
               }}
             </span>
@@ -729,15 +917,28 @@ defineExpose({
       <div
         v-if="customerData.dtCadpessoa || customerData.dtUltaltpessoa"
         data-testid="erp-audit-footnotes"
-        class="mt-4 pt-2 border-t border-n-weak text-[10px] text-n-slate-10 italic flex flex-col gap-0.5"
+        class="mt-4 pt-2 border-t border-n-weak text-center text-[10px] text-n-slate-10 italic leading-normal"
       >
-        <span v-if="customerData.dtCadpessoa">
-          {{ $t('CONVERSATION_SIDEBAR.ERP_DATA.FOOTNOTES.CREATED_AT') }}{{ ': '
-          }}{{ formatDateTime(customerData.dtCadpessoa) }}
+        <span
+          v-if="customerData.dtCadpessoa"
+          data-testid="erp-audit-created-at"
+        >
+          {{ $t('CONVERSATION_SIDEBAR.ERP_DATA.FOOTNOTES.CREATED_AT') }}:
+          {{ formatDateTime(customerData.dtCadpessoa) }}
         </span>
-        <span v-if="customerData.dtUltaltpessoa">
-          {{ $t('CONVERSATION_SIDEBAR.ERP_DATA.FOOTNOTES.UPDATED_AT') }}{{ ': '
-          }}{{ formatDateTime(customerData.dtUltaltpessoa) }}
+        <span
+          v-if="customerData.dtCadpessoa && customerData.dtUltaltpessoa"
+          data-testid="erp-audit-separator"
+          class="mx-1 select-none"
+        >
+          •
+        </span>
+        <span
+          v-if="customerData.dtUltaltpessoa"
+          data-testid="erp-audit-updated-at"
+        >
+          {{ $t('CONVERSATION_SIDEBAR.ERP_DATA.FOOTNOTES.UPDATED_AT') }}:
+          {{ formatDateTime(customerData.dtUltaltpessoa) }}
         </span>
       </div>
     </div>

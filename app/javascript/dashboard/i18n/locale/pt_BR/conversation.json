@@ -445,7 +445,10 @@
       "REFRESH": "Atualizar",
       "BIRTHDAY_BADGE": "🎂 Aniversariante hoje",
       "EMPTY_VALUE": "Nenhum",
+      "PHONE_TOGGLE_MORE": "Ver todos os telefones",
+      "PHONE_TOGGLE_LESS": "Exibir apenas telefone principal",
       "FIELDS": {
+        "ADDRESS": "Endereço",
         "NM_PESSOA": "Nome",
         "NR_CPFCNPJPESSOA": "CPF",
         "NR_RGPESSOA": "RG",

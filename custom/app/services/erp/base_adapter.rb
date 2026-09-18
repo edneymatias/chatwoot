@@ -58,17 +58,13 @@ class Erp::BaseAdapter
   def phone_matches?(contact, erp_data)
     return false if contact.blank? || erp_data.blank?
 
-    contact_phone = contact.phone_number.to_s
-    erp_phone = phone_from(erp_data).to_s
-    contact_digits = contact_phone.gsub(/\D/, '')
-    erp_digits = erp_phone.gsub(/\D/, '')
+    contact_digits = normalize_phone_digits(contact.phone_number)
+    erp_digits = normalize_phone_digits(phone_from(erp_data))
 
     return false if contact_digits.blank? || erp_digits.blank?
     return true if contact_digits == erp_digits
-    return true if contact_digits.start_with?('55') && contact_digits.delete_prefix('55') == erp_digits
-    return true if erp_digits.start_with?('55') && erp_digits.delete_prefix('55') == contact_digits
 
-    false
+    match_with_ninth_digit_tolerance?(contact_digits, erp_digits)
   end
 
   private
@@ -84,7 +80,7 @@ class Erp::BaseAdapter
     search_phone = sanitize_phone_for_search(contact.phone_number)
     search_result = search_by_phone(search_phone)
 
-    if search_result.present? && search_result[:record].present?
+    if search_result.present? && search_result[:record].present? && phone_matches?(contact, search_result[:record])
       first_record = search_result[:record]
       sync_resolved_id(contact, cached_id, external_id_from(first_record))
       return { status: 'found', data: first_record, multiple_matches: search_result[:multiple_matches] || false }
@@ -102,8 +98,23 @@ class Erp::BaseAdapter
   end
 
   def sanitize_phone_for_search(phone)
+    normalize_phone_digits(phone)
+  end
+
+  def normalize_phone_digits(phone)
     digits = phone.to_s.gsub(/\D/, '')
-    digits = digits.delete_prefix('55') if digits.start_with?('55') && digits.length.between?(12, 13)
+    return '' if digits.blank?
+
+    digits = digits.delete_prefix('55') if digits.start_with?('55') && digits.length.between?(12, 14)
+    digits = digits.delete_prefix('0') if digits.start_with?('0') && digits.length.between?(11, 12)
     digits
+  end
+
+  def match_with_ninth_digit_tolerance?(phone_a, phone_b)
+    without_nine, with_nine = [phone_a, phone_b].sort_by(&:length)
+    return false unless without_nine.length == 10 && with_nine.length == 11
+    return false unless with_nine[2] == '9'
+
+    with_nine[0..1] == without_nine[0..1] && with_nine[3..] == without_nine[2..]
   end
 end
