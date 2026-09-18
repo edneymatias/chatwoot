@@ -111,3 +111,4 @@ Procfile.worktree
 
 # Headroom
 .tokensave/
+.nodeterm/project.json

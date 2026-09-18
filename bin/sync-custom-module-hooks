@@ -473,7 +473,32 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  file: 'config/routes.rb',
                  anchor: "            resource :shopify, controller: 'shopify', only: [:destroy] do\n              collection do\n                post :auth\n                get :orders\n              end\n            end",
                  insert: "            resource :erp, only: [] do\n              get 'data', to: 'erp#data'\n            end"
-               }
+              },
+              # Scout / Knowledge sources PDF parsing
+              {
+                file: 'Gemfile',
+                anchor: "  gem 'spring-watcher-listen'\nend",
+                insert: "gem 'pdf-reader', '~> 2.16'"
+              },
+              # Scout / Opportunity value estimation by custom attributes
+              {
+                file: 'app/javascript/dashboard/api/attributes.js',
+                anchor: "  getAttributesByModel() {\n    return axios.get(this.url);\n  }",
+                insert: "  getAttributesByModel(accountId) {\n    if (accountId) {\n      return axios.get(\n        `${this.apiVersion}/accounts/${accountId}/${this.resource}`\n      );\n    }\n    return axios.get(this.url);\n  }",
+                replace: true
+              },
+              # Container environment git safe directory
+              {
+                file: 'docker/Dockerfile',
+                anchor: 'WORKDIR /app',
+                insert: 'RUN git config --system --add safe.directory /app'
+              },
+              # Docker dev server allowed hosts
+              {
+                file: 'vite.config.ts',
+                anchor: '  resolve: { alias: aliases },',
+                insert: "  server: {\n    allowedHosts: ['vite'],\n  },"
+              }
              ]
            end
 
@@ -564,6 +589,7 @@ if mode == :audit
       'app/javascript/dashboard/composables/useAutomation.js',
       'package.json',
       'pnpm-lock.yaml',
+      'Gemfile.lock',
       'script/bulk_reindex_messages.rb',
       'script/monitor_reindex.rb',
       'script/reindex_single_account.rb'

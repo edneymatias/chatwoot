@@ -145,6 +145,7 @@
       "TEAM_DROPDOWN_PLACEHOLDER": "Selecione times",
       "EMAIL_INPUT_PLACEHOLDER": "Insira o e-mail",
       "URL_INPUT_PLACEHOLDER": "Insira a URL",
+      "INSERT_CONTACT_EMAIL": "Usar o e-mail do contato",
       "TEXT_INPUT_PLACEHOLDER": "Insira o valor",
       "CREATE_OPPORTUNITY_STAGE_PLACEHOLDER": "Selecione um estágio do pipeline",
       "CREATE_OPPORTUNITY_ASSIGNEE_PLACEHOLDER": "Selecione um responsável (opcional)"
@@ -240,7 +241,7 @@
       "PRIVATE_NOTE": "Mensagem Privada",
       "CAMPAIGN_REFERRAL_PRESENT": "Referência de Campanha Presente",
       "CAMPAIGN": "Campanha",
-      "MESSAGE_CONTAINS": "A mensagem contém",
+      "MESSAGE_CONTAINS": "Conteúdo da mensagem",
       "EMAIL": "E-mail",
       "INBOX": "Caixa de Entrada",
       "CONVERSATION_LANGUAGE": "Idioma da conversa",

@@ -146,6 +146,7 @@
         "SUBTITLE": "Inicie uma campanha do WhatsApp para atingir seus clientes diretamente. Envie ofertas ou faça anúncios facilmente. Clique em \"Criar campanha\" para começar."
       },
       "CARD": {
+        "ANALYTICS": "Ver análises",
         "STATUS": {
           "PROCESSING": "Processando",
           "COMPLETED": "Concluído",
@@ -214,26 +215,26 @@
           },
           "PENDING": {
             "TITLE": "Os dados de entrega aparecerão assim que o envio começar",
-            "DESCRIPTION": "Ainda não há registros de entrega para esta campanha."
+            "DESCRIPTION": "Os dados de entrega aparecerão assim que o envio começar."
           },
           "UNAVAILABLE": {
             "TITLE": "As análises não estão disponíveis para esta campanha",
-            "DESCRIPTION": "Nenhum dado de entrega foi registrado para esta campanha."
+            "DESCRIPTION": "Nenhum dado de entrega foi registrado para esta campanha. Isso pode acontecer com campanhas enviadas antes da introdução das análises de campanha."
           }
         },
         "PROCESSING_BANNER": {
           "DEFAULT": "Esta campanha ainda está sendo processada. As análises serão atualizadas automaticamente.",
-          "BOTH": "Esta campanha ainda está sendo processada. {queued} mensagens estão na fila e {awaitingUpdate} aguardam atualização de entrega do WhatsApp.",
-          "BOTH_SINGLE": "Esta campanha ainda está sendo processada. {queued} mensagem está na fila e {awaitingUpdate} aguarda atualização de entrega do WhatsApp.",
-          "BOTH_QUEUED_SINGLE": "Esta campanha ainda está sendo processada. {queued} mensagem está na fila e {awaitingUpdate} aguardam atualização de entrega do WhatsApp.",
-          "BOTH_AWAITING_SINGLE": "Esta campanha ainda está sendo processada. {queued} mensagens estão na fila e {awaitingUpdate} aguarda atualização de entrega do WhatsApp.",
-          "QUEUED": "Esta campanha ainda está sendo processada. {count} mensagem na fila. | Esta campanha ainda está sendo processada. {count} mensagens na fila.",
-          "AWAITING_UPDATE": "Esta campanha ainda está sendo processada. {count} mensagem aguardando atualização do WhatsApp. | Esta campanha ainda está sendo processada. {count} mensagens aguardando atualização do WhatsApp.",
-          "COMPLETING": "Esta campanha está sendo finalizada. As análises serão atualizadas automaticamente."
+          "BOTH": "Esta campanha ainda está sendo processada. {queued} mensagens estão na fila e {awaitingUpdate} aguardam uma atualização de entrega do WhatsApp.",
+          "BOTH_SINGLE": "Esta campanha ainda está sendo processada. {queued} mensagem está na fila e {awaitingUpdate} aguarda uma atualização de entrega do WhatsApp.",
+          "BOTH_QUEUED_SINGLE": "Esta campanha ainda está sendo processada. {queued} mensagem está na fila e {awaitingUpdate} aguardam uma atualização de entrega do WhatsApp.",
+          "BOTH_AWAITING_SINGLE": "Esta campanha ainda está sendo processada. {queued} mensagens estão na fila e {awaitingUpdate} aguarda uma atualização de entrega do WhatsApp.",
+          "QUEUED": "Esta campanha ainda está sendo processada. {count} mensagem está na fila. | Esta campanha ainda está sendo processada. {count} mensagens estão na fila.",
+          "AWAITING_UPDATE": "Esta campanha ainda está sendo processada. {count} mensagem aguarda uma atualização de entrega do WhatsApp. | Esta campanha ainda está sendo processada. {count} mensagens aguardam uma atualização de entrega do WhatsApp.",
+          "COMPLETING": "Esta campanha está sendo concluída. As análises serão atualizadas automaticamente."
         },
         "RATE": "{value}% do público",
-        "SENT_ON": "Enviado em {date}",
-        "PAGE_INFO": "Exibindo {startItem} - {endItem} de {totalItems} contato | Exibindo {startItem} - {endItem} de {totalItems} contatos",
+        "SENT_ON": "Enviada em {date}",
+        "PAGE_INFO": "Exibindo {startItem} - {endItem} de {totalItems} contatos",
         "BREADCRUMB": {
           "CAMPAIGNS": "Campanhas",
           "WHATSAPP": "WhatsApp"
@@ -252,7 +253,7 @@
           },
           "DELIVERED": {
             "LABEL": "Entregues",
-            "HINT": "Mensagens que chegaram ao dispositivo do contato. Mensagens lidas estão incluídas."
+            "HINT": "Mensagens que chegaram ao dispositivo do contato. As mensagens lidas estão incluídas."
           },
           "READ": {
             "LABEL": "Lidas",
@@ -264,7 +265,7 @@
           },
           "FAILED": {
             "LABEL": "Falhas",
-            "HINT": "Mensagens que o WhatsApp não pôde entregar."
+            "HINT": "Mensagens que o WhatsApp não conseguiu entregar."
           },
           "SKIPPED": {
             "LABEL": "Ignoradas",
@@ -274,19 +275,19 @@
         "STATUS": {
           "QUEUED": "Na fila",
           "SENT": "Aguardando atualização de entrega",
-          "DELIVERED": "Entregue",
+          "DELIVERED": "Entregues",
           "READ": "Lida",
           "REPLIED": "Respondida",
-          "FAILED": "Falhou",
-          "SKIPPED": "Ignorada"
+          "FAILED": "Falha",
+          "SKIPPED": "Ignoradas"
         },
         "BREAKDOWN": {
-          "TITLE": "Desempenho de entrega",
+          "TITLE": "Detalhamento da entrega",
           "DELIVERY_RATE": "{value}% entregues",
           "LEGEND": {
-            "READ": "Lidas",
+            "READ": "Lida",
             "DELIVERED": "Entregues",
-            "FAILED": "Falhas",
+            "FAILED": "Falha",
             "SKIPPED": "Ignoradas",
             "PENDING": "Na fila ou aguardando atualização"
           }
