@@ -26,6 +26,16 @@ MANIFEST = if ENV['TEST_MANIFEST']
                },
                {
                  file: 'app/javascript/dashboard/routes/dashboard/dashboard.routes.js',
+                 anchor: "import { routes as captainRoutes } from './captain/captain.routes';",
+                 insert: "import { routes as scoutRoutes } from './scout/scout.routes';"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/dashboard.routes.js',
+                 anchor: '        ...captainRoutes,',
+                 insert: '        ...scoutRoutes,'
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/dashboard.routes.js',
                  anchor: '        ...campaignsRoutes.routes,',
                  insert: "        {\n          path: 'opportunities',\n          name: 'opportunities_index',\n          roles: ['administrator', 'agent', 'custom_role'],\n          component: () =>\n            import('dashboard/routes/dashboard/opportunities/Index.vue'),\n          meta: {\n            featureFlag: FEATURE_FLAGS.OPPORTUNITIES,\n            permissions: ['administrator', 'agent', 'custom_role'],\n          },\n          children: [\n            {\n              path: 'conversations/:conversationId?',\n              name: 'opportunities_conversation',\n              roles: ['administrator', 'agent', 'custom_role'],\n              component: () =>\n                import(\n                  'dashboard/components-next/Opportunities/OpportunityConversationDrawer.vue'\n                ),\n            },\n          ],\n        },"
                },
@@ -33,6 +43,16 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  file: 'app/javascript/dashboard/components-next/sidebar/Sidebar.vue',
                  anchor: "    {\n      name: 'Portals',",
                  insert: "    ...(hasOpportunities.value\n      ? [\n          {\n            name: 'Opportunities',\n            label: t('SIDEBAR.OPPORTUNITIES'),\n            icon: 'i-lucide-kanban',\n            to: accountScopedRoute('opportunities_index'),\n            activeOn: ['opportunities_index'],\n          },\n        ]\n      : []),\n"
+               },
+               {
+                 file: 'app/javascript/dashboard/components-next/sidebar/Sidebar.vue',
+                 anchor: "const hasOpportunities = computed(() => {\n  return isFeatureEnabledonAccount.value(\n    accountId.value,\n    FEATURE_FLAGS.OPPORTUNITIES\n  );\n});",
+                 insert: "\nconst hasScout = computed(() => {\n  return isFeatureEnabledonAccount.value(accountId.value, FEATURE_FLAGS.SCOUT);\n});"
+               },
+               {
+                 file: 'app/javascript/dashboard/components-next/sidebar/Sidebar.vue',
+                 anchor: "    ...(hasOpportunities.value\n      ? [\n          {\n            name: 'Opportunities',\n            label: t('SIDEBAR.OPPORTUNITIES'),\n            icon: 'i-lucide-kanban',\n            to: accountScopedRoute('opportunities_index'),\n            activeOn: ['opportunities_index'],\n          },\n        ]\n      : []),\n",
+                 insert: "    ...(hasScout.value\n      ? [\n          {\n            name: 'Scout',\n            label: t('SIDEBAR.SCOUT'),\n            icon: 'i-lucide-bot',\n            children: [\n              {\n                name: 'Scout Overview',\n                label: t('SIDEBAR.SCOUT_OVERVIEW'),\n                activeOn: ['scout_overview'],\n                to: accountScopedRoute('scout_overview'),\n              },\n              {\n                name: 'Scout Agents',\n                label: t('SIDEBAR.SCOUT_AGENTS'),\n                activeOn: [\n                  'scouts_index',\n                  'scout_detail',\n                  'scout_inboxes',\n                  'scout_products',\n                  'scout_knowledge',\n                  'scout_funnel',\n                  'scout_playground',\n                ],\n                to: accountScopedRoute('scouts_index'),\n              },\n              {\n                name: 'Scout Settings',\n                label: t('SIDEBAR.SCOUT_SETTINGS'),\n                activeOn: ['scout_settings'],\n                to: accountScopedRoute('scout_settings'),\n              },\n              {\n                name: 'Scout Tools',\n                label: t('SIDEBAR.SCOUT_TOOLS'),\n                activeOn: ['scout_tools'],\n                to: accountScopedRoute('scout_tools'),\n              },\n            ],\n          },\n        ]\n      : []),\n"
                },
                {
                  file: 'app/javascript/dashboard/components-next/sidebar/Sidebar.vue',
@@ -107,6 +127,11 @@ MANIFEST = if ENV['TEST_MANIFEST']
                },
                {
                  file: 'app/javascript/dashboard/featureFlags.js',
+                 anchor: "  OPPORTUNITIES: 'opportunities',",
+                 insert: "  SCOUT: 'scout',"
+               },
+               {
+                 file: 'app/javascript/dashboard/featureFlags.js',
                  anchor: "  SCOUT: 'scout',",
                  insert: "  ERP_INTEGRATION: 'erp_integration',"
                },
@@ -122,6 +147,16 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  insert: '  ...opportunities,'
                },
                {
+                 file: 'app/javascript/dashboard/i18n/locale/en/index.js',
+                 anchor: "import opportunities from './opportunities.json';",
+                 insert: "import scout from './scout.json';"
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/en/index.js',
+                 anchor: '  ...opportunities,',
+                 insert: '  ...scout,'
+               },
+               {
                  file: 'app/javascript/dashboard/i18n/locale/pt_BR/index.js',
                  anchor: "import macros from './macros.json';",
                  insert: "import opportunities from './opportunities.json';"
@@ -130,6 +165,16 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  file: 'app/javascript/dashboard/i18n/locale/pt_BR/index.js',
                  anchor: '  ...macros,',
                  insert: '  ...opportunities,'
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/pt_BR/index.js',
+                 anchor: "import opportunities from './opportunities.json';",
+                 insert: "import scout from './scout.json';"
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/pt_BR/index.js',
+                 anchor: '  ...opportunities,',
+                 insert: '  ...scout,'
                },
                {
                  file: 'config/application.rb',
@@ -141,10 +186,21 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  anchor: "          resources :macros, only: [:index, :create, :show, :update, :destroy] do\n            post :execute, on: :member\n          end",
                  insert: "          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do\n            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'\n          end\n          resources :pipeline_stage_aggregates, only: [:index]\n          resources :pipeline_closing_required_fields, only: [:index, :create, :destroy]\n          resources :pipeline_card_field_configs, only: [:index, :create, :update, :destroy]\n          resource :pipeline_currency_setting, only: [:show, :update]\n          resource :campaign_attribution_setting, only: [:show, :update] do\n            post :connect, on: :collection\n            post :reprocess_pending, on: :collection\n          end\n          resources :opportunities, only: [:index, :show, :create, :update, :destroy] do\n            post :link_conversation, on: :member\n            resources :activities, only: [:index], module: :opportunities\n          end\n          resources :opportunity_funnel_reports, only: [:index]\n          resources :opportunity_attribute_reports, only: [:index]"
                },
+               # Scout backend API routes
+               {
+                 file: 'config/routes.rb',
+                 anchor: "          resources :pipeline_stages, only: [:index, :create, :update, :destroy] do\n            resources :required_fields, only: [:create, :destroy], controller: 'pipeline_stage_required_fields'\n          end",
+                 insert: "          resources :scouts, only: [:index, :show, :create, :update, :destroy] do\n            post :sync_required_attributes, on: :member\n            scope module: :scouts do\n              resources :scout_inboxes, only: [:index, :create, :destroy]\n              resources :product_catalog_items, only: [:index, :create, :update, :destroy]\n              resources :knowledge_sources, only: [:index, :create, :update, :destroy]\n              resources :playground_messages, only: [:create]\n            end\n          end\n          resource :scout_account_config, only: [:show, :update]\n          resources :scout_tools, only: [:index, :show, :create, :update, :destroy] do\n            post :test, on: :collection\n          end\n          resources :scout_overview_reports, only: [:index] do\n            get :conversations, on: :collection\n          end"
+               },
                {
                  file: 'config/features.yml',
                  anchor: "  display_name: WhatsApp Embedded Signup Flow\n  enabled: false\n  column: feature_flags_ext_1",
                  insert: "- name: opportunities\n  display_name: Opportunities (Kanban)\n  enabled: true\n  column: feature_flags_ext_1"
+               },
+               {
+                 file: 'config/features.yml',
+                 anchor: "- name: opportunities\n  display_name: Opportunities (Kanban)\n  enabled: true\n  column: feature_flags_ext_1",
+                 insert: "- name: scout\n  display_name: Scout\n  enabled: true\n  column: feature_flags_ext_1"
                },
                {
                  file: 'config/features.yml',
@@ -227,6 +283,11 @@ MANIFEST = if ENV['TEST_MANIFEST']
                },
                {
                  file: 'app/javascript/dashboard/i18n/locale/en/settings.json',
+                 anchor: '    "OPPORTUNITIES": "Opportunities",',
+                 insert: "    \"SCOUT\": \"Scout\",\n    \"SCOUT_OVERVIEW\": \"Overview\",\n    \"SCOUT_AGENTS\": \"Agents\",\n    \"SCOUT_SETTINGS\": \"Settings\",\n    \"SCOUT_TOOLS\": \"Tools\","
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/en/settings.json',
                  anchor: '    "AGENT_BOTS": "Bots",',
                  insert: '    "PIPELINE_STAGES": "Pipeline Setup",'
                },
@@ -234,6 +295,11 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  file: 'app/javascript/dashboard/i18n/locale/pt_BR/settings.json',
                  anchor: '  "SIDEBAR": {',
                  insert: '    "OPPORTUNITIES": "Oportunidades",'
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/pt_BR/settings.json',
+                 anchor: '    "OPPORTUNITIES": "Oportunidades",',
+                 insert: "    \"SCOUT\": \"Scout\",\n    \"SCOUT_OVERVIEW\": \"Visão Geral\",\n    \"SCOUT_AGENTS\": \"Agentes\",\n    \"SCOUT_SETTINGS\": \"Configurações\",\n    \"SCOUT_TOOLS\": \"Ferramentas\","
                },
                {
                  file: 'app/javascript/dashboard/i18n/locale/pt_BR/settings.json',
@@ -473,32 +539,152 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  file: 'config/routes.rb',
                  anchor: "            resource :shopify, controller: 'shopify', only: [:destroy] do\n              collection do\n                post :auth\n                get :orders\n              end\n            end",
                  insert: "            resource :erp, only: [] do\n              get 'data', to: 'erp#data'\n            end"
-              },
-              # Scout / Knowledge sources PDF parsing
-              {
-                file: 'Gemfile',
-                anchor: "  gem 'spring-watcher-listen'\nend",
-                insert: "gem 'pdf-reader', '~> 2.16'"
-              },
-              # Scout / Opportunity value estimation by custom attributes
-              {
-                file: 'app/javascript/dashboard/api/attributes.js',
-                anchor: "  getAttributesByModel() {\n    return axios.get(this.url);\n  }",
-                insert: "  getAttributesByModel(accountId) {\n    if (accountId) {\n      return axios.get(\n        `${this.apiVersion}/accounts/${accountId}/${this.resource}`\n      );\n    }\n    return axios.get(this.url);\n  }",
-                replace: true
-              },
-              # Container environment git safe directory
-              {
-                file: 'docker/Dockerfile',
-                anchor: 'WORKDIR /app',
-                insert: 'RUN git config --system --add safe.directory /app'
-              },
-              # Docker dev server allowed hosts
-              {
-                file: 'vite.config.ts',
-                anchor: '  resolve: { alias: aliases },',
-                insert: "  server: {\n    allowedHosts: ['vite'],\n  },"
-              }
+               },
+               # Scout / Knowledge sources PDF parsing
+               {
+                 file: 'Gemfile',
+                 anchor: "  gem 'spring-watcher-listen'\nend",
+                 insert: "gem 'pdf-reader', '~> 2.16'"
+               },
+               # Scout / Opportunity value estimation by custom attributes
+               {
+                 file: 'app/javascript/dashboard/api/attributes.js',
+                 anchor: "  getAttributesByModel() {\n    return axios.get(this.url);\n  }",
+                 insert: "  getAttributesByModel(accountId) {\n    if (accountId) {\n      return axios.get(\n        `${this.apiVersion}/accounts/${accountId}/${this.resource}`\n      );\n    }\n    return axios.get(this.url);\n  }",
+                 replace: true
+               },
+               # Container environment git safe directory
+               {
+                 file: 'docker/Dockerfile',
+                 anchor: 'WORKDIR /app',
+                 insert: 'RUN git config --system --add safe.directory /app'
+               },
+               # Docker dev server allowed hosts
+               {
+                 file: 'vite.config.ts',
+                 anchor: '  resolve: { alias: aliases },',
+                 insert: "  server: {\n    allowedHosts: ['vite'],\n  },"
+               },
+               # Scout follow up periodic job
+               {
+                 file: 'config/schedule.yml',
+                 anchor: "periodic_assignment_job:\n  cron: '*/30 * * * *'\n  class: 'AutoAssignment::PeriodicAssignmentJob'\n  queue: scheduled_jobs",
+                 insert: "# executed every 30 minutes for Scout silence check and rescue handoff\ncustom_scout_follow_up_job:\n  cron: '*/30 * * * *'\n  class: 'Custom::Scout::FollowUpJob'\n  queue: scheduled_jobs"
+               },
+               # Meta token refresh daily job
+               {
+                 file: 'config/schedule.yml',
+                 anchor: "remove_orphan_conversations_job:\n  cron: '0 */12 * * *'\n  class: 'Internal::RemoveOrphanConversationsJob'\n  queue: housekeeping",
+                 insert: "# executed daily at 0300 UTC\nmeta_token_refresh_job:\n  cron: '0 3 * * *'\n  class: 'Meta::TokenRefreshJob'\n  queue: scheduled_jobs"
+               },
+               # Opportunity custom attribute definition
+               {
+                 file: 'app/models/custom_attribute_definition.rb',
+                 anchor: "  enum attribute_model: { conversation_attribute: 0, contact_attribute: 1, company_attribute: 2 }\n  enum attribute_display_type: { text: 0, number: 1, currency: 2, percent: 3, link: 4, date: 5, list: 6, checkbox: 7 }\n\n  belongs_to :account\n  after_update :update_widget_pre_chat_custom_fields, unless: :company_attribute?\n  after_destroy :sync_widget_pre_chat_custom_fields, unless: :company_attribute?",
+                 insert: "  enum attribute_model: { conversation_attribute: 0, contact_attribute: 1, company_attribute: 2, opportunity_attribute: 3 }\n  enum attribute_display_type: { text: 0, number: 1, currency: 2, percent: 3, link: 4, date: 5, list: 6, checkbox: 7 }\n\n  belongs_to :account\n  after_update :update_widget_pre_chat_custom_fields, unless: -> { company_attribute? || opportunity_attribute? }\n  after_destroy :sync_widget_pre_chat_custom_fields, unless: -> { company_attribute? || opportunity_attribute? }",
+                 replace: true
+               },
+               # Opportunity attributes store getter & accountScoped get action
+               {
+                 file: 'app/javascript/dashboard/store/modules/attributes.js',
+                 anchor: "  getCompanyAttributes: _state => {\n    return _state.records\n      .filter(record => record.attribute_model === 'company_attribute')\n      .map(camelcaseKeys);\n  },",
+                 insert: "  getOpportunityAttributes: _state => {\n    return _state.records\n      .filter(record => record.attribute_model === 'opportunity_attribute')\n      .map(camelcaseKeys);\n  },"
+               },
+               {
+                 file: 'app/javascript/dashboard/store/modules/attributes.js',
+                 anchor: "  get: async function getAttributesByModel({ commit }) {\n    commit(types.SET_CUSTOM_ATTRIBUTE_UI_FLAG, { isFetching: true });\n    try {\n      const response = await AttributeAPI.getAttributesByModel();\n      commit(types.SET_CUSTOM_ATTRIBUTE, response.data);\n    } catch (error) {\n      // Ignore error\n    } finally {\n      commit(types.SET_CUSTOM_ATTRIBUTE_UI_FLAG, { isFetching: false });\n    }\n  },",
+                 insert: "  get: async function getAttributesByModel({ commit }, accountId) {\n    commit(types.SET_CUSTOM_ATTRIBUTE_UI_FLAG, { isFetching: true });\n    try {\n      let validAccountId;\n      if (typeof accountId === 'number' && accountId > 0) {\n        validAccountId = accountId;\n      } else if (typeof accountId === 'string' && Number(accountId) > 0) {\n        validAccountId = Number(accountId);\n      }\n      const response = await AttributeAPI.getAttributesByModel(validAccountId);\n      commit(types.SET_CUSTOM_ATTRIBUTE, response.data);\n    } catch (error) {\n      // Ignore error\n    } finally {\n      commit(types.SET_CUSTOM_ATTRIBUTE_UI_FLAG, { isFetching: false });\n    }\n  },",
+                 replace: true
+               },
+               # Opportunity attribute model constant
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/attributes/constants.js',
+                 anchor: "export const ATTRIBUTE_MODELS = [\n  { id: 0, key: 'CONVERSATION' },\n  { id: 1, key: 'CONTACT' },\n];",
+                 insert: "export const ATTRIBUTE_MODELS = [\n  { id: 0, key: 'CONVERSATION' },\n  { id: 1, key: 'CONTACT' },\n  { id: 2, key: 'COMPANY' },\n  { id: 3, key: 'OPPORTUNITY' },\n];",
+                 replace: true
+               },
+               # Opportunity custom attributes tab in Index.vue
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/attributes/Index.vue',
+                 anchor: "const attributeModels = ['conversation_attribute', 'contact_attribute'];",
+                 insert: "const attributeModels = [\n  'conversation_attribute',\n  'contact_attribute',\n  'opportunity_attribute',\n];",
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/attributes/Index.vue',
+                 anchor: "    {\n      key: 1,\n      name: t('ATTRIBUTES_MGMT.TABS.CONTACT'),\n    },",
+                 insert: "    {\n      key: 2,\n      name: t('ATTRIBUTES_MGMT.TABS.OPPORTUNITY'),\n    },"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/attributes/Index.vue',
+                 anchor: "const filteredAttributes = computed(() => {\n  const query = searchQuery.value.trim();\n  if (!query) return derivedAttributes.value;\n  return picoSearch(derivedAttributes.value, query, [\n    'attribute_display_name',\n    'attribute_key',\n    'attribute_description',\n  ]);\n});",
+                 insert: "\nconst getModelIdForTab = index => {\n  const modelStr = attributeModels[index];\n  if (modelStr === 'opportunity_attribute') return 3;\n  if (modelStr === 'company_attribute') return 2;\n  if (modelStr === 'contact_attribute') return 1;\n  return 0; // conversation_attribute\n};"
+               },
+               {
+                 file: 'app/javascript/dashboard/routes/dashboard/settings/attributes/Index.vue',
+                 anchor: '      :selected-attribute-model-tab="selectedTabIndex"',
+                 insert: '      :selected-attribute-model-tab="getModelIdForTab(selectedTabIndex)"',
+                 replace: true
+               },
+               # Opportunity attribute management i18n
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/en/attributesMgmt.json',
+                 anchor: '      "COMPANY": "Company"',
+                 insert: "      \"COMPANY\": \"Company\",\n      \"OPPORTUNITY\": \"Opportunity\"",
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/i18n/locale/pt_BR/attributesMgmt.json',
+                 anchor: '      "COMPANY": "Empresa"',
+                 insert: "      \"COMPANY\": \"Empresa\",\n      \"OPPORTUNITY\": \"Oportunidade\"",
+                 replace: true
+               },
+               # IntersectionObserver options default fix
+               {
+                 file: 'app/javascript/dashboard/components/IntersectionObserver.vue',
+                 anchor: "    default: () => ({ root: document, rootMargin: '100px 0 100px 0)' }),",
+                 insert: "    default: () => ({ root: null, rootMargin: '100px 0px 100px 0px' }),",
+                 replace: true
+               },
+               # Opportunity attributes in useAutomation.js
+               {
+                 file: 'app/javascript/dashboard/composables/useAutomation.js',
+                 anchor: "  const manifestCustomAttributes = () => {\n    const conversationCustomAttributesRaw = getters[\n      'attributes/getAttributesByModel'\n    ].value('conversation_attribute');\n    const contactCustomAttributesRaw =\n      getters['attributes/getAttributesByModel'].value('contact_attribute');\n\n    const conversationCustomAttributeTypes = generateCustomAttributeTypes(\n      conversationCustomAttributesRaw,\n      'conversation_attribute'\n    );\n    const contactCustomAttributeTypes = generateCustomAttributeTypes(\n      contactCustomAttributesRaw,\n      'contact_attribute'\n    );\n\n    const manifestedCustomAttributes = generateCustomAttributes(\n      conversationCustomAttributeTypes,\n      contactCustomAttributeTypes,\n      t('AUTOMATION.CONDITION.CONVERSATION_CUSTOM_ATTR_LABEL'),\n      t('AUTOMATION.CONDITION.CONTACT_CUSTOM_ATTR_LABEL')\n    );\n\n    const CUSTOM_ATTR_HEADER_KEYS = new Set([\n      'conversation_custom_attribute',\n      'contact_custom_attribute',\n    ]);\n\n    [\n      'message_created',\n      'conversation_created',\n      'conversation_updated',\n      'conversation_opened',\n    ].forEach(eventToUpdate => {\n      const standardConditions = automationTypes[\n        eventToUpdate\n      ].conditions.filter(\n        condition => !CUSTOM_ATTR_HEADER_KEYS.has(condition.key)\n      );\n\n      automationTypes[eventToUpdate].conditions = [\n        ...standardConditions,\n        ...manifestedCustomAttributes,\n      ];\n    });\n  };",
+                 insert: "  const manifestCustomAttributes = () => {\n    const conversationCustomAttributesRaw = getters[\n      'attributes/getAttributesByModel'\n    ].value('conversation_attribute');\n    const contactCustomAttributesRaw =\n      getters['attributes/getAttributesByModel'].value('contact_attribute');\n    const opportunityCustomAttributesRaw =\n      getters['attributes/getAttributesByModel'].value(\n        'opportunity_attribute'\n      ) || [];\n\n    const conversationCustomAttributeTypes = generateCustomAttributeTypes(\n      conversationCustomAttributesRaw,\n      'conversation_attribute'\n    );\n    const contactCustomAttributeTypes = generateCustomAttributeTypes(\n      contactCustomAttributesRaw,\n      'contact_attribute'\n    );\n    const opportunityCustomAttributeTypes = generateCustomAttributeTypes(\n      opportunityCustomAttributesRaw,\n      'opportunity_attribute'\n    );\n\n    const manifestedCustomAttributes = generateCustomAttributes(\n      conversationCustomAttributeTypes,\n      contactCustomAttributeTypes,\n      t('AUTOMATION.CONDITION.CONVERSATION_CUSTOM_ATTR_LABEL'),\n      t('AUTOMATION.CONDITION.CONTACT_CUSTOM_ATTR_LABEL'),\n      opportunityCustomAttributeTypes,\n      t('AUTOMATION.CONDITION.OPPORTUNITY_CUSTOM_ATTR_LABEL')\n    );\n\n    const CUSTOM_ATTR_HEADER_KEYS = new Set([\n      'opportunity_custom_attribute',\n      'conversation_custom_attribute',\n      'contact_custom_attribute',\n    ]);\n\n    [\n      'message_created',\n      'conversation_created',\n      'conversation_updated',\n      'conversation_opened',\n      'opportunity_created',\n      'opportunity_updated',\n      'opportunity_stage_changed',\n      'opportunity_won',\n      'opportunity_lost',\n      'opportunity_reopened',\n    ].forEach(eventToUpdate => {\n      if (!automationTypes[eventToUpdate]) return;\n\n      const standardConditions = automationTypes[\n        eventToUpdate\n      ].conditions.filter(\n        condition => !CUSTOM_ATTR_HEADER_KEYS.has(condition.key)\n      );\n\n      automationTypes[eventToUpdate].conditions = [\n        ...standardConditions,\n        ...manifestedCustomAttributes,\n      ];\n    });\n  };",
+                 replace: true
+               },
+               # Custom date operators in operators.js
+               {
+                 file: 'app/javascript/dashboard/components-next/filter/operators.js',
+                 anchor: "  /** @type {import('vue').ComputedRef<Array<Operator>>} */\n  const dateOperators = computed(() => [\n    operators.value[FILTER_OPS.IS_GREATER_THAN],\n    operators.value[FILTER_OPS.IS_LESS_THAN],\n    operators.value[FILTER_OPS.DAYS_BEFORE],\n  ]);\n\n  /**\n   * Get operator types based on key\n   * @param {string} key - Type of operator to get\n   * @returns {Array<Operator>}\n   */\n  const getOperatorTypes = key => {\n    switch (key) {",
+                 insert: "  /** @type {import('vue').ComputedRef<Array<Operator>>} */\n  const dateOperators = computed(() => [\n    operators.value[FILTER_OPS.IS_GREATER_THAN],\n    operators.value[FILTER_OPS.IS_LESS_THAN],\n    operators.value[FILTER_OPS.DAYS_BEFORE],\n  ]);\n\n  /** @type {import('vue').ComputedRef<Array<Operator>>} */\n  const customDateOperators = computed(() => [\n    operators.value[FILTER_OPS.EQUAL_TO],\n    operators.value[FILTER_OPS.NOT_EQUAL_TO],\n    operators.value[FILTER_OPS.IS_GREATER_THAN],\n    operators.value[FILTER_OPS.IS_LESS_THAN],\n    operators.value[FILTER_OPS.DAYS_BEFORE],\n    operators.value[FILTER_OPS.IS_PRESENT],\n    operators.value[FILTER_OPS.IS_NOT_PRESENT],\n  ]);\n\n  /**\n   * Get operator types based on key\n   * @param {string} key - Type of operator to get\n   * @returns {Array<Operator>}\n   */\n  const getOperatorTypes = key => {\n    switch (key) {",
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/components-next/filter/operators.js',
+                 anchor: "      case 'number':\n        return equalityOperators.value;\n      case 'link':\n        return equalityOperators.value;\n      case 'date':\n        return comparisonOperators.value;",
+                 insert: "      case 'number':\n        return comparisonOperators.value;\n      case 'link':\n        return equalityOperators.value;\n      case 'date':\n        return customDateOperators.value;",
+                 replace: true
+               },
+               {
+                 file: 'app/javascript/dashboard/components-next/filter/operators.js',
+                 anchor: "    dateOperators,\n    getOperatorTypes,",
+                 insert: "    dateOperators,\n    customDateOperators,\n    getOperatorTypes,",
+                 replace: true
+               },
+               # Meta marketing installation config
+               {
+                 file: 'config/installation_config.yml',
+                 anchor: '# ------- End of Facebook Channel Related Config ------- #',
+                 insert: "\n# ------- Meta Marketing Config ------- #\n- name: META_MARKETING_APP_ID\n  display_title: 'Meta Marketing App ID'\n  description: 'The Facebook App ID for Meta Marketing integration'\n  locked: false\n- name: META_MARKETING_APP_SECRET\n  display_title: 'Meta Marketing App Secret'\n  description: 'The App Secret for Meta Marketing integration'\n  locked: false\n  type: secret\n- name: META_MARKETING_API_VERSION\n  display_title: 'Meta Marketing API Version'\n  description: 'Configure this if you want to use a different Meta Marketing API version. Make sure its prefixed with `v`'\n  value: 'v22.0'\n  locked: false\n# ------- End of Meta Marketing Config ------- #"
+               },
+               # InjectEnterpriseEditionModule nil-safety
+               {
+                 file: 'config/initializers/01_inject_enterprise_edition_module.rb',
+                 anchor: "  def const_get_maybe_false(mod, name)\n    mod&.const_defined?(name, false) && mod&.const_get(name, false)\n  end",
+                 insert: "  def const_get_maybe_false(mod, name)\n    return false unless mod\n\n    mod.const_defined?(name, false) ? mod.const_get(name, false) : false\n  end",
+                 replace: true
+               }
              ]
            end
 
@@ -554,15 +740,8 @@ if mode == :audit
       'config/initializers/rack_profiler.rb',
       'docker-compose.yaml', 'docker-compose.production.yaml', '.gitignore', 'AGENTS.md', '.specify/feature.json',
       'bin/sync-custom-module-hooks', 'lib/seeders/account_seeder.rb',
-      'app/javascript/dashboard/components/IntersectionObserver.vue',
       'app/javascript/dashboard/components/widgets/conversation/ErpDataCard.vue',
-      'app/javascript/dashboard/i18n/locale/en/attributesMgmt.json',
-      'app/javascript/dashboard/i18n/locale/pt_BR/attributesMgmt.json',
-      'app/javascript/dashboard/routes/dashboard/settings/attributes/Index.vue',
-      'app/javascript/dashboard/routes/dashboard/settings/attributes/constants.js',
       'app/javascript/dashboard/routes/dashboard/settings/automation/constants.js',
-      'app/javascript/dashboard/store/modules/attributes.js',
-      'app/models/custom_attribute_definition.rb',
       'app/javascript/dashboard/api/pipelineStages.js',
       '.vscode/settings.json',
       '.github/workflows/publish_ee_docker.yml',
@@ -570,23 +749,18 @@ if mode == :audit
       '.github/workflows/size-limit.yml',
       '.rubocop.yml',
       'app/javascript/dashboard/i18n/locale/pt_BR/conversation.json',
-      'config/initializers/01_inject_enterprise_edition_module.rb',
-      'config/installation_config.yml',
       'config/locales/en.yml',
       'config/locales/pt_BR.yml',
       'app/javascript/dashboard/i18n/locale/en/integrationApps.json',
       'app/javascript/dashboard/i18n/locale/pt_BR/integrationApps.json',
       'app/javascript/dashboard/i18n/locale/en/integrations.json',
       'app/javascript/dashboard/i18n/locale/pt_BR/integrations.json',
-      'config/schedule.yml',
       'db/migrate/20231211010807_add_cached_labels_list.rb',
       'docker/entrypoints/helpers/pg_database_url.rb',
       'lib/tasks/captain_assistant_migration.rake',
       'lib/tasks/download_report.rake',
       'lib/tasks/meta_marketing.rake',
       'script/tag_contacts_from_csv.rb',
-      'app/javascript/dashboard/components-next/filter/operators.js',
-      'app/javascript/dashboard/composables/useAutomation.js',
       'package.json',
       'pnpm-lock.yaml',
       'Gemfile.lock',
