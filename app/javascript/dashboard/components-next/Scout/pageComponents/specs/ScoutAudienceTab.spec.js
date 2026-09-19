@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import ScoutAudienceTab from '../ScoutAudienceTab.vue';
@@ -10,13 +10,39 @@ vi.mock('dashboard/api/scout', () => ({
   },
 }));
 
+const mockFilterTypes = ref([
+  {
+    attributeKey: 'labels',
+    inputType: 'multiSelect',
+    options: [
+      { id: 'vip', name: 'vip' },
+      { id: 'lead', name: 'lead' },
+    ],
+  },
+  {
+    attributeKey: 'country_code',
+    inputType: 'searchSelect',
+    options: [
+      { id: 'US', name: 'United States' },
+      { id: 'BR', name: 'Brazil' },
+    ],
+  },
+  {
+    attributeKey: 'phone_number',
+    inputType: 'plainText',
+  },
+  {
+    attributeKey: 'email',
+    inputType: 'plainText',
+  },
+]);
+
 vi.mock('dashboard/components-next/filter/contactProvider.js', () => ({
   useContactFilterContext: () => ({
-    filterTypes: computed(() => []),
-    attributeFilterTypes: computed(() => []),
+    filterTypes: computed(() => mockFilterTypes.value),
+    attributeFilterTypes: computed(() => mockFilterTypes.value),
   }),
 }));
-
 vi.mock('dashboard/composables', () => ({
   useAlert: () => ({
     showAlert: vi.fn(),
@@ -244,6 +270,129 @@ describe('ScoutAudienceTab.vue', () => {
             filter_operator: 'contains',
             query_operator: 'or',
             values: ['vip'],
+          },
+        ],
+      },
+    });
+  });
+
+  it('hydrates audience conditions from backend with correct object values for multiSelect and searchSelect', () => {
+    const scoutWithAudience = {
+      ...defaultScout,
+      audience: [
+        {
+          attribute_key: 'labels',
+          filter_operator: 'equal_to',
+          values: ['vip'],
+          query_operator: 'and',
+        },
+        {
+          attribute_key: 'country_code',
+          filter_operator: 'equal_to',
+          values: ['US'],
+          query_operator: 'and',
+        },
+        {
+          attribute_key: 'phone_number',
+          filter_operator: 'equal_to',
+          values: ['+5511999999999'],
+          query_operator: 'and',
+        },
+      ],
+    };
+
+    const wrapper = mount(ScoutAudienceTab, {
+      props: {
+        scout: scoutWithAudience,
+      },
+      global: {
+        mocks: {
+          $t: msg => msg,
+        },
+        stubs: {
+          Button: true,
+          ConditionRow: true,
+        },
+      },
+    });
+
+    expect(wrapper.vm.filters.length).toBe(3);
+    expect(wrapper.vm.filters[0].values).toEqual([{ id: 'vip', name: 'vip' }]);
+    expect(wrapper.vm.filters[1].values).toEqual({
+      id: 'US',
+      name: 'United States',
+    });
+    expect(wrapper.vm.filters[2].values).toBe('+5511999999999');
+  });
+
+  it('serializes multiSelect (labels) array of objects and searchSelect objects into array of IDs on saveAudience', async () => {
+    ScoutAPI.update.mockResolvedValue({
+      data: { ...defaultScout },
+    });
+
+    const wrapper = mount(ScoutAudienceTab, {
+      props: {
+        scout: defaultScout,
+      },
+      global: {
+        mocks: {
+          $t: msg => msg,
+        },
+        stubs: {
+          Button: true,
+          ConditionRow: true,
+        },
+      },
+    });
+
+    wrapper.vm.filters = [
+      {
+        id: 1,
+        attributeKey: 'labels',
+        filterOperator: 'equal_to',
+        values: [
+          { id: 'vip', name: 'vip' },
+          { id: 'lead', name: 'lead' },
+        ],
+        queryOperator: 'and',
+      },
+      {
+        id: 2,
+        attributeKey: 'country_code',
+        filterOperator: 'equal_to',
+        values: { id: 'US', name: 'United States' },
+        queryOperator: 'or',
+      },
+      {
+        id: 3,
+        attributeKey: 'phone_number',
+        filterOperator: 'equal_to',
+        values: '+5511999999999',
+        queryOperator: 'and',
+      },
+    ];
+
+    await wrapper.vm.saveAudience();
+    expect(ScoutAPI.update).toHaveBeenCalledWith(1, {
+      scout: {
+        audience: [
+          {
+            attribute_key: 'labels',
+            filter_operator: 'equal_to',
+            query_operator: 'and',
+            values: ['vip', 'lead'],
+          },
+          {
+            attribute_key: 'country_code',
+            filter_operator: 'equal_to',
+            query_operator: 'or',
+            values: ['US'],
+          },
+          {
+            attribute_key: 'phone_number',
+            filter_operator: 'equal_to',
+            query_operator: 'and',
+            values: ['+5511999999999'],
           },
         ],
       },

@@ -13,6 +13,11 @@ class Custom::ScoutListener < BaseListener
     conversation = message.conversation
     return unless conversation&.pending?
 
+    unless scout.engages?(conversation.contact, conversation)
+      conversation.open!
+      return
+    end
+
     Custom::Scout::ProcessMessageJob.enqueue_debounced(conversation, scout)
   end
 end

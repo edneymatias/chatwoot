@@ -30,7 +30,11 @@ class Api::V1::Accounts::Scouts::ScoutInboxesController < Api::V1::Accounts::Bas
   end
 
   def destroy
-    @scout_inbox = @scout.scout_inboxes.find(params[:id])
+    @scout_inbox = @scout.scout_inboxes.find_by(id: params[:id]) ||
+                   @scout.scout_inboxes.find_by(inbox_id: params[:id])
+
+    raise ActiveRecord::RecordNotFound unless @scout_inbox
+
     @scout_inbox.destroy!
     head :ok
   end

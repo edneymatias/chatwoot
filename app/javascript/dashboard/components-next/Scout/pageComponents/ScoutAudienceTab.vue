@@ -1,6 +1,7 @@
 <script setup>
-import { ref, watch, useTemplateRef } from 'vue';
+import { ref, watch, onMounted, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useStore } from 'dashboard/composables/store';
 import ScoutAPI from 'dashboard/api/scout';
 import Button from 'dashboard/components-next/button/Button.vue';
 import ConditionRow from 'dashboard/components-next/filter/ConditionRow.vue';
@@ -15,8 +16,8 @@ const props = defineProps({
 
 const emit = defineEmits(['updated']);
 const { t } = useI18n();
-const { attributeFilterTypes } = useContactFilterContext();
-
+const store = useStore();
+const { filterTypes, attributeFilterTypes } = useContactFilterContext();
 const conditionsRef = useTemplateRef('conditionsRef');
 const filters = ref([]);
 const isSaving = ref(false);
@@ -30,20 +31,109 @@ const DEFAULT_FILTER = {
   queryOperator: 'and',
 };
 
+const findOption = (filterType, value) =>
+  filterType?.options?.find(option => String(option.id) === String(value));
+
+const hydrateValues = (item, filterType) => {
+  const raw = Array.isArray(item.values) ? item.values : [item.values];
+  const inputType = filterType?.inputType;
+
+  if (inputType === 'multiSelect') {
+    return raw
+      .filter(
+        v =>
+          v !== null &&
+          v !== undefined &&
+          v !== '' &&
+          String(v) !== '[object Object]'
+      )
+      .map(
+        value => findOption(filterType, value) ?? { id: value, name: value }
+      );
+  }
+
+  if (['searchSelect', 'booleanSelect'].includes(inputType)) {
+    const val = raw[0];
+    if (
+      val === null ||
+      val === undefined ||
+      val === '' ||
+      String(val) === '[object Object]'
+    ) {
+      return {};
+    }
+    return findOption(filterType, val) ?? { id: val, name: val };
+  }
+
+  if (inputType === 'multiText') {
+    return raw.filter(
+      v =>
+        v !== null &&
+        v !== undefined &&
+        v !== '' &&
+        String(v) !== '[object Object]'
+    );
+  }
+
+  const first = raw[0];
+  if (first == null || String(first) === '[object Object]') return '';
+  return String(first);
+};
+
+const serializeValues = values => {
+  if (Array.isArray(values)) {
+    return values
+      .map(item =>
+        item && typeof item === 'object' && item.id !== undefined
+          ? item.id
+          : item
+      )
+      .filter(
+        v =>
+          v !== '' &&
+          v !== null &&
+          v !== undefined &&
+          String(v) !== '[object Object]'
+      )
+      .map(String);
+  }
+
+  if (values && typeof values === 'object') {
+    if (
+      values.id !== undefined &&
+      values.id !== null &&
+      values.id !== '' &&
+      String(values.id) !== '[object Object]'
+    ) {
+      return [String(values.id)];
+    }
+    return [];
+  }
+
+  if (
+    values === '' ||
+    values === null ||
+    values === undefined ||
+    String(values) === '[object Object]'
+  ) {
+    return [];
+  }
+
+  return [String(values)];
+};
+
 const initializeFilters = () => {
   if (Array.isArray(props.scout?.audience) && props.scout.audience.length > 0) {
     filters.value = props.scout.audience.map((item, index) => {
-      let val = item.values;
-      if (Array.isArray(val) && val.length === 1) {
-        val = val[0];
-      } else if (!Array.isArray(val) && val != null) {
-        val = String(val);
-      }
+      const filterType = filterTypes.value?.find(
+        type => type.attributeKey === item.attribute_key
+      );
+
       return {
         id: index + 1,
         attributeKey: item.attribute_key,
         filterOperator: item.filter_operator,
-        values: val,
+        values: hydrateValues(item, filterType),
         queryOperator: item.query_operator || 'and',
       };
     });
@@ -51,6 +141,12 @@ const initializeFilters = () => {
     filters.value = [];
   }
 };
+
+onMounted(() => {
+  if (store?.dispatch) {
+    store.dispatch('labels/get');
+  }
+});
 
 watch(
   () => props.scout,
@@ -114,24 +210,11 @@ const saveAudience = async () => {
 
   try {
     const audiencePayload = filters.value.map((filter, index) => {
-      let formattedValues = filter.values;
-      if (Array.isArray(formattedValues)) {
-        formattedValues = formattedValues.map(String);
-      } else if (
-        formattedValues !== '' &&
-        formattedValues !== null &&
-        formattedValues !== undefined
-      ) {
-        formattedValues = [String(formattedValues)];
-      } else {
-        formattedValues = [];
-      }
-
       return {
         attribute_key: filter.attributeKey,
         filter_operator: filter.filterOperator,
         query_operator: index === 0 ? 'and' : filter.queryOperator || 'and',
-        values: formattedValues,
+        values: serializeValues(filter.values),
       };
     });
 

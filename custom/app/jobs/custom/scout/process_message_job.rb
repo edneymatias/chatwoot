@@ -27,6 +27,12 @@ class Custom::Scout::ProcessMessageJob < ApplicationJob
     return unless scout&.enabled?
     return unless conversation_pending?(conversation)
 
+    unless scout.engages?(conversation.contact, conversation)
+      conversation.open!
+      cleanup_redis_keys(conversation.id)
+      return
+    end
+
     process_debounce(conversation, scout)
   end
 
@@ -34,7 +40,6 @@ class Custom::Scout::ProcessMessageJob < ApplicationJob
 
   def process_debounce(conversation, scout)
     last_msg_key = format(LAST_MESSAGE_KEY, conversation_id: conversation.id)
-    enqueued_key = format(ENQUEUED_KEY, conversation_id: conversation.id)
 
     last_message_at = Redis::Alfred.get(last_msg_key).to_f
     delay = scout.debounce_delay_seconds
@@ -44,8 +49,7 @@ class Custom::Scout::ProcessMessageJob < ApplicationJob
       remaining = [(delay - elapsed).ceil, 1].max
       self.class.set(wait: remaining.seconds).perform_later(conversation.id)
     else
-      Redis::Alfred.delete(enqueued_key)
-      Redis::Alfred.delete(last_msg_key)
+      cleanup_redis_keys(conversation.id)
       Custom::Scout::AgentRunner.new(scout: scout, conversation: conversation).perform
     end
   end
@@ -53,5 +57,12 @@ class Custom::Scout::ProcessMessageJob < ApplicationJob
   def conversation_pending?(conversation)
     status = Conversation.uncached { Conversation.where(id: conversation.id).pick(:status) }
     status == 'pending' || status == Conversation.statuses[:pending]
+  end
+
+  def cleanup_redis_keys(conversation_id)
+    last_msg_key = format(LAST_MESSAGE_KEY, conversation_id: conversation_id)
+    enqueued_key = format(ENQUEUED_KEY, conversation_id: conversation_id)
+    Redis::Alfred.delete(enqueued_key)
+    Redis::Alfred.delete(last_msg_key)
   end
 end

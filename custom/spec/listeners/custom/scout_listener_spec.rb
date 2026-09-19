@@ -114,5 +114,42 @@ RSpec.describe Custom::ScoutListener do
       described_class.instance.message_created(event)
       expect(Custom::Scout::ProcessMessageJob).not_to have_received(:enqueue_debounced)
     end
+
+    context 'when Scout has audience configured' do
+      before do
+        scout.update!(
+          audience: [
+            {
+              'attribute_key' => 'labels',
+              'filter_operator' => 'equal_to',
+              'values' => ['vip']
+            }
+          ]
+        )
+      end
+
+      it 'enqueues debounced job and keeps conversation pending when contact matches audience' do
+        contact.update_labels(['vip'])
+        message = create(:message, account: account, inbox: whatsapp_inbox, conversation: conversation, message_type: :incoming, private: false,
+                                   sender: contact)
+        event = Events::Base.new('message.created', Time.current, message: message)
+
+        described_class.instance.message_created(event)
+        expect(Custom::Scout::ProcessMessageJob).to have_received(:enqueue_debounced).with(conversation, scout)
+        expect(conversation.reload.status).to eq('pending')
+      end
+
+      it 'opens conversation and does not enqueue debounced job when contact does not match audience' do
+        contact.update_labels(['other'])
+        conversation.update!(status: :pending)
+        message = create(:message, account: account, inbox: whatsapp_inbox, conversation: conversation, message_type: :incoming, private: false,
+                                   sender: contact)
+        event = Events::Base.new('message.created', Time.current, message: message)
+
+        described_class.instance.message_created(event)
+        expect(Custom::Scout::ProcessMessageJob).not_to have_received(:enqueue_debounced)
+        expect(conversation.reload.status).to eq('open')
+      end
+    end
   end
 end

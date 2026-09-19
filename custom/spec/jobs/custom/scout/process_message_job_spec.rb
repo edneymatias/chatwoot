@@ -82,5 +82,34 @@ RSpec.describe Custom::Scout::ProcessMessageJob, type: :job do
 
       expect(Custom::Scout::AgentRunner).not_to have_received(:new)
     end
+
+    context 'when Scout has audience configured' do
+      before do
+        scout.update!(
+          audience: [
+            {
+              'attribute_key' => 'labels',
+              'filter_operator' => 'equal_to',
+              'values' => ['vip']
+            }
+          ]
+        )
+      end
+
+      it 'opens conversation and does not run AgentRunner when contact does not match audience' do
+        contact.update_labels(['other'])
+        last_msg_key = format(described_class::LAST_MESSAGE_KEY, conversation_id: conversation.id)
+        enqueued_key = format(described_class::ENQUEUED_KEY, conversation_id: conversation.id)
+        Redis::Alfred.set(last_msg_key, Time.current.to_f - 5.0)
+        Redis::Alfred.set(enqueued_key, true)
+
+        described_class.new.perform(conversation.id)
+
+        expect(Custom::Scout::AgentRunner).not_to have_received(:new)
+        expect(conversation.reload.status).to eq('open')
+        expect(Redis::Alfred.get(last_msg_key)).to be_nil
+        expect(Redis::Alfred.get(enqueued_key)).to be_nil
+      end
+    end
   end
 end
