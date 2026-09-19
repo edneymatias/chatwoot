@@ -1,3 +1,13 @@
+## [4.18.0-ichatr.4] - 2026-09-19
+
+### 🐛 Bug Fixes
+
+- *(scout)* Enforce audience engagement gating and hydrate audience filters
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Update changelog for 4.18.0-ichatr.3 [skip ci]
+
 ## [4.18.0-ichatr.3] - 2026-09-18
 
 ### 🐛 Bug Fixes
