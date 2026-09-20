@@ -23,11 +23,11 @@ RSpec.describe Custom::Whatsapp::OneoffCampaignService do
   end
   let(:template_params) do
     {
-      'name' => 'sample_template',
-      'namespace' => '123_456',
-      'category' => 'MARKETING',
+      'name' => 'ticket_status_updated',
+      'namespace' => '23423423_2342423_324234234_2343224',
+      'category' => 'UTILITY',
       'language' => 'en',
-      'processed_params' => { 'body' => { '1' => 'John' } }
+      'processed_params' => { 'body' => { 'name' => 'John', 'ticket_id' => '2332' } }
     }
   end
 
@@ -57,7 +57,19 @@ RSpec.describe Custom::Whatsapp::OneoffCampaignService do
       expect(campaign.reload).to be_completed
     end
 
-    it 'marks recipient as skipped when contact has no phone number' do
+    it 'routes no-phone contact with a single WhatsApp identity via BSUID' do
+      contact_no_phone.update!(label_list: [label.title])
+      create(:contact_inbox, contact: contact_no_phone, inbox: whatsapp_inbox, source_id: 'IN.2081978709342942')
+
+      Whatsapp::OneoffCampaignService.new(campaign: campaign).perform
+
+      recipient = campaign.ichatr_campaign_recipients.find_by(contact: contact_no_phone)
+      expect(recipient).to be_present
+      expect(recipient.status).to eq('sent')
+      expect(recipient.source_id).to eq('wamid_test_123')
+    end
+
+    it 'marks recipient as skipped when contact has no phone number and no WhatsApp identity' do
       contact_no_phone.update!(label_list: [label.title])
 
       Whatsapp::OneoffCampaignService.new(campaign: campaign).perform
@@ -65,7 +77,7 @@ RSpec.describe Custom::Whatsapp::OneoffCampaignService do
       recipient = campaign.ichatr_campaign_recipients.find_by(contact: contact_no_phone)
       expect(recipient).to be_present
       expect(recipient.status).to eq('skipped')
-      expect(recipient.error_message).to eq('Phone number is missing')
+      expect(recipient.error_message).to eq('Phone number and BSUID are missing')
     end
 
     it 'marks recipient as failed when provider returns an error' do
