@@ -540,6 +540,16 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  anchor: "            resource :shopify, controller: 'shopify', only: [:destroy] do\n              collection do\n                post :auth\n                get :orders\n              end\n            end",
                  insert: "            resource :erp, only: [] do\n              get 'data', to: 'erp#data'\n            end"
                },
+               # ERP data card visibility for agents: the dashboard integrations getter
+               # (integrations/getEnabledErpIntegration) requires `category` to identify
+               # ERP apps, but upstream only emits app params (incl. category) to admins
+               # via `json.call`. Emit `category` unconditionally so agents see the card.
+               {
+                 file: 'app/views/api/v1/models/_app.json.jbuilder',
+                 anchor: 'json.enabled resource.enabled?(@current_account)',
+                 insert: "json.enabled resource.enabled?(@current_account)\n\n# The dashboard integrations getter (integrations/getEnabledErpIntegration) requires\n# `category` to identify ERP apps and gate the ERP data card. It is a UI classification,\n# not sensitive data, so emit it for all users; agents must see the card too.\njson.category resource.params[:category] if resource.params.key?(:category)",
+                 replace: true
+               },
                # Scout / Knowledge sources PDF parsing
                {
                  file: 'Gemfile',
