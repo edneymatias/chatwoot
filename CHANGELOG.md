@@ -1,3 +1,18 @@
+## [4.18.0-ichatr.5] - 2026-09-21
+
+### 🐛 Bug Fixes
+
+- *(integrations)* Expose app category to all users so agents see ERP data card
+- *(whatsapp)* Block authentication templates for BSUID recipients in tracked campaigns
+
+### 🧪 Testing
+
+- *(enterprise)* Mark shadowed WhatsApp oneoff-campaign specs pending
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Update changelog for 4.18.0-ichatr.4 [skip ci]
+
 ## [4.18.0-ichatr.4] - 2026-09-19
 
 ### 🐛 Bug Fixes
