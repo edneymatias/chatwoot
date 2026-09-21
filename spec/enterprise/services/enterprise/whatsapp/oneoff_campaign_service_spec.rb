@@ -31,7 +31,17 @@ RSpec.describe Enterprise::Whatsapp::OneoffCampaignService do
     allow_any_instance_of(Whatsapp::OneoffCampaignService).to receive(:channel).and_return(whatsapp_channel) # rubocop:disable RSpec/AnyInstance
   end
 
-  it 'marks contacts without phone or BSUID as skipped' do
+  # Pending since ichatr-main's feature 045 (WhatsApp campaign reply tracking, see
+  # specs/045-whatsapp-campaign-reply-tracking/research.md, "Decision: Replace, not augment,
+  # the Enterprise recipient tracking"): Custom::Whatsapp::OneoffCampaignService fully intercepts
+  # (no `super`) #perform/#create_recipients before this Enterprise module's versions ever run —
+  # ChatwootApp.extensions is %w[enterprise custom], so `custom` always wins prepend precedence.
+  # Enterprise's own `campaign_recipients` table is permanently empty in this fork; none of the
+  # three examples below can ever find the CampaignRecipient row they look for. Equivalent
+  # coverage for this fork's own data lives in
+  # custom/spec/services/custom/whatsapp/oneoff_campaign_service_spec.rb.
+  it 'marks contacts without phone or BSUID as skipped',
+     pending: 'superseded by Custom::Whatsapp::OneoffCampaignService — see comment above' do
     contact = create(:contact, account: account, phone_number: nil)
     contact.update_labels([label.title])
 
@@ -42,7 +52,8 @@ RSpec.describe Enterprise::Whatsapp::OneoffCampaignService do
     expect(CampaignRecipient.find_by!(campaign: campaign, contact: contact)).to be_skipped
   end
 
-  it 'marks phone-less contacts with multiple WhatsApp identities as skipped' do
+  it 'marks phone-less contacts with multiple WhatsApp identities as skipped',
+     pending: 'superseded by Custom::Whatsapp::OneoffCampaignService — see comment above' do
     contact = create(:contact, account: account, phone_number: nil)
     contact.update_labels([label.title])
     create(:contact_inbox, contact: contact, inbox: whatsapp_inbox, source_id: 'IN.2081978709342942')
@@ -55,7 +66,8 @@ RSpec.describe Enterprise::Whatsapp::OneoffCampaignService do
     expect(CampaignRecipient.find_by!(campaign: campaign, contact: contact)).to be_skipped
   end
 
-  it 'marks blocked BSUID-only authentication-template recipients as skipped' do
+  it 'marks blocked BSUID-only authentication-template recipients as skipped',
+     pending: 'superseded by Custom::Whatsapp::OneoffCampaignService — see comment above' do
     contact = create(:contact, account: account, phone_number: nil)
     contact.update_labels([label.title])
     create(:contact_inbox, contact: contact, inbox: whatsapp_inbox, source_id: 'IN.2081978709342942')
