@@ -1,20 +1,10 @@
 {
-  "version": "1.0.8",
+  "version": "1.0.10",
   "integration_state_schema": 1,
   "installed_integrations": [
-    "claude",
-    "agy",
     "omp"
   ],
   "integration_settings": {
-    "claude": {
-      "script": "sh",
-      "invoke_separator": "-"
-    },
-    "agy": {
-      "script": "sh",
-      "invoke_separator": "-"
-    },
     "omp": {
       "script": "sh",
       "invoke_separator": "."
