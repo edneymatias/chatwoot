@@ -141,5 +141,111 @@ RSpec.describe Custom::Scout::HandoffService do
         expect(conversation.reload.assignee_id).to eq(user.id)
       end
     end
+
+    describe 'reason labels with localization (T016)' do
+      %w[explicit_human_request human_offer_accepted repeated_frustration_or_loop out_of_scope_commercial_request].each do |reason|
+        context "with reason: #{reason}" do
+          %w[pt_BR en].each do |locale| # rubocop:disable Performance/CollectionLiteralInLoop
+            it "includes localized label in internal note for #{locale}" do
+              account.update!(locale: locale)
+              memory_service = instance_double(Custom::Scout::ContactNotesService,
+                                               generate_and_update_notes: [])
+              allow(Custom::Scout::ContactNotesService).to receive(:new).and_return(memory_service)
+
+              service.perform(reason: reason)
+
+              private_message = conversation.messages.where(private: true).last.content
+              # Verify raw enum code is NOT in the message
+              expect(private_message).not_to include(reason)
+              # Verify localized prefix is present
+              prefix = I18n.t('conversations.scout.handoff_note_prefix', locale: locale)
+              expect(private_message).to include(prefix)
+              # Verify localized note label is present
+              note_label = I18n.t(
+                "conversations.scout.handoff_reasons.#{reason}.note",
+                locale: locale
+              )
+              expect(private_message).to include(note_label)
+            end
+          end
+        end
+      end
+    end
+
+    describe 'fallback behavior for non-classifier reasons (T017)' do
+      it 'preserves generic fallback when reason is nil' do
+        service.perform(reason: nil)
+        private_message = conversation.messages.where(private: true).last.content
+        expect(private_message).to include('motivo não informado pelo modelo')
+      end
+
+      it 'preserves generic fallback when reason is blank' do
+        service.perform(reason: '')
+        private_message = conversation.messages.where(private: true).last.content
+        expect(private_message).to include('motivo não informado pelo modelo')
+      end
+
+      it 'preserves raw reason text for non-classifier string reasons across locales' do
+        %w[pt_BR en].each do |locale|
+          account.update!(locale: locale)
+          conversation_custom = create(:conversation, account: account, inbox: inbox, contact: contact,
+                                                      contact_inbox: contact_inbox, status: :pending)
+          service_custom = described_class.new(scout: scout, conversation: conversation_custom)
+          custom_reason = 'Some custom vendor reason from tool'
+
+          service_custom.perform(reason: custom_reason)
+
+          private_message = conversation_custom.messages.where(private: true).last.content
+          # For non-classifier reasons, preserve the hardcoded Portuguese prefix unchanged
+          expect(private_message).to start_with('📋 Transferência para atendimento humano')
+          expect(private_message).to include(custom_reason)
+        end
+      end
+    end
+
+    describe 'locale parity verification (T018)' do
+      it 'ensures en.yml and pt_BR.yml have identical handoff_reasons keys' do
+        en_path = Rails.root.join('config/locales/en.yml')
+        pt_path = Rails.root.join('config/locales/pt_BR.yml')
+
+        en_config = YAML.load_file(en_path)
+        pt_config = YAML.load_file(pt_path)
+
+        en_reasons = en_config['en']['conversations']['scout']['handoff_reasons'].keys.sort
+        pt_reasons = pt_config['pt_BR']['conversations']['scout']['handoff_reasons'].keys.sort
+
+        expect(en_reasons).to eq(pt_reasons)
+      end
+
+      it 'ensures all ActionClassifierSchema::REASONS have i18n keys in both locales' do
+        en_path = Rails.root.join('config/locales/en.yml')
+        pt_path = Rails.root.join('config/locales/pt_BR.yml')
+
+        en_config = YAML.load_file(en_path)
+        pt_config = YAML.load_file(pt_path)
+
+        Custom::Scout::ActionClassifierSchema::REASONS.each do |reason|
+          en_note = en_config['en']['conversations']['scout']['handoff_reasons'][reason]&.dig('note')
+          pt_note = pt_config['pt_BR']['conversations']['scout']['handoff_reasons'][reason]&.dig('note')
+
+          expect(en_note).to be_present, "Missing note for #{reason} in en.yml"
+          expect(pt_note).to be_present, "Missing note for #{reason} in pt_BR.yml"
+        end
+      end
+
+      it 'ensures both locales have handoff_note_prefix keys' do
+        en_path = Rails.root.join('config/locales/en.yml')
+        pt_path = Rails.root.join('config/locales/pt_BR.yml')
+
+        en_config = YAML.load_file(en_path)
+        pt_config = YAML.load_file(pt_path)
+
+        en_prefix = en_config['en']['conversations']['scout']['handoff_note_prefix']
+        pt_prefix = pt_config['pt_BR']['conversations']['scout']['handoff_note_prefix']
+
+        expect(en_prefix).to be_present
+        expect(pt_prefix).to be_present
+      end
+    end
   end
 end

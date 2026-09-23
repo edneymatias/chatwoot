@@ -332,6 +332,20 @@ en:
       handoff: 'Transferring to another agent for further assistance.'
       follow_up_nudge: 'Just checking in! Let me know if you have any questions or if you would like to continue.'
       follow_up_handoff: 'I am connecting you with a team member who will assist you shortly.'
+      handoff_note_prefix: '📋 Transfer to human support'
+      handoff_reasons:
+        explicit_human_request:
+          note: 'Customer explicitly requested human support'
+          message: "I understand you'd like to speak with a team member. I'm connecting you with the right person who can help with your request."
+        human_offer_accepted:
+          note: 'Customer accepted human transfer offer'
+          message: "Great! I'm connecting you with a specialist from our team who can provide personalized support for your needs."
+        repeated_frustration_or_loop:
+          note: 'Customer showing frustration or conversation in loop'
+          message: "I appreciate your patience. Let me connect you with a team member who can better assist you and find the right solution."
+        out_of_scope_commercial_request:
+          note: 'Request outside our scope, needs human vendor'
+          message: "I see you're looking for something specific to your business needs. Let me connect you with our sales team who can provide a tailored solution."
     messages:
       instagram_story_content: '%{story_sender} mentioned you in the story: '
       instagram_deleted_story_content: This story is no longer available.

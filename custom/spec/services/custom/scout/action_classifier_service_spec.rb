@@ -96,5 +96,91 @@ RSpec.describe Custom::Scout::ActionClassifierService do
       expect(result['action_reason']).to be_nil
       expect(result['error']).to eq('LLM API error')
     end
+
+    it 'does not return out_of_scope_commercial_request when customer declines one qualification' \
+       'question after already demonstrating commercial intent' do
+      # Scenario: customer shows commercial intent, answers questions, then declines one further question
+      single_decline_history = [
+        { role: 'user', content: 'Preciso de ajuda com o meu negócio online' },
+        { role: 'assistant', content: 'Ótimo! Vejo que você tem interesse comercial. Vou fazer algumas perguntas para entender melhor.' },
+        { role: 'user', content: 'Sim, quero saber como posso aumentar minhas vendas' },
+        { role: 'assistant', content: 'Qual é o seu ramo de negócio?' },
+        { role: 'user', content: 'Sou consultor independente' },
+        { role: 'assistant', content: 'Entendi. Você já tem algum site ou loja online?' },
+        { role: 'user', content: 'Não tenho ainda' },
+        { role: 'assistant', content: 'Ótimo, posso ajudar. Há quanto tempo atua nessa área?' },
+        { role: 'user', content: 'Já tenho 5 anos de experiência' },
+        { role: 'assistant', content: 'Excelente! Você tem interesse em agendar uma chamada com nosso especialista?' },
+        { role: 'user', content: 'Ainda não quero agendar agora' }
+      ]
+
+      continue_response = instance_double(RubyLLM::Message, content: { 'action' => 'continue' }.to_json)
+      allow(fake_chat).to receive(:ask).and_return(continue_response)
+
+      result = service.classify(message_history: single_decline_history)
+
+      expect(result['action']).to eq('continue')
+      expect(result['action_reason']).to be_nil
+    end
+
+    it 'still correctly returns out_of_scope_commercial_request for genuinely out-of-scope scenarios' do
+      # Scenario 1: Existing customer with unrelated ongoing issue (not a new commercial request)
+      existing_customer_history = [
+        { role: 'user', content: 'Olá, sou cliente há 2 anos e tenho um problema com meu contrato' },
+        { role: 'assistant', content: 'Entendi. Qual é o problema específico?' },
+        { role: 'user', content: 'Preciso revisar os termos do contrato com um especialista jurídico' }
+      ]
+
+      out_of_scope_response = instance_double(
+        RubyLLM::Message,
+        content: { 'action' => 'handoff', 'action_reason' => 'out_of_scope_commercial_request' }.to_json
+      )
+      allow(fake_chat).to receive(:ask).and_return(out_of_scope_response)
+
+      result = service.classify(message_history: existing_customer_history)
+
+      expect(result['action']).to eq('handoff')
+      expect(result['action_reason']).to eq('out_of_scope_commercial_request')
+    end
+
+    it 'returns out_of_scope_commercial_request for customer complaints unrelated to sales' do
+      # Scenario 2: Customer filing a complaint (not a sales opportunity)
+      complaint_history = [
+        { role: 'user', content: 'Vou registrar uma reclamação sobre o atendimento péssimo que recebi' },
+        { role: 'assistant', content: 'Peço desculpas pelos problemas. Gostaria de me contar mais?' },
+        { role: 'user', content: 'A qualidade do suporte foi muito ruim e quero falar com um supervisor' }
+      ]
+
+      out_of_scope_response = instance_double(
+        RubyLLM::Message,
+        content: { 'action' => 'handoff', 'action_reason' => 'out_of_scope_commercial_request' }.to_json
+      )
+      allow(fake_chat).to receive(:ask).and_return(out_of_scope_response)
+
+      result = service.classify(message_history: complaint_history)
+
+      expect(result['action']).to eq('handoff')
+      expect(result['action_reason']).to eq('out_of_scope_commercial_request')
+    end
+
+    it 'returns out_of_scope_commercial_request for purely informational questions without commercial intent' do
+      # Scenario 3: Purely informational question with no commercial intent
+      informational_history = [
+        { role: 'user', content: 'Qual é a diferença entre as suas diferentes soluções?' },
+        { role: 'assistant', content: 'Ótimo! Deixe-me explicar as principais diferenças.' },
+        { role: 'user', content: 'Estou apenas pesquisando, não pretendo comprar nada. Só queria saber como vocês funcionam' }
+      ]
+
+      out_of_scope_response = instance_double(
+        RubyLLM::Message,
+        content: { 'action' => 'handoff', 'action_reason' => 'out_of_scope_commercial_request' }.to_json
+      )
+      allow(fake_chat).to receive(:ask).and_return(out_of_scope_response)
+
+      result = service.classify(message_history: informational_history)
+
+      expect(result['action']).to eq('handoff')
+      expect(result['action_reason']).to eq('out_of_scope_commercial_request')
+    end
   end
 end

@@ -304,6 +304,20 @@ pt_BR:
       handoff: 'Transferindo para que outro agente dê assistência.'
       follow_up_nudge: 'Passando para ver se você tem alguma dúvida ou gostaria de continuar nosso atendimento!'
       follow_up_handoff: 'Estou conectando você com um membro da nossa equipe para dar continuidade ao seu atendimento.'
+      handoff_note_prefix: '📋 Transferência para atendimento humano'
+      handoff_reasons:
+        explicit_human_request:
+          note: 'Cliente solicitou explicitamente atendimento humano'
+          message: "Entendo que você gostaria de falar com um membro da nossa equipe. Estou conectando você com a pessoa certa que pode ajudá-lo com sua solicitação."
+        human_offer_accepted:
+          note: 'Cliente aceitou oferta de transferência humana'
+          message: "Ótimo! Estou conectando você com um especialista da nossa equipe que pode fornecer suporte personalizado para suas necessidades."
+        repeated_frustration_or_loop:
+          note: 'Cliente demonstrando frustração ou conversa em loop'
+          message: "Agradeço sua paciência. Deixe-me conectar você com um membro da equipe que pode assistir melhor e encontrar a solução certa."
+        out_of_scope_commercial_request:
+          note: 'Solicitação fora do nosso escopo, necessita vendedor humano'
+          message: "Vejo que você está procurando algo específico para as necessidades do seu negócio. Deixe-me conectar você com nosso time de vendas que pode oferecer uma solução personalizada."
     messages:
       instagram_story_content: '%{story_sender} mencionou você na conversa: '
       instagram_deleted_story_content: Este Story não está mais disponível.

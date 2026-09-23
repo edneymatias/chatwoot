@@ -7,6 +7,7 @@ class Custom::Scout::HandoffService
   end
 
   def perform(assignee_id: nil, team_id: nil, reason: nil, message: nil)
+    @action_reason = reason
     assign_team_and_user(assignee_id, team_id)
     handed_off = perform_handoff(message: message)
     create_transfer_note(reason) if handed_off
@@ -16,6 +17,10 @@ class Custom::Scout::HandoffService
   end
 
   private
+
+  def account_locale
+    @conversation.account.locale.presence || I18n.default_locale.to_s
+  end
 
   def assign_team_and_user(assignee_id, team_id)
     resolved_team_id = team_id.presence || @scout.handover_team_id
@@ -34,7 +39,9 @@ class Custom::Scout::HandoffService
   end
 
   def send_public_handoff_message(message: nil)
-    content = message.presence || I18n.t('conversations.scout.handoff', locale: conversation_locale)
+    content = message.presence ||
+              reason_message(@action_reason, conversation_locale) ||
+              I18n.t('conversations.scout.handoff', locale: conversation_locale)
     Messages::MessageBuilder.new(
       nil,
       @conversation,
@@ -42,16 +49,29 @@ class Custom::Scout::HandoffService
     ).perform
   end
 
+  def reason_message(reason, locale)
+    known_reasons = %w[
+      explicit_human_request
+      human_offer_accepted
+      repeated_frustration_or_loop
+      out_of_scope_commercial_request
+    ]
+
+    return nil unless reason.present? && known_reasons.include?(reason)
+
+    I18n.t("conversations.scout.handoff_reasons.#{reason}.message", locale: locale, default: nil)
+  end
+
   def conversation_locale
     @conversation.language.presence || @conversation.account.locale.presence || I18n.default_locale.to_s
   end
 
-  def create_transfer_note(reason)
+  def create_transfer_note(_reason)
+    content = reason_label_and_prefix(@action_reason, account_locale) + opportunity_reference
     Messages::MessageBuilder.new(
       nil,
       @conversation,
-      { content: "📋 Transferência para atendimento humano: #{reason.presence || 'motivo não informado pelo modelo'}#{opportunity_reference}",
-        private: true }
+      { content: content, private: true }
     ).perform
   end
 
@@ -75,5 +95,27 @@ class Custom::Scout::HandoffService
 
   def generate_contact_memory
     Custom::Scout::ContactNotesService.new(@scout, @conversation).generate_and_update_notes
+  end
+
+  def reason_label_and_prefix(reason, locale)
+    known_reasons = %w[
+      explicit_human_request
+      human_offer_accepted
+      repeated_frustration_or_loop
+      out_of_scope_commercial_request
+    ]
+
+    return default_handoff_message(reason) unless reason.present? && known_reasons.include?(reason)
+
+    resolved_note = I18n.t("conversations.scout.handoff_reasons.#{reason}.note",
+                           locale: locale, default: nil)
+    return "📋 Transferência para atendimento humano: #{reason}" if resolved_note.blank?
+
+    prefix = I18n.t('conversations.scout.handoff_note_prefix', locale: locale)
+    "#{prefix}: #{resolved_note}"
+  end
+
+  def default_handoff_message(reason)
+    "📋 Transferência para atendimento humano: #{reason.presence || 'motivo não informado pelo modelo'}"
   end
 end

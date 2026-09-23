@@ -60,7 +60,7 @@ class Custom::Scout::ActionClassifierService
       - 'explicit_human_request': O cliente solicitou explicitamente atendimento humano (ex: "quero falar com alguém", "me passa para um atendente", "humano por favor").
       - 'human_offer_accepted': O cliente aceitou uma oferta anterior de transferência humana.
       - 'repeated_frustration_or_loop': O cliente demonstrou frustração repetida, irritação com a IA ou a conversa está em loop sem progresso.
-      - 'out_of_scope_commercial_request': A solicitação do cliente está fora do escopo comercial do assistente e requer intervenção de um vendedor humano.
+      - 'out_of_scope_commercial_request': A solicitação do cliente está fora do escopo comercial do assistente e requer intervenção de um vendedor humano. IMPORTANTE: só classifique assim quando a solicitação é fundamentalmente fora do escopo (ex: cliente existente com problema não-comercial, reclamação, questão puramente informacional sem intenção comercial). NÃO use isso quando o cliente simplesmente recusa uma pergunta de qualificação, pois o fato de ter respondido outras perguntas ou demonstrado intenção comercial significa que ainda há oportunidade de continuar.
 
       Quando action for 'continue', o action_reason deve ser nulo.
 
