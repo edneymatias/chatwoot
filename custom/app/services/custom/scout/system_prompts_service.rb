@@ -98,6 +98,7 @@ class Custom::Scout::SystemPromptsService
     identity_pending = Custom::Scout::ContactIdentityService.placeholder_name?(@contact)
     text += identity_warning if identity_pending
     text += phone_request_warning(after_identity: identity_pending) if @contact.phone_number.blank?
+    text += memory_notes_warning if @contact.notes.any?
     text
   end
 
@@ -128,6 +129,15 @@ class Custom::Scout::SystemPromptsService
       'de perguntar apenas sobre campos configurados. Nunca pergunte novamente caso já tenha perguntado ' \
       'nesta conversa, mesmo que o visitante não tenha respondido, e nunca faça esta pergunta se este turno ' \
       'for terminar em transferência para humano (a regra de não fazer perguntas no handoff prevalece).'
+  end
+
+  def memory_notes_warning
+    "\n\nAVISO: As anotações acima são resumos de conversas anteriores já concluídas, não fatos ou " \
+      'pedidos da conversa atual — elas documentam o que foi discutido e resolvido em turnos anteriores. ' \
+      'Você PODE e DEVE usar essas anotações para personalizar sua abordagem e antecipar proativamente ' \
+      'o interesse atual provável do contato, incluindo sugerir agendamento. Porém, uma anotação NUNCA, ' \
+      'por si só, justifica chamar a ferramenta `handover_to_human` — o sinal de transferência deve ' \
+      'vir das próprias mensagens da conversa atual.'
   end
 
   def open_opportunities_section

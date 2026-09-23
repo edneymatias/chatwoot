@@ -548,6 +548,56 @@ RSpec.describe Custom::Scout::SystemPromptsService do
       end
     end
 
+    describe 'contact_context_section — memory notes warning (User Stories 1, 2, 3)' do
+      context 'when contact has notes' do
+        let(:contact_with_notes) do
+          contact = create(:contact, account: account, name: 'Maria Silva', phone_number: '+5511988887777')
+          contact.notes.create!(content: 'Interessada em plano Enterprise, conversou há 3 dias')
+          contact
+        end
+
+        it 'includes memory notes warning with all three semantic assertions (T004)' do
+          rendered_prompt = described_class.build(
+            scout: scout,
+            contact: contact_with_notes,
+            inbox: inbox
+          )
+
+          expect(rendered_prompt).to include('AVISO: As anotações acima são resumos de conversas anteriores já concluídas')
+          expect(rendered_prompt).to include('Você PODE e DEVE usar essas anotações para personalizar sua abordagem')
+          expect(rendered_prompt).to include('uma anotação NUNCA, por si só, justifica chamar a ferramenta `handover_to_human`')
+          expect(rendered_prompt).to include('o sinal de transferência deve vir das próprias mensagens da conversa atual')
+        end
+      end
+
+      context 'when contact has no notes' do
+        it 'does NOT include memory notes warning (T005)' do
+          rendered_prompt = described_class.build(
+            scout: scout,
+            contact: contact,
+            inbox: inbox
+          )
+
+          expect(rendered_prompt).not_to include('As anotações acima são resumos de conversas anteriores')
+        end
+      end
+
+      it 'preserves existing identity and phone warnings unchanged (regression, T006)' do
+        placeholder_contact = create(:contact, account: account, name: 'empty-meadow-50')
+        placeholder_contact.notes.create!(content: 'Past handoff request')
+
+        rendered_prompt = described_class.build(
+          scout: scout,
+          contact: placeholder_contact,
+          inbox: inbox
+        )
+
+        expect(rendered_prompt).to include('AVISO: O nome acima ("empty-meadow-50") foi gerado automaticamente pelo sistema')
+        expect(rendered_prompt).to include('AVISO: O telefone deste contato não está registrado no sistema')
+        expect(rendered_prompt).to include('AVISO: As anotações acima são resumos de conversas anteriores')
+      end
+    end
+
     describe 'coexistence of identity warning, funnel guidance, and handoff closing reminder (Polish T016)' do
       let(:placeholder_contact) { create(:contact, account: account, name: 'empty-meadow-50', phone_number: '+5511988887777') }
       let!(:stage_new) { PipelineStage.create!(account: account, name: 'New', position: 1) }

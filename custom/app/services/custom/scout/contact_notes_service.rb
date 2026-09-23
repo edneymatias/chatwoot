@@ -12,10 +12,15 @@ class Custom::Scout::ContactNotesService
     return [] if @contact.blank? || @conversation.blank?
 
     notes = generate_notes
+    dated_notes = []
     notes.each do |note|
-      @contact.notes.create!(content: note) if note.present?
+      next if note.blank?
+
+      dated_note = "#{date_prefix}#{note}"
+      @contact.notes.create!(content: dated_note)
+      dated_notes << dated_note
     end
-    notes
+    dated_notes
   end
 
   private
@@ -55,5 +60,12 @@ class Custom::Scout::ContactNotesService
   rescue JSON::ParserError => e
     Rails.logger.error "[Scout ContactNotesService] JSON parse error: #{e.message}"
     []
+  end
+
+  def date_prefix
+    timezone = @conversation.inbox&.timezone || @account.reporting_timezone
+    tz = ActiveSupport::TimeZone[timezone] if timezone.present?
+    time = tz ? Time.current.in_time_zone(tz) : Time.current
+    "[#{time.strftime('%d/%m/%Y')}] "
   end
 end
