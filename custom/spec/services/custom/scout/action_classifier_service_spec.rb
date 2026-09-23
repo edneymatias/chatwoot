@@ -123,6 +123,29 @@ RSpec.describe Custom::Scout::ActionClassifierService do
       expect(result['action_reason']).to be_nil
     end
 
+    it 'does not return out_of_scope_commercial_request when customer accepts an option the assistant offered' do
+      # Scenario: customer shows commercial intent, answers questions, then accepts an offered
+      # appointment slot in a terse reply (production case: conversation display_id 132 — "sexta-feira,
+      # de manhã. pode ser." right after being asked to choose a period of day)
+      accepted_offer_history = [
+        { role: 'user', content: 'Quero fazer uma limpeza dental' },
+        { role: 'assistant', content: 'Você prefere ser atendido como particular ou pelo convênio?' },
+        { role: 'user', content: 'Particular' },
+        { role: 'assistant', content: 'Perfeito. Foi uma manutenção de rotina ou você sentiu algum incômodo?' },
+        { role: 'user', content: 'Rotina, faço a cada 6 meses' },
+        { role: 'assistant', content: 'Podemos ver um horário de avaliação. Você prefere manhã, tarde ou final de tarde?' },
+        { role: 'user', content: 'Sexta-feira, de manhã. Pode ser.' }
+      ]
+
+      continue_response = instance_double(RubyLLM::Message, content: { 'action' => 'continue' }.to_json)
+      allow(fake_chat).to receive(:ask).and_return(continue_response)
+
+      result = service.classify(message_history: accepted_offer_history)
+
+      expect(result['action']).to eq('continue')
+      expect(result['action_reason']).to be_nil
+    end
+
     it 'still correctly returns out_of_scope_commercial_request for genuinely out-of-scope scenarios' do
       # Scenario 1: Existing customer with unrelated ongoing issue (not a new commercial request)
       existing_customer_history = [

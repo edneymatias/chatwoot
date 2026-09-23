@@ -134,3 +134,53 @@ in the note/message resolution path.
 **Rationale**: Directly required by FR-011 and the scout-doc's explicit rejection of an LLM-authored
 closing message (risk of a desynchronized/incoherent message, per `spec80.md`'s objection, which this
 feature's fixed-message-map approach sidesteps entirely).
+
+## 7. Post-implementation amendment: broadening the carve-out to accepted offers (2026-09-23)
+
+**Context**: After T001–T036 shipped, an unrelated production conversation (`display_id 132`,
+dental-clinic Scout) reproduced `out_of_scope_commercial_request` again — but not via the decline
+pattern T008 guarded against. The customer accepted an appointment slot the assistant itself offered
+("sexta-feira, de manhã. pode ser.", immediately after "Você prefere manhã, tarde ou final de
+tarde?") and was still handed off. Root cause: T008's carve-out text only excluded "o cliente
+simplesmente recusa uma pergunta de qualificação" (declines) — it never excluded the mirror case
+(accepts/confirms an offered option) — even though `response_auditor.rb`'s own comment on
+`evaluate_action` already documented that exact "terse reply to an offered choice" pattern as a known
+misclassification trigger, just for `human_offer_accepted` (Decision #1 above cites this same comment
+as precedent, but only for the decline half of the pattern — the citation was read too narrowly during
+Phase 2/3).
+
+**Decision**: Extend both edited passages from Decision #1, not just the carve-out sentence: (1) the
+`out_of_scope_commercial_request` bullet gains a second `NÃO use isso também quando...` clause
+excluding acceptance/confirmation of an assistant-offered option; (2) the "Anti-alucinação" paragraph
+gains an explicit evidence anchor for `out_of_scope_commercial_request` (previously only
+`human_offer_accepted` had one) stating the evidence must show a fundamentally non-commercial request,
+never merely a short reply confirming something the assistant offered. Same file
+(`action_classifier_service.rb`), same method (`system_instructions`), no schema or Ruby-guard change
+— consistent with Decision #1's original rationale, which applies unchanged to this mirror case.
+
+**Rationale**: The two false positives are the same underlying defect (a vague criterion with no
+evidence anchor, prone to misreading a terse in-flow reply as a signal it isn't) manifesting through
+two different conversational surfaces (declining vs. accepting). Fixing only the literal example from
+the source production conversation (45007) and stopping there left the criterion's core weakness — no
+anchor requirement — half-patched; the anchor addition in this amendment closes that generally, not
+just for the two patterns observed so far.
+
+**Test**: New example in `action_classifier_service_spec.rb`
+("does not return out_of_scope_commercial_request when customer accepts an option the assistant
+offered") mirrors T010's mocked-response pattern with a message history modeled on conversation 132.
+Same limitation as T007/T010 applies and is not newly introduced here: the mock proves
+`ActionClassifierService#classify` parses a canned response correctly, not that the live model no
+longer produces that response for this prompt — no automated test in this codebase invokes a real LLM
+(`spec/spec_helper.rb`'s `WebMock.disable_net_connect!` blocks it suite-wide); behavioral confirmation
+is manual, via the Scout Playground UI, per operator preference.
+
+**Alternatives considered**:
+- *Only patch the carve-out sentence, skip the anti-alucinação anchor*: rejected — would leave the
+  exact same class of gap for a third, not-yet-observed conversational surface; the anchor addresses
+  the criterion's structural weakness instead of enumerating patterns one production incident at a
+  time.
+- *Generalize into a single broad exclusion ("don't fire on any short reply after commercial intent
+  shown") instead of two concrete carve-outs*: rejected — too broad, risks suppressing genuine
+  out-of-scope handoffs that happen to arrive as a short reply (e.g., a one-line complaint); the two
+  concrete, evidence-anchored carve-outs keep FR-002/SC-002's no-regression requirement intact while
+  still closing both known false-positive shapes.

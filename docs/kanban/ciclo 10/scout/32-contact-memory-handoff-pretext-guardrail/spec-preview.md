@@ -194,11 +194,13 @@ identificado nesta investigação), então a Fase 17 (instrumentação) pode ter
 se o operador quiser investigar mais fundo por ali.
 
 Como a causa mais provável está do lado do frontend (Vue) e não há reprodução ao vivo disponível
-nesta sessão de investigação, este achado fica registrado como candidato a uma **Fase 34** futura,
-não como parte do escopo desta fase — os próximos passos de diagnóstico seriam: reproduzir com
-DevTools aberto (Network + console) numa conversa nova, e revisar como o componente de lista de
-mensagens do dashboard trata `private: true` combinado com `sender_type: null` (mensagens geradas
-pelo sistema, sem usuário/bot autor).
+nesta sessão de investigação, este achado foi registrado como candidato a uma fase futura — ver
+**[Fase 34 — Nota Interna de Transferência Não Renderizada na Timeline do Dashboard (preview)](../34-dashboard-transfer-note-not-rendering/spec-preview.md)**,
+onde o registro foi formalizado sem investigação adicional (nenhuma nova ocorrência desde então).
+Os próximos passos de diagnóstico originalmente cogitados aqui — reproduzir com DevTools aberto
+(Network + console) numa conversa nova, e revisar como o componente de lista de mensagens do
+dashboard trata `private: true` combinado com `sender_type: null` (mensagens geradas pelo sistema,
+sem usuário/bot autor) — estão detalhados no documento da Fase 34.
 
 ## Testes (rascunho)
 
@@ -233,6 +235,6 @@ pelo sistema, sem usuário/bot autor).
 > possíveis (fail-safe, classificador da Fase 12, tool `handover_to_human`) e por consulta direta ao
 > banco de produção (mensagens, notas de contato, timestamps). Inclui achado adicional (nota privada
 > não renderizada na UI) com causa de backend descartada por amostragem, mas sem causa raiz de
-> frontend isolada — candidato a Fase 34. Tratamento completo adiado para o momento oportuno, a
-> critério do operador — ver `spec60.md` §11. Próxima entrega via speckit, mesmo fluxo das fases 26,
-> 23 e 29.
+> frontend isolada — formalizado em `34-dashboard-transfer-note-not-rendering/spec-preview.md`.
+> Tratamento completo adiado para o momento oportuno, a critério do operador — ver `spec60.md` §11.
+> Próxima entrega via speckit, mesmo fluxo das fases 26, 23 e 29.

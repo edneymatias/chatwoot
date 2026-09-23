@@ -6,6 +6,19 @@
 
 **Status**: Draft
 
+**Amendment (2026-09-23, post-implementation)**: T007–T011 (Phase 3) shipped a carve-out that only
+excluded the literal scenario from the source production case (`display_id 45007`) — the customer
+*declining* one qualification question. A second, unrelated production conversation
+(`display_id 132`) surfaced the mirror-image false positive: the customer *accepting/confirming* an
+option the assistant itself offered (an appointment time) in a short reply was still misclassified as
+`out_of_scope_commercial_request`, because nothing in User Story 1's original scope, the prompt
+carve-out, or its test excluded that pattern — even though the codebase already documented the same
+"terse reply to an offered choice" failure mode for a different reason
+(`response_auditor.rb`'s comment on `evaluate_action`, re: `human_offer_accepted`). User Story 1,
+FR-001, and the Edge Cases below have been broadened accordingly (see Requirements and Edge Cases);
+the fix and a regression test were added directly (no separate feature branch), consistent with this
+being the same defect class this feature already owns.
+
 **Input**: User description: "docs/kanban/ciclo 10/scout/33-response-auditor-handoff-message-quality/spec-preview.md — when the response auditor's classifier hands a conversation off to a human, the internal transfer note shows a raw English enum code instead of a readable reason, and the customer sees one generic cold message regardless of why the handoff happened; separately, the classifier's out_of_scope_commercial_request criterion is vague enough that a customer who declines a single point-blank qualification question, after already showing clear commercial intent earlier in the same conversation, gets misclassified as out of scope and handed off instead of being kept in the normal flow."
 
 ## User Scenarios & Testing *(mandatory)*
@@ -40,7 +53,12 @@ and no handoff occurs. Verifiable independently of the message-wording changes i
    further qualification question (e.g., "I don't want to schedule yet", "I haven't gotten a quote
    elsewhere"), **Then** the classifier does not hand the conversation off as
    `out_of_scope_commercial_request`, and the assistant continues the conversation normally.
-2. **Given** a conversation where the customer is already an existing customer describing an
+2. **Given** a conversation where the customer has already demonstrated commercial intent and the
+   assistant offers a choice between options (e.g., an appointment time, a period of day, a contact
+   method), **When** the customer accepts or confirms one of the offered options in a short reply,
+   **Then** the classifier does not hand the conversation off as `out_of_scope_commercial_request`,
+   and the assistant continues the conversation normally.
+3. **Given** a conversation where the customer is already an existing customer describing an
    ongoing, unrelated service issue, filing a complaint, or asking a purely informational question
    with no commercial intent, **When** the response auditor evaluates the conversation, **Then**
    the classifier still correctly identifies it as `out_of_scope_commercial_request` and hands it
@@ -128,15 +146,22 @@ text, in the conversation's language, independent of the internal note wording i
   across the conversation, or shows other signals beyond a single decline? → Not covered by the
   User Story 1 narrowing; the classifier retains discretion to flag out-of-scope in that case,
   subject to its existing double-confirmation requirement.
+- What happens when a customer accepts/confirms an option the assistant offered (e.g., picks a
+  proposed appointment time) instead of declining anything? → Also covered by User Story 1 (added in
+  the 2026-09-23 amendment, `display_id 132`): this MUST NOT be classified as
+  `out_of_scope_commercial_request` either — the same "terse reply to an offered choice" pattern
+  already guarded against for `human_offer_accepted` now applies to this reason too.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: The classifier's `out_of_scope_commercial_request` criterion MUST NOT, by itself,
-  classify a conversation as out-of-scope solely because the customer declined or deferred exactly
-  one specific qualification-related question, when the customer has already demonstrated valid
-  commercial intent earlier in the same conversation.
+  classify a conversation as out-of-scope solely because the customer (a) declined or deferred
+  exactly one specific qualification-related question, or (b) accepted or confirmed an option the
+  assistant itself offered (e.g., an appointment time, a period of day, a contact method) in a short
+  reply — when the customer has already demonstrated valid commercial intent earlier in the same
+  conversation.
 - **FR-002**: The revised `out_of_scope_commercial_request` criterion MUST continue to correctly
   identify genuine out-of-scope conversations (e.g., an existing customer's unrelated ongoing
   service issue, a complaint, or a purely informational question with no commercial intent).
@@ -184,10 +209,11 @@ text, in the conversation's language, independent of the internal note wording i
 
 ### Measurable Outcomes
 
-- **SC-001**: A customer who declines or defers exactly one qualification question, after already
-  showing valid commercial intent in the same conversation, is not handed off as
-  `out_of_scope_commercial_request` — verified by replaying the conversation that surfaced this
-  defect and confirming no handoff occurs.
+- **SC-001**: A customer who (a) declines or defers exactly one qualification question, or (b)
+  accepts/confirms an option the assistant offered, after already showing valid commercial intent in
+  the same conversation, is not handed off as `out_of_scope_commercial_request` — verified by
+  replaying the conversations that surfaced this defect (`display_id 45007` for (a), `display_id 132`
+  for (b)) and confirming no handoff occurs in either case.
 - **SC-002**: Genuine out-of-scope conversations (existing customer with an ongoing issue,
   complaint, purely informational question) continue to be classified and handed off correctly,
   with no observed regression versus current behavior.

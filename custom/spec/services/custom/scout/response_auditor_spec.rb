@@ -301,16 +301,13 @@ RSpec.describe Custom::Scout::ResponseAuditor do
     end
   end
 
-  describe '#audit (handoff_already_flagged: skips the classifier when a tool already deterministically flagged handoff)' do
+  describe '#audit (handoff_already_flagged: skips classifier, claim consistency, and repair loop)' do
     let(:flagged_auditor) { described_class.new(scout: scout, conversation: conversation, handoff_already_flagged: true) }
 
-    before do
-      allow(claim_service).to receive(:check).and_return({ 'decision' => 'safe', 'reason' => 'All good' })
-    end
-
-    it 'never calls the action classifier and proceeds straight to claim consistency' do
+    it 'returns the original reply untouched and calls neither ClaimConsistencyService nor chat.ask' do
       expect(action_service).not_to receive(:classify)
-      expect(claim_service).to receive(:check).once
+      expect(claim_service).not_to receive(:check)
+      expect(fake_chat).not_to receive(:ask)
 
       result = flagged_auditor.audit(
         chat: fake_chat,
@@ -322,28 +319,25 @@ RSpec.describe Custom::Scout::ResponseAuditor do
       expect(result).to eq({ action: :proceed, reply: original_reply })
     end
 
-    it 'also skips the classifier during the repair/reverify path (does not re-evaluate handoff after a repair attempt)' do
-      allow(claim_service).to receive(:check).and_return(
-        { 'decision' => 'false_promise', 'reason' => 'Promised callback' },
-        { 'decision' => 'safe', 'reason' => 'Repaired' }
-      )
-      repaired_json = { 'response' => 'Registrei o horário escolhido.', 'reasoning' => 'Fixed promise' }.to_json
-      repaired_llm_message = instance_double(RubyLLM::Message, content: repaired_json)
-      allow(fake_chat).to receive(:ask).and_return(repaired_llm_message)
+    it 'returns original text untouched without checking consistency even when response contains unbacked claims' do
+      unbacked_reply = 'Já agendei sua visita e atualizei o sistema sem ter chamado ferramentas.'
       expect(action_service).not_to receive(:classify)
+      expect(claim_service).not_to receive(:check)
+      expect(fake_chat).not_to receive(:ask)
 
       result = flagged_auditor.audit(
         chat: fake_chat,
-        response_text: original_reply,
+        response_text: unbacked_reply,
         message_history: message_history,
-        recorded_tool_calls: recorded_tool_calls
+        recorded_tool_calls: []
       )
 
-      expect(result).to eq({ action: :proceed, reply: 'Registrei o horário escolhido.' })
+      expect(result).to eq({ action: :proceed, reply: unbacked_reply })
     end
 
     it 'defaults to false (existing behavior unchanged) when the keyword is omitted' do
       expect(action_service).to receive(:classify).once.and_return({ 'action' => 'continue', 'action_reason' => nil })
+      allow(claim_service).to receive(:check).and_return({ 'decision' => 'safe', 'reason' => 'All good' })
 
       auditor.audit(
         chat: fake_chat,
@@ -351,6 +345,51 @@ RSpec.describe Custom::Scout::ResponseAuditor do
         message_history: message_history,
         recorded_tool_calls: recorded_tool_calls
       )
+    end
+  end
+
+  describe '#audit (US2: repair outcome logging)' do
+    it 'logs repair reasoning at info level when a repair call is executed' do
+      allow(claim_service).to receive(:check).and_return(
+        { 'decision' => 'false_completed_action', 'reason' => 'No tool call executed' },
+        { 'decision' => 'safe', 'reason' => 'Repaired' }
+      )
+
+      repaired_json = { 'response' => 'O valor é R$ 500,00.', 'reasoning' => 'Fixed false claim' }.to_json
+      repaired_llm_message = instance_double(RubyLLM::Message, content: repaired_json)
+      allow(fake_chat).to receive(:ask).and_return(repaired_llm_message)
+
+      expect(Rails.logger).to receive(:info).with('[Scout][ResponseAuditor] repair reasoning: Fixed false claim')
+
+      result = auditor.audit(
+        chat: fake_chat,
+        response_text: original_reply,
+        message_history: message_history,
+        recorded_tool_calls: recorded_tool_calls
+      )
+
+      expect(result).to eq({ action: :proceed, reply: 'O valor é R$ 500,00.' })
+    end
+
+    it 'logs gracefully without raising an exception when repair payload has blank reasoning or is non-JSON text' do
+      allow(claim_service).to receive(:check).and_return(
+        { 'decision' => 'false_completed_action', 'reason' => 'No tool call executed' },
+        { 'decision' => 'safe', 'reason' => 'Repaired' }
+      )
+
+      repaired_llm_message = instance_double(RubyLLM::Message, content: 'Resposta sem formato JSON')
+      allow(fake_chat).to receive(:ask).and_return(repaired_llm_message)
+
+      expect(Rails.logger).to receive(:info).with('[Scout][ResponseAuditor] repair reasoning: ')
+
+      expect do
+        auditor.audit(
+          chat: fake_chat,
+          response_text: original_reply,
+          message_history: message_history,
+          recorded_tool_calls: recorded_tool_calls
+        )
+      end.not_to raise_error
     end
   end
 end

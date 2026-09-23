@@ -19,8 +19,10 @@ the raw English enum (`out_of_scope_commercial_request`) straight into the inter
 the single generic `conversations.scout.handoff` string regardless of reason.
 
 The fix has two independent parts: (1) tighten the `out_of_scope_commercial_request` prompt criterion
-with an anti-hallucination anchor and an explicit single-decline carve-out, mirroring the anchor
-pattern already used for `human_offer_accepted`; (2) add a deterministic reason→{note, message} lookup
+with an anti-hallucination anchor and explicit carve-outs for a single declined question and for
+accepting/confirming an assistant-offered option (the latter added 2026-09-23, see research.md
+Decision #7), mirroring the anchor pattern already used for `human_offer_accepted`; (2) add a
+deterministic reason→{note, message} lookup
 (new `conversations.scout.handoff_reasons.<reason>.{note,message}` i18n namespace, pt-BR and en) applied
 in the classifier-driven handoff path only, resolving the note label by `account.locale` and the
 customer message by `conversation.language` (mirroring how `HandoffService#conversation_locale` already
@@ -113,7 +115,8 @@ specs/078-handoff-message-quality/
 ```text
 custom/app/services/custom/scout/
 ├── action_classifier_service.rb    # system_instructions: revise out_of_scope_commercial_request
-│                                    #   criterion (anchor + single-decline carve-out)
+│                                    #   criterion (anchor + decline carve-out + accepted-offer
+│                                    #   carve-out, 2026-09-23 amendment)
 ├── handoff_service.rb              # create_transfer_note: resolve reason label via lookup +
 │                                    #   account.locale; perform/send_public_handoff_message: resolve
 │                                    #   reason-specific message via lookup + conversation_locale

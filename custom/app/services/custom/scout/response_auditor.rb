@@ -25,6 +25,7 @@ class Custom::Scout::ResponseAuditor
     action_outcome = evaluate_action(message_history)
     return action_outcome if action_outcome
     return { action: :proceed, reply: response_text } unless conversation_pending?
+    return { action: :proceed, reply: response_text } if @handoff_already_flagged
 
     consistency_result = check_claim_consistency(message_history, response_text, recorded_tool_calls, available_tool_names)
     return { action: :proceed, reply: response_text } if consistency_safe_or_unclear?(consistency_result)
@@ -151,17 +152,27 @@ class Custom::Scout::ResponseAuditor
 
   def execute_repair(chat)
     repair_msg = chat.ask(REPAIR_INSTRUCTION)
-    parse_repaired_content(repair_msg&.content)
+    parsed = parse_repaired_content(repair_msg&.content)
+    Rails.logger.info("[Scout][ResponseAuditor] repair reasoning: #{parsed[:reasoning]}")
+    parsed[:response]
   end
 
   def parse_repaired_content(content)
-    return nil if content.blank?
-    return content['response'] || content[:response] if content.is_a?(Hash)
+    return { response: nil, reasoning: nil } if content.blank?
+
+    if content.is_a?(Hash)
+      return {
+        response: content['response'] || content[:response],
+        reasoning: content['reasoning'] || content[:reasoning]
+      }
+    end
 
     sanitized = content.to_s.strip.sub(/\A```(?:\w*)\s*\n?/, '').sub(/\n?\s*```\s*\z/, '').strip
     json = JSON.parse(sanitized)
-    json['response']
+    return { response: json['response'], reasoning: json['reasoning'] } if json.is_a?(Hash)
+
+    { response: content.to_s.presence, reasoning: nil }
   rescue JSON::ParserError
-    content.to_s.presence
+    { response: content.to_s.presence, reasoning: nil }
   end
 end

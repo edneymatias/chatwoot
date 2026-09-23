@@ -21,10 +21,18 @@ history. A second new example (existing customer, ongoing unrelated issue / comp
 informational question, no commercial intent) still asserts `out_of_scope_commercial_request` fires —
 proving no regression (SC-002).
 
-Behavioral replay (optional, matches the scout-doc's own verification method): use
-`Custom::Scout::PlaygroundRunner` against conversation display_id 45007's transcript and confirm the
-reply follows the "Respeito ao ritmo do lead" guardrail (acknowledges pace, leaves door open) instead
-of transferring.
+**Amendment (2026-09-23)**: a third example (`display_id 132` — customer accepts an assistant-offered
+appointment slot in a terse reply, no decline involved) also asserts `action: 'continue'` — the mirror
+false-positive case added by the T037–T039 amendment (research.md Decision #7). All examples in this
+file are mocked at the `llm_chat`/`ask` boundary (`WebMock.disable_net_connect!` blocks real network
+calls suite-wide, per `spec/spec_helper.rb`) — they prove response parsing/routing, not that the live
+model actually avoids these false positives with the revised prompt.
+
+Behavioral replay (matches the scout-doc's own verification method; not automated — no test in this
+codebase invokes a real LLM): use `Custom::Scout::PlaygroundRunner` against conversation display_id
+45007's and/or display_id 132's transcript and confirm the reply follows the "Respeito ao ritmo do
+lead" guardrail (acknowledges pace/choice, leaves door open) instead of transferring. Left to manual
+verification via the Scout Playground UI, per operator preference — not tracked as an automated task.
 
 ## 2. Internal note readability (User Story 2 / FR-004, FR-005, FR-008, FR-009)
 

@@ -44,6 +44,24 @@
 
 - [x] T011 [US1] Verify T010 test passes (ensures FR-002 no regression)
 
+### Post-Implementation Amendment (2026-09-23) — accepted-offer false positive (`display_id 132`)
+
+- [x] T037 [US1] Diagnose production conversation `display_id 132`: classifier fired
+  `out_of_scope_commercial_request` when the customer accepted an assistant-offered appointment slot
+  (not a decline) — confirmed T008's carve-out text only excluded declines, and the criterion still
+  had no evidence anchor for this reason (see research.md Decision #7)
+
+- [x] T038 [US1] Extend `out_of_scope_commercial_request` criterion and the "Anti-alucinação"
+  paragraph in `custom/app/services/custom/scout/action_classifier_service.rb` `system_instructions`:
+  add a second carve-out excluding acceptance/confirmation of an assistant-offered option, and an
+  explicit evidence anchor for this reason (mirroring `human_offer_accepted`'s anchor)
+
+- [x] T039 [US1] Write regression test in `custom/spec/services/custom/scout/action_classifier_service_spec.rb`
+  modeled on conversation 132 (customer accepts an offered appointment slot in a terse reply):
+  classifier does NOT return `action: 'handoff'` / `action_reason: 'out_of_scope_commercial_request'`;
+  verified passing alongside T007/T010 (10/10 examples) with no regression in
+  `response_auditor_spec.rb`/`handoff_service_spec.rb` (42/42) and clean RuboCop on both changed files
+
 ---
 
 ## Phase 5: User Story 3 (P3) — Customer receives reason-specific closing message
