@@ -403,6 +403,9 @@ const handleTest = async () => {
       payload: parsedTestPayload,
     };
 
+    if (isEditing.value && props.tool?.id) {
+      testPayload.id = props.tool.id;
+    }
     const { data } = await ScoutAPI.testTool(testPayload);
     testResult.value = data;
   } catch (err) {

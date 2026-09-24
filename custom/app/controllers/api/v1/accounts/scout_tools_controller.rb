@@ -50,20 +50,13 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
       endpoint_url: tp[:endpoint_url],
       http_method: tp[:http_method] || 'POST',
       auth_type: tp[:auth_type] || 'none',
-      auth_headers: tp[:auth_headers],
+      auth_headers: resolve_test_headers(tp),
       response_template: tp[:response_template],
       payload: tp[:payload]
     )
     result = executor.execute
 
-    render json: {
-      success: result.success?,
-      status: result.status,
-      raw_body: result.truncated_raw_body(500),
-      truncated: result.truncated?(500),
-      formatted_response: result.formatted_response,
-      error: result.error
-    }
+    render json: format_test_result(result)
   end
 
   private
@@ -78,6 +71,22 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
 
   def format_tool_json(tool)
     tool.as_json.merge('auth_headers' => tool.masked_auth_headers)
+  end
+
+  def resolve_test_headers(test_params)
+    tool = Current.account.scout_tools.find_by(id: test_params[:id]) if test_params[:id].present?
+    tool ? tool.auth_headers_for_test(test_params[:auth_headers]) : test_params[:auth_headers]
+  end
+
+  def format_test_result(result)
+    {
+      success: result.success?,
+      status: result.status,
+      raw_body: result.truncated_raw_body(500),
+      truncated: result.truncated?(500),
+      formatted_response: result.formatted_response,
+      error: result.error
+    }
   end
 
   def tool_params
@@ -99,6 +108,7 @@ class Api::V1::Accounts::ScoutToolsController < Api::V1::Accounts::BaseControlle
     payload = extract_payload_param
 
     {
+      id: src[:id],
       endpoint_url: src[:endpoint_url],
       http_method: src[:http_method] || 'POST',
       auth_type: src[:auth_type] || 'none',

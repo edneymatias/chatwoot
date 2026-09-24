@@ -77,6 +77,12 @@ class ScoutTool < ApplicationRecord
     self.auth_headers = merge_preserved_secrets(normalized, existing)
   end
 
+  def auth_headers_for_test(incoming_credentials)
+    normalized = incoming_credentials.present? ? normalize_incoming_hash(incoming_credentials).deep_dup : {}
+    normalized = {} unless normalized.is_a?(Hash)
+    merge_preserved_secrets(normalized, parsed_auth_headers)
+  end
+
   def format_response(raw_body)
     return '' if raw_body.blank?
     return parse_json_or_raw(raw_body) if response_template.blank?

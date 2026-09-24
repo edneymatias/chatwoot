@@ -208,4 +208,87 @@ RSpec.describe ScoutTool, type: :model do
       end.to raise_error(/Template rendering failed/)
     end
   end
+
+  describe '#auth_headers_for_test (User Story 1)' do
+    context 'when auth_type is bearer' do
+      let(:tool) do
+        described_class.create!(valid_attributes.merge(
+                                  auth_type: 'bearer',
+                                  auth_headers: { 'token' => 'saved-bearer-token' }
+                                ))
+      end
+
+      it 'preserves saved token when incoming token is the masked placeholder' do
+        expect(tool.auth_headers_for_test({ 'token' => ScoutTool::MASKED_SECRET })).to eq({ 'token' => 'saved-bearer-token' })
+      end
+
+      it 'preserves saved token when incoming token is blank or nil' do
+        expect(tool.auth_headers_for_test({ 'token' => '' })).to eq({ 'token' => 'saved-bearer-token' })
+        expect(tool.auth_headers_for_test({})).to eq({ 'token' => 'saved-bearer-token' })
+        expect(tool.auth_headers_for_test(nil)).to eq({ 'token' => 'saved-bearer-token' })
+      end
+
+      it 'uses newly typed token when incoming token is provided' do
+        expect(tool.auth_headers_for_test({ 'token' => 'new-typed-token' })).to eq({ 'token' => 'new-typed-token' })
+      end
+    end
+
+    context 'when auth_type is basic' do
+      let(:tool) do
+        described_class.create!(valid_attributes.merge(
+                                  auth_type: 'basic',
+                                  auth_headers: { 'username' => 'saved-admin', 'password' => 'saved-secret-pass' }
+                                ))
+      end
+
+      it 'preserves saved password and username when incoming has masked password and blank username' do
+        result = tool.auth_headers_for_test({ 'username' => '', 'password' => ScoutTool::MASKED_SECRET })
+        expect(result).to eq({ 'username' => 'saved-admin', 'password' => 'saved-secret-pass' })
+      end
+
+      it 'uses newly typed password and username when both are provided' do
+        result = tool.auth_headers_for_test({ 'username' => 'new-user', 'password' => 'new-pass' })
+        expect(result).to eq({ 'username' => 'new-user', 'password' => 'new-pass' })
+      end
+
+      it 'preserves saved password while accepting new username' do
+        result = tool.auth_headers_for_test({ 'username' => 'new-user', 'password' => ScoutTool::MASKED_SECRET })
+        expect(result).to eq({ 'username' => 'new-user', 'password' => 'saved-secret-pass' })
+      end
+    end
+
+    context 'when auth_type is api_key' do
+      let(:tool) do
+        described_class.create!(valid_attributes.merge(
+                                  auth_type: 'api_key',
+                                  auth_headers: { 'header_name' => 'X-API-Key', 'header_value' => 'saved-api-key' }
+                                ))
+      end
+
+      it 'preserves saved header_value when incoming has masked value' do
+        result = tool.auth_headers_for_test({ 'header_name' => 'X-API-Key', 'header_value' => ScoutTool::MASKED_SECRET })
+        expect(result).to eq({ 'header_name' => 'X-API-Key', 'header_value' => 'saved-api-key' })
+      end
+
+      it 'uses newly typed header_value when provided' do
+        result = tool.auth_headers_for_test({ 'header_name' => 'X-API-Key', 'header_value' => 'new-key-value' })
+        expect(result).to eq({ 'header_name' => 'X-API-Key', 'header_value' => 'new-key-value' })
+      end
+    end
+
+    it 'does not mutate or persist changes to auth_headers when executing reconciliation (User Story 3)' do
+      tool = described_class.create!(valid_attributes.merge(
+                                       auth_type: 'bearer',
+                                       auth_headers: { 'token' => 'persisted-secret-token' }
+                                     ))
+
+      initial_encrypted_headers = tool.read_attribute_before_type_cast(:auth_headers)
+      reconciled = tool.auth_headers_for_test({ 'token' => ScoutTool::MASKED_SECRET })
+
+      expect(reconciled).to eq({ 'token' => 'persisted-secret-token' })
+      expect(tool.changed?).to be(false)
+      expect(tool.reload.read_attribute_before_type_cast(:auth_headers)).to eq(initial_encrypted_headers)
+      expect(tool.parsed_auth_headers).to eq({ 'token' => 'persisted-secret-token' })
+    end
+  end
 end

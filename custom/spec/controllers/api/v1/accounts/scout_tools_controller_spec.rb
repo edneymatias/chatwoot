@@ -35,6 +35,77 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
       expect(json.first['auth_type']).to eq('bearer')
       expect(json.first['auth_headers']).to eq({ 'token' => '••••••••' })
     end
+
+    it 'masks credentials for all auth types and never exposes decrypted secrets in list (User Story 3)' do
+      account.scout_tools.create!(
+        name: 'bearer_tool',
+        description: 'Bearer',
+        endpoint_url: 'https://api.example.com/b',
+        http_method: 'GET',
+        auth_type: 'bearer',
+        auth_headers: { 'token' => 'super-secret-bearer-token' }
+      )
+      account.scout_tools.create!(
+        name: 'basic_tool',
+        description: 'Basic',
+        endpoint_url: 'https://api.example.com/ba',
+        http_method: 'GET',
+        auth_type: 'basic',
+        auth_headers: { 'username' => 'admin_user', 'password' => 'super-secret-basic-pass' }
+      )
+      account.scout_tools.create!(
+        name: 'api_key_tool',
+        description: 'Api Key',
+        endpoint_url: 'https://api.example.com/k',
+        http_method: 'GET',
+        auth_type: 'api_key',
+        auth_headers: { 'header_name' => 'X-Secret-Header', 'header_value' => 'super-secret-api-key' }
+      )
+
+      get "/api/v1/accounts/#{account.id}/scout_tools",
+          headers: agent.create_new_auth_token
+
+      expect(response).to have_http_status(:success)
+      body_text = response.body
+      expect(body_text).not_to include('super-secret-bearer-token')
+      expect(body_text).not_to include('super-secret-basic-pass')
+      expect(body_text).not_to include('super-secret-api-key')
+
+      tools = response.parsed_body
+      bearer = tools.find { |t| t['name'] == 'bearer_tool' }
+      basic = tools.find { |t| t['name'] == 'basic_tool' }
+      api_key = tools.find { |t| t['name'] == 'api_key_tool' }
+
+      expect(bearer['auth_headers']).to eq({ 'token' => ScoutTool::MASKED_SECRET })
+      expect(basic['auth_headers']).to eq({ 'username' => 'admin_user', 'password' => ScoutTool::MASKED_SECRET })
+      expect(api_key['auth_headers']).to eq({ 'header_name' => 'X-Secret-Header', 'header_value' => ScoutTool::MASKED_SECRET })
+    end
+  end
+
+  describe 'GET /api/v1/accounts/{account.id}/scout_tools/:id (User Story 3)' do
+    it 'returns scout tool details with masked auth_headers and never exposes decrypted plain text' do
+      tool = account.scout_tools.create!(
+        name: 'secret_tool',
+        description: 'Tool with sensitive credentials',
+        endpoint_url: 'https://api.example.com/check',
+        http_method: 'POST',
+        auth_type: 'bearer',
+        auth_headers: { 'token' => 'confidential-raw-secret-token' },
+        response_template: 'Status: {{ r.status }}'
+      )
+
+      get "/api/v1/accounts/#{account.id}/scout_tools/#{tool.id}",
+          headers: agent.create_new_auth_token
+
+      expect(response).to have_http_status(:success)
+      expect(response.body).not_to include('confidential-raw-secret-token')
+
+      json = response.parsed_body
+      expect(json['id']).to eq(tool.id)
+      expect(json['name']).to eq('secret_tool')
+      expect(json['auth_type']).to eq('bearer')
+      expect(json['auth_headers']).to eq({ 'token' => ScoutTool::MASKED_SECRET })
+    end
   end
 
   describe 'POST /api/v1/accounts/{account.id}/scout_tools' do
@@ -155,6 +226,264 @@ RSpec.describe 'Api::V1::Accounts::ScoutTools', type: :request do
       )
     ensure
       tempfile&.close!
+    end
+
+    context 'when testing an existing saved tool (User Story 1)' do
+      let!(:existing_tool) do
+        account.scout_tools.create!(
+          name: 'existing_tool',
+          description: 'Existing tool description',
+          endpoint_url: 'https://api.example.com/original/path',
+          http_method: 'GET',
+          auth_type: 'bearer',
+          auth_headers: { 'token' => 'real-saved-bearer-token' }
+        )
+      end
+
+      it 'uses real saved credential when masked placeholder is submitted' do
+        tempfile = Tempfile.new('test')
+        tempfile.write({ status: 'ok' }.to_json)
+        tempfile.rewind
+        result_double = SafeFetch::Result.new(tempfile: tempfile, filename: 'test', content_type: 'application/json')
+
+        expect(SafeFetch).to receive(:fetch).with(
+          'https://api.example.com/original/path',
+          method: :get,
+          body: nil,
+          headers: hash_including('Authorization' => 'Bearer real-saved-bearer-token'),
+          sensitive_headers: array_including('Authorization'),
+          max_bytes: 1.megabyte,
+          validate_content_type: false
+        ).and_yield(result_double)
+
+        post "/api/v1/accounts/#{account.id}/scout_tools/test",
+             params: {
+               id: existing_tool.id,
+               endpoint_url: existing_tool.endpoint_url,
+               http_method: 'GET',
+               auth_type: 'bearer',
+               auth_headers: { 'token' => ScoutTool::MASKED_SECRET }
+             },
+             headers: agent.create_new_auth_token
+
+        expect(response).to have_http_status(:ok)
+      ensure
+        tempfile&.close!
+      end
+
+      it 'uses real saved credential when credential field is blank or omitted' do
+        tempfile = Tempfile.new('test')
+        tempfile.write({ status: 'ok' }.to_json)
+        tempfile.rewind
+        result_double = SafeFetch::Result.new(tempfile: tempfile, filename: 'test', content_type: 'application/json')
+
+        expect(SafeFetch).to receive(:fetch).with(
+          'https://api.example.com/original/path',
+          method: :get,
+          body: nil,
+          headers: hash_including('Authorization' => 'Bearer real-saved-bearer-token'),
+          sensitive_headers: array_including('Authorization'),
+          max_bytes: 1.megabyte,
+          validate_content_type: false
+        ).and_yield(result_double)
+
+        post "/api/v1/accounts/#{account.id}/scout_tools/test",
+             params: {
+               id: existing_tool.id,
+               endpoint_url: existing_tool.endpoint_url,
+               http_method: 'GET',
+               auth_type: 'bearer',
+               auth_headers: { 'token' => '' }
+             },
+             headers: agent.create_new_auth_token
+
+        expect(response).to have_http_status(:ok)
+      ensure
+        tempfile&.close!
+      end
+
+      it 'preserves saved credential even when a non-credential field like endpoint_url is modified' do
+        tempfile = Tempfile.new('test')
+        tempfile.write({ status: 'ok' }.to_json)
+        tempfile.rewind
+        result_double = SafeFetch::Result.new(tempfile: tempfile, filename: 'test', content_type: 'application/json')
+
+        expect(SafeFetch).to receive(:fetch).with(
+          'https://api.example.com/updated/endpoint',
+          method: :get,
+          body: nil,
+          headers: hash_including('Authorization' => 'Bearer real-saved-bearer-token'),
+          sensitive_headers: array_including('Authorization'),
+          max_bytes: 1.megabyte,
+          validate_content_type: false
+        ).and_yield(result_double)
+
+        post "/api/v1/accounts/#{account.id}/scout_tools/test",
+             params: {
+               id: existing_tool.id,
+               endpoint_url: 'https://api.example.com/updated/endpoint',
+               http_method: 'GET',
+               auth_type: 'bearer',
+               auth_headers: { 'token' => ScoutTool::MASKED_SECRET }
+             },
+             headers: agent.create_new_auth_token
+
+        expect(response).to have_http_status(:ok)
+      ensure
+        tempfile&.close!
+      end
+
+      it 'uses newly typed credential instead of saved credential when provided' do
+        tempfile = Tempfile.new('test')
+        tempfile.write({ status: 'ok' }.to_json)
+        tempfile.rewind
+        result_double = SafeFetch::Result.new(tempfile: tempfile, filename: 'test', content_type: 'application/json')
+
+        expect(SafeFetch).to receive(:fetch).with(
+          'https://api.example.com/original/path',
+          method: :get,
+          body: nil,
+          headers: hash_including('Authorization' => 'Bearer newly-typed-token'),
+          sensitive_headers: array_including('Authorization'),
+          max_bytes: 1.megabyte,
+          validate_content_type: false
+        ).and_yield(result_double)
+
+        post "/api/v1/accounts/#{account.id}/scout_tools/test",
+             params: {
+               id: existing_tool.id,
+               endpoint_url: existing_tool.endpoint_url,
+               http_method: 'GET',
+               auth_type: 'bearer',
+               auth_headers: { 'token' => 'newly-typed-token' }
+             },
+             headers: agent.create_new_auth_token
+
+        expect(response).to have_http_status(:ok)
+      ensure
+        tempfile&.close!
+      end
+    end
+
+    context 'when testing a brand-new unsaved tool without id (User Story 2)' do
+      let!(:existing_tool) do
+        account.scout_tools.create!(
+          name: 'some_tool',
+          description: 'Desc',
+          endpoint_url: 'https://api.example.com/some',
+          http_method: 'GET',
+          auth_type: 'bearer',
+          auth_headers: { 'token' => 'do-not-leak-or-substitute' }
+        )
+      end
+
+      it 'uses literal submitted value without substituting any saved tool credential' do
+        expect(existing_tool).to be_persisted
+
+        tempfile = Tempfile.new('test')
+        tempfile.write({ status: 'ok' }.to_json)
+        tempfile.rewind
+        result_double = SafeFetch::Result.new(tempfile: tempfile, filename: 'test', content_type: 'application/json')
+
+        expect(SafeFetch).to receive(:fetch).with(
+          'https://api.example.com/draft',
+          method: :get,
+          body: nil,
+          headers: hash_including('Authorization' => "Bearer #{ScoutTool::MASKED_SECRET}"),
+          sensitive_headers: array_including('Authorization'),
+          max_bytes: 1.megabyte,
+          validate_content_type: false
+        ).and_yield(result_double)
+
+        post "/api/v1/accounts/#{account.id}/scout_tools/test",
+             params: {
+               endpoint_url: 'https://api.example.com/draft',
+               http_method: 'GET',
+               auth_type: 'bearer',
+               auth_headers: { 'token' => ScoutTool::MASKED_SECRET }
+             },
+             headers: agent.create_new_auth_token
+
+        expect(response).to have_http_status(:ok)
+      ensure
+        tempfile&.close!
+      end
+    end
+
+    context 'when testing with invalid or cross-account id (User Story 2)' do
+      let(:other_account) { create(:account) }
+      let!(:other_tool) do
+        other_account.scout_tools.create!(
+          name: 'foreign_tool',
+          description: 'Foreign tool',
+          endpoint_url: 'https://api.example.com/foreign',
+          http_method: 'GET',
+          auth_type: 'bearer',
+          auth_headers: { 'token' => 'foreign-secret-token' }
+        )
+      end
+
+      it 'falls back to literal submitted values and never uses foreign account credentials' do
+        tempfile = Tempfile.new('test')
+        tempfile.write({ status: 'ok' }.to_json)
+        tempfile.rewind
+        result_double = SafeFetch::Result.new(tempfile: tempfile, filename: 'test', content_type: 'application/json')
+
+        expect(SafeFetch).to receive(:fetch).with(
+          'https://api.example.com/test',
+          method: :get,
+          body: nil,
+          headers: hash_including('Authorization' => "Bearer #{ScoutTool::MASKED_SECRET}"),
+          sensitive_headers: array_including('Authorization'),
+          max_bytes: 1.megabyte,
+          validate_content_type: false
+        ).and_yield(result_double)
+
+        post "/api/v1/accounts/#{account.id}/scout_tools/test",
+             params: {
+               id: other_tool.id,
+               endpoint_url: 'https://api.example.com/test',
+               http_method: 'GET',
+               auth_type: 'bearer',
+               auth_headers: { 'token' => ScoutTool::MASKED_SECRET }
+             },
+             headers: agent.create_new_auth_token
+
+        expect(response).to have_http_status(:ok)
+      ensure
+        tempfile&.close!
+      end
+
+      it 'falls back to literal submitted values when id is nonexistent or non-numeric without error' do
+        tempfile = Tempfile.new('test')
+        tempfile.write({ status: 'ok' }.to_json)
+        tempfile.rewind
+        result_double = SafeFetch::Result.new(tempfile: tempfile, filename: 'test', content_type: 'application/json')
+
+        expect(SafeFetch).to receive(:fetch).with(
+          'https://api.example.com/test',
+          method: :get,
+          body: nil,
+          headers: hash_including('Authorization' => "Bearer #{ScoutTool::MASKED_SECRET}"),
+          sensitive_headers: array_including('Authorization'),
+          max_bytes: 1.megabyte,
+          validate_content_type: false
+        ).and_yield(result_double)
+
+        post "/api/v1/accounts/#{account.id}/scout_tools/test",
+             params: {
+               id: 'non-numeric-or-not-found',
+               endpoint_url: 'https://api.example.com/test',
+               http_method: 'GET',
+               auth_type: 'bearer',
+               auth_headers: { 'token' => ScoutTool::MASKED_SECRET }
+             },
+             headers: agent.create_new_auth_token
+
+        expect(response).to have_http_status(:ok)
+      ensure
+        tempfile&.close!
+      end
     end
   end
 end
