@@ -96,9 +96,9 @@ yarn-debug.log*
 # TextEditors & AI Agents config files
 .vscode
 .claude/settings.local.json
+.claude/*.lock
 .cursor
 .codex/
-.claude/
 .qwen/
 CLAUDE.local.md
 
