@@ -415,7 +415,7 @@ forçada por estado; exit terminal zera a ativa.
 
 **Validação no boot** (falha alto, conforme `AGENTS.md`): predicado inexistente · capability fora
 do catálogo · exit citado no corpo e não declarado · playbook de destino inexistente · `priority`
-duplicada. Referência quebrada morre no CI, não numa conversa.
+ausente, não-inteira ou duplicada. Referência quebrada morre no CI, não numa conversa.
 
 ### 4.5 Capabilities
 

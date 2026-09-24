@@ -53,6 +53,8 @@ mesmo assim estão sempre presentes (design §1, tabela).
 | 3 | Predicado é **classe Ruby registrada** (`Custom::ScoutV2::Predicates::*`), resolvida por nome | É a unidade pequena e isolada que torna o roteamento testável sem LLM (design §7) |
 | 4 | Validação no boot **falha alto**, nunca degrada em silêncio | `AGENTS.md`: estado impossível/misconfigurado indica bug de setup e deve falhar alto. Referência quebrada morre no CI, não numa conversa de cliente (design §4.4) |
 | 5 | Corpo da playbook é escrito em **pt-BR** e fica **fora do ciclo de i18n** (`en.json`/`pt_BR.json`) | É instrução ao modelo, não texto ao cliente; a resposta ao lead segue o idioma detectado, como hoje (design §4.3) |
+| 6 | `priority` é **obrigatória, inteira e única** em toda playbook — sem default e sem playbook "sem prioridade" | Um default tornaria a validação de `priority` duplicada (design §4.4) autocontraditória: toda playbook que omitisse o campo colidiria, e escapar disso exigiria tratar ausência como caso especial — exatamente a coerção de valor malformado que o `AGENTS.md` proíbe. A regra de decisão do roteador também compara com `>` estrito (design §4.4), o que exige ordem total. Com seis playbooks autoradas em PR (decisão 1), não há argumento de escala para default. Vale inclusive para as que ativam só por `trigger`: `fora_de_prospeccao` é especificada como `priority` máxima (design §6) |
+| 7 | `exits` é **opcional**: zero desfechos é playbook válida, e o loader entrega lista vazia (nunca `nil`) | Design §4.6: *"Turno sem exit é o caso normal — responder e aguardar o cliente é o `ListenExit` implícito; exit só existe onde há desfecho"*. Reforçando: o mecanismo de exit só nasce no brief 05, e a `qualificacao` do brief 03 (decisão 5 de lá) é entregue sem exits — exigir ≥1 no boot tornaria a única playbook da Fase 0 incarregável. Declarar ao menos um desfecho onde a situação tem desfecho é **convenção de autoria revisada em PR** (as seis do primeiro corte declaram, design §6), não regra de validação |
 
 ## 5. Escopo preliminar
 
@@ -60,7 +62,7 @@ mesmo assim estão sempre presentes (design §1, tabela).
 - `custom/app/services/custom/scout_v2/playbook/loader.rb`: parse de frontmatter + corpo, objeto
   tipado com `name`, `title`, `priority`, `when_state`, `trigger`, `requires`, `needs`, `tools`,
   `exits`, `body`.
-- `custom/app/services/custom/scout_v2/playbook/validator.rb`: as cinco checagens de boot.
+- `custom/app/services/custom/scout_v2/playbook/validator.rb`: as checagens de boot listadas em §7 US2.
 - `custom/app/services/custom/scout_v2/predicates/base.rb` + registro por nome + os predicados
   exigidos pela playbook do brief 03 (`opportunity_open`, `pending_required_fields`).
 - Ponto de execução da validação no boot/CI (initializer do módulo `custom/` ou tarefa dedicada).
@@ -82,8 +84,14 @@ mesmo assim estão sempre presentes (design §1, tabela).
 - Um arquivo em `custom/playbooks/` com frontmatter (`name`, `title`, `priority`, `when_state`,
   `trigger`, `requires`, `needs`, `tools`, `exits`) e corpo em markdown é carregado como um objeto
   com esses campos acessíveis, e o corpo preservado verbatim.
-- Campos opcionais ausentes (`requires`, `needs`, `tools`, `when_state`) resultam em coleção vazia,
-  não em erro — playbook só por `trigger` é caso normal (3 das 6 do primeiro corte, design §4.4).
+- `name`, `title`, `priority` e `trigger` são **obrigatórios** em toda playbook; ausência é erro de
+  boot (US2), não default.
+- Campos opcionais ausentes (`requires`, `needs`, `tools`, `when_state`, `exits`) resultam em
+  **coleção vazia, nunca `nil`** — playbook só por `trigger` é caso normal (3 das 6 do primeiro
+  corte, design §4.4), e ela declara `priority` como qualquer outra.
+- `exits: []` (ou `exits` ausente) é playbook válida: sem desfecho declarado, o turno responde e
+  aguarda o cliente — o `ListenExit` implícito do design §4.6 — e a escalação continua alcançável
+  por `exit_handoff`, que é sempre-on (design §4.1).
 - Carregar o conjunto de playbooks devolve um catálogo consultável por nome e ordenável por
   `priority`.
 
@@ -91,8 +99,10 @@ mesmo assim estão sempre presentes (design §1, tabela).
 
 - Sobe com erro claro, identificando arquivo e referência, quando: predicado citado em `when_state`
   não está registrado · capability em `requires` está fora do catálogo · exit citado no corpo não
-  está declarado em `exits` · playbook de destino de transição não existe · duas playbooks têm a
-  mesma `priority`.
+  está declarado em `exits` · playbook de destino de transição não existe · `priority` está ausente
+  ou não é inteira · duas playbooks têm a mesma `priority`.
+- **Não** é erro de boot: playbook sem `exits`. A validação só reprova **referência quebrada**
+  (nome que não resolve), não ausência de desfecho.
 - O mesmo erro reprova o CI — nenhuma dessas condições chega a uma conversa.
 - Conjunto íntegro de playbooks sobe sem aviso e sem custo de LLM.
 
@@ -106,9 +116,11 @@ mesmo assim estão sempre presentes (design §1, tabela).
 ## 8. Testes (rascunho)
 
 - `custom/spec/services/custom/scout_v2/playbook/loader_spec.rb`: frontmatter completo, frontmatter
-  mínimo (só `name`/`title`/`trigger`), corpo preservado.
+  mínimo (só `name`/`title`/`priority`/`trigger`), corpo preservado, e `exits`/`when_state`/`tools`
+  ausentes devolvendo coleção vazia (asserção explícita de `== []`, não de `nil`).
 - `custom/spec/services/custom/scout_v2/playbook/validator_spec.rb`: um exemplo por classe de
-  quebra das cinco listadas em US2.
+  quebra listada em US2, incluindo `priority` ausente e `priority` duplicada — mais um exemplo
+  **positivo** de playbook sem `exits` passando na validação.
 - `custom/spec/services/custom/scout_v2/predicates/*_spec.rb`: verdadeiro/falso por predicado, e E
   lógico sobre lista com mais de uma entrada.
 
