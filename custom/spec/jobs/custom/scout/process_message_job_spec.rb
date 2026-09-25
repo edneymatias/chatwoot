@@ -111,5 +111,47 @@ RSpec.describe Custom::Scout::ProcessMessageJob, type: :job do
         expect(Redis::Alfred.get(enqueued_key)).to be_nil
       end
     end
+
+    context 'when scout_v2 feature flag is enabled' do
+      let(:v2_runner_instance) do
+        instance_double(Custom::ScoutV2::TurnRunner, perform: { reply: 'Resposta do Scout V2', tool_calls: [] })
+      end
+
+      before do
+        account.enable_features!('scout_v2')
+        allow(Custom::ScoutV2::TurnRunner).to receive(:new).and_return(v2_runner_instance)
+      end
+
+      it 'dispatches via TurnRunner, creates an outgoing Message, and increments responses_consumed' do
+        last_msg_key = format(described_class::LAST_MESSAGE_KEY, conversation_id: conversation.id)
+        enqueued_key = format(described_class::ENQUEUED_KEY, conversation_id: conversation.id)
+        Redis::Alfred.set(last_msg_key, Time.current.to_f - 5.0)
+        Redis::Alfred.set(enqueued_key, true)
+
+        expect do
+          described_class.new.perform(conversation.id)
+        end.to change { conversation.messages.where(message_type: :outgoing).count }.by(1)
+
+        expect(scout.reload.responses_consumed).to eq(1)
+
+        expect(Custom::ScoutV2::TurnRunner).to have_received(:new).with(scout: scout, conversation: conversation)
+        expect(v2_runner_instance).to have_received(:perform)
+        expect(Custom::Scout::AgentRunner).not_to have_received(:new)
+        expect(conversation.messages.where(message_type: :outgoing).last.content).to eq('Resposta do Scout V2')
+      end
+
+      it 'switches immediately back to AgentRunner when flag is disabled' do
+        account.disable_features!('scout_v2')
+        last_msg_key = format(described_class::LAST_MESSAGE_KEY, conversation_id: conversation.id)
+        enqueued_key = format(described_class::ENQUEUED_KEY, conversation_id: conversation.id)
+        Redis::Alfred.set(last_msg_key, Time.current.to_f - 5.0)
+        Redis::Alfred.set(enqueued_key, true)
+
+        described_class.new.perform(conversation.id)
+
+        expect(Custom::Scout::AgentRunner).to have_received(:new).with(scout: scout, conversation: conversation)
+        expect(Custom::ScoutV2::TurnRunner).not_to have_received(:new)
+      end
+    end
   end
 end

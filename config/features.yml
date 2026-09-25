@@ -285,6 +285,10 @@
   display_name: ERP Integration
   enabled: false
   column: feature_flags_ext_1
+- name: scout_v2
+  display_name: Scout V2
+  enabled: false
+  column: feature_flags_ext_1
 - name: audit_log_ip_address
   display_name: Audit Log IP Address
   help_url: https://chwt.app/hc/audit-logs

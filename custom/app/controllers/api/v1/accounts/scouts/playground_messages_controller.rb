@@ -11,17 +11,28 @@ class Api::V1::Accounts::Scouts::PlaygroundMessagesController < Api::V1::Account
       return
     end
 
-    runner = Custom::Scout::PlaygroundRunner.new(
-      scout: @scout,
-      message: message_text,
-      message_history: permitted_message_history
-    )
-    result = runner.perform
-
-    render json: result
+    render json: dispatch_playground_message(message_text)
   end
 
   private
+
+  def dispatch_playground_message(message_text)
+    if Current.account.feature_enabled?('scout_v2')
+      conversation = Custom::ScoutV2::PlaygroundConversation.for(@scout)
+      return Custom::ScoutV2::TurnRunner.new(
+        scout: @scout,
+        conversation: conversation,
+        message: message_text,
+        message_history: permitted_message_history
+      ).perform
+    end
+
+    Custom::Scout::PlaygroundRunner.new(
+      scout: @scout,
+      message: message_text,
+      message_history: permitted_message_history
+    ).perform
+  end
 
   def permitted_message_history
     history = params[:message_history]

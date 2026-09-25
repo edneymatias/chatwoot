@@ -69,6 +69,7 @@ With an open opportunity and pending required fields, the router activates the q
 - The new-engine setting is toggled between two turns of the same conversation — the next turn processed follows whichever engine the setting currently selects; nothing about the conversation's history pins it to one engine.
 - A playground turn and an inbox turn happen on the same account with the setting enabled — both are handled by the same new execution path; there is no per-conversation or per-channel override.
 - The active playbook has no declared outcome to exit through in this phase — the turn simply answers and waits for the next customer message instead of exiting through a declared ending.
+- The account's response quota is exhausted or it has no configured API key when a v2 turn would run — the turn makes zero language-model calls and falls back to the same quota/API-key gate and handoff behavior the existing execution path already uses for this condition, reused unchanged.
 
 ## Requirements *(mandatory)*
 
@@ -76,7 +77,7 @@ With an open opportunity and pending required fields, the router activates the q
 
 - **FR-001**: The system MUST provide an account-level setting, independent of the existing Scout on/off setting, that selects which assistant execution path handles that account's Scout conversations.
 - **FR-002**: The engine selection MUST apply identically to both the account's playground and its live inbox conversations — an account MUST NOT have one on the new execution path while the other stays on the existing one.
-- **FR-003**: For an account where the setting selects the existing execution path, playground and inbox behavior MUST remain identical to current behavior — no change to the number of model calls, the prompt content, or the tool catalog.
+- **FR-003**: For an account where the setting selects the existing execution path, playground and inbox behavior MUST satisfy FR-020's guarantee with these specific, testable invariants: no change to the number of model calls, the prompt content, or the tool catalog.
 - **FR-004**: For an account where the setting selects the new execution path, both playground and inbox messages MUST be handled by the new turn execution instead of the existing one.
 - **FR-005**: Turning the setting off for an account MUST cause the very next message on either surface to be handled by the existing execution path, with no deployment or restart required.
 - **FR-006**: Each new-execution-path turn MUST assemble its prompt fresh from the current conversation context every time it runs, rather than reusing a prompt built once ahead of time.
@@ -101,6 +102,7 @@ With an open opportunity and pending required fields, the router activates the q
 - **Turn**: One execution of the assistant in response to a conversation's pending message(s) on the new execution path — assembling context, consulting the routing decision, building a prompt and tool catalog from whatever playbook is active, making exactly one top-level call to the language model, persisting the resulting routing state, and dispatching the reply.
 - **Qualification Playbook**: The single playbook shipped in this phase; activates by conversation state when an opportunity is open with required fields still pending, declares one tool for recording collected data, and declares no outcomes/endings.
 - **Turn Trace**: The observability record produced per turn — one session containing one top-level generation that carries the active playbook and its activation reason as data, plus one instrumented record per tool call made during the turn.
+- **Playground Sandbox Conversation**: A real, persisted, per-scout `Conversation` (with its own `Contact`/`Channel::Api`/`Inbox`/`ContactInbox`) that backs the otherwise-ephemeral playground surface — the only way `ScoutConversationState` and a real `Opportunity` can be exercised from the playground; resolved idempotently (the same conversation is returned on every call for the same scout) and never receives a real `Message` row.
 
 ## Success Criteria *(mandatory)*
 

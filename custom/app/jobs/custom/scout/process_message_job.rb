@@ -50,7 +50,11 @@ class Custom::Scout::ProcessMessageJob < ApplicationJob
       self.class.set(wait: remaining.seconds).perform_later(conversation.id)
     else
       cleanup_redis_keys(conversation.id)
-      Custom::Scout::AgentRunner.new(scout: scout, conversation: conversation).perform
+      if scout.account.feature_enabled?('scout_v2')
+        dispatch_scout_v2(conversation, scout)
+      else
+        Custom::Scout::AgentRunner.new(scout: scout, conversation: conversation).perform
+      end
     end
   end
 
@@ -64,5 +68,13 @@ class Custom::Scout::ProcessMessageJob < ApplicationJob
     enqueued_key = format(ENQUEUED_KEY, conversation_id: conversation_id)
     Redis::Alfred.delete(enqueued_key)
     Redis::Alfred.delete(last_msg_key)
+  end
+
+  def dispatch_scout_v2(conversation, scout)
+    result = Custom::ScoutV2::TurnRunner.new(scout: scout, conversation: conversation).perform
+    return if result.blank? || result[:reply].blank?
+
+    Messages::MessageBuilder.new(nil, conversation, { content: result[:reply], message_type: 'outgoing', private: false }).perform
+    scout.with_lock { scout.update!(responses_consumed: scout.responses_consumed + 1) }
   end
 end

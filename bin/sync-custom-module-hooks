@@ -208,6 +208,11 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  insert: "- name: erp_integration\n  display_name: ERP Integration\n  enabled: false\n  column: feature_flags_ext_1"
                },
                {
+                 file: 'config/features.yml',
+                 anchor: "- name: erp_integration\n  display_name: ERP Integration\n  enabled: false\n  column: feature_flags_ext_1",
+                 insert: "- name: scout_v2\n  display_name: Scout V2\n  enabled: false\n  column: feature_flags_ext_1"
+               },
+               {
                  file: 'app/models/integrations/app.rb',
                  anchor: "  def notion_enabled?(account)\n    account.feature_enabled?('notion_integration') && GlobalConfigService.load('NOTION_CLIENT_ID', nil).present?\n  end\nend",
                  insert: "\nIntegrations::App.prepend_mod_with('Integrations::App')"
