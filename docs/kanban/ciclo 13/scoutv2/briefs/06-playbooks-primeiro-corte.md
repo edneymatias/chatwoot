@@ -3,7 +3,8 @@
 **Status**: Pronto para speckit
 **Data**: 2026-09-24
 **Master doc**: `docs/kanban/scoutv2/design.md` §6 (Fase 1, tabela das seis playbooks), §4.3, §4.4
-**Depends on**: Brief 05 (exits e Escalation) e Brief 04 (índice + `open_playbook`). A playbook
+**Depends on**: Brief 05 (exits e Escalation), Brief 04 (índice + `open_playbook`) e Brief 11
+(interrupção por trigger: o trio abre com procedimento ativo e não persiste). A playbook
 `qualificacao` já foi entregue no Brief 03 — este brief entrega as outras cinco e acrescenta os
 exits à `qualificacao`.
 
@@ -57,7 +58,7 @@ no brief 04 — e confirma que a decomposição feita na tabela do design §6 se
 | 2 | Coluna `tools` vazia é **literal**: naquela playbook o modelo não tem nenhuma tool de mutação | É o ponto do épico — num turno de dúvida ou de pausa, dar a chave do CRM ao modelo é superfície de efeito colateral sem contrapartida (design decisão 12) |
 | 3 | `fora_de_prospeccao` tem `priority` máxima e ativação **só por trigger** — inversão assumida conscientemente | `priority` só arbitra entre playbooks que já casaram por estado; não acelera a que depende do modelo. Mitigação: trigger com exclusão explícita e observação de `activation_reason` em produção. Correção, se necessária: predicados parciais, não afrouxar a precedência (design §4.4 e §8) |
 | 4 | `agendamento` entra **com `requires` insatisfeito**, exercitando a degradação | O caminho de degradação precisa ser provado antes de existir capability; o passo degrada em texto com pendência visível, não estoura (design §6, Fase 1) |
-| 5 | `duvida_comercial` encerra **voltando à playbook anterior**, não em exit terminal | Tirar dúvida é interrupção, não desfecho: o lead volta ao procedimento onde estava |
+| 5 | `duvida_comercial` e `pausa` são **interrupções sem exit**: o procedimento em curso volta no turno seguinte | Tirar dúvida ou pausar é interrupção, não desfecho. Interrupção não persiste (brief 11), então o roteador retoma o procedimento sozinho; um exit terminal em `pausa` seria no-op, porque o `when_state` do procedimento continua casando no turno seguinte |
 | 6 | `CreatePrivateNote` **não** é declarada por nenhuma das seis | Os dois usos reais viraram efeito de Ruby (o exit de escalação escreve a nota de transferência; o `ContactNotesService` escreve o resumo de fim de conversa). Volta numa linha de frontmatter se aparecer necessidade concreta (design §4.8) |
 
 ## 5. Escopo preliminar
@@ -66,9 +67,9 @@ no brief 04 — e confirma que a decomposição feita na tabela do design §6 se
   `handoff`. Origem: `system_prompts_service.rb:78`.
 - `custom/playbooks/identificacao.md` — `when_state: [contact_identity_incomplete]`,
   `tools: [update_contact]`, exit de transição → `qualificacao`. Origem: `:105-115` + `:118-131`.
-- `custom/playbooks/duvida_comercial.md` — só trigger, sem tools, exit → playbook anterior. Origem:
+- `custom/playbooks/duvida_comercial.md` — só trigger (interrupção), sem tools, sem exit. Origem:
   `:159-162`.
-- `custom/playbooks/pausa.md` — só trigger, sem tools, exit terminal. Origem: `:76`.
+- `custom/playbooks/pausa.md` — só trigger (interrupção), sem tools, sem exit. Origem: `:76`.
 - `custom/playbooks/agendamento.md` — `when_state: [opportunity_in_stage(qualificado),
   contact_has_phone]`, `requires: [scheduling, customer_registry]`, `needs:
   [politica_reagendamento]`, exits `agendado` · `sem_horario` · `handoff`.
@@ -101,12 +102,14 @@ no brief 04 — e confirma que a decomposição feita na tabela do design §6 se
 
 ### US2 — O trio por trigger cobre o resíduo de intenção
 
-- Sinal de cliente existente/reclamação abre `fora_de_prospeccao` e termina em `handoff`, sem
-  nenhuma tool de mutação disponível no caminho.
-- Pergunta de produto/preço abre `duvida_comercial`, que consulta a base de conhecimento e **volta
-  para a playbook anterior**, sem perder o ponto do funil.
-- Sinal de pausa do lead abre `pausa`, que encerra sem insistir e sem tool de mutação.
-- Os três registram `activation_reason: trigger`.
+- Sinal de cliente existente/reclamação abre `fora_de_prospeccao` — inclusive no meio de
+  `identificacao`/`qualificacao`/`agendamento` — e termina em `handoff`, sem nenhuma tool de mutação
+  disponível no caminho.
+- Pergunta de produto/preço abre `duvida_comercial`, que consulta a base de conhecimento; no turno
+  seguinte o procedimento em curso é retomado, sem perder o ponto do funil.
+- Sinal de pausa do lead abre `pausa`, que responde sem insistir e sem tool de mutação.
+- A abertura dos três aparece no trace com `activation_reason: trigger` e não altera a playbook
+  ativa no estado da conversa.
 - Nenhum dos três é ativado por `when_state` em nenhum estado do banco.
 
 ### US3 — `agendamento` degrada com pendência visível
@@ -126,8 +129,8 @@ no brief 04 — e confirma que a decomposição feita na tabela do design §6 se
   trigger, em qualquer estado.
 - `custom/spec/services/custom/scout_v2/predicates/*_spec.rb`: os três predicados novos.
 - Flow test por playbook (capabilities dubladas): conversa multi-turno verificando exits e
-  transições — incluindo `duvida_comercial` retornando à playbook anterior e `agendamento`
-  degradando.
+  transições — incluindo `qualificacao` retomada no turno seguinte a `duvida_comercial` e
+  `agendamento` degradando.
 - Verificação no playground das seis, com `activation_reason` conferido em cada uma.
 
 ---

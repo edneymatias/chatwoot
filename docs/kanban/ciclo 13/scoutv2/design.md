@@ -1,7 +1,7 @@
 # ScoutV2 — Playbooks, Capabilities e Memória Tipada
 
 **Status:** revisado de ponta a ponta (ver `revisao.md`) e fechado para implementação
-**Data:** 2026-09-24 · revisão incorporada em 2026-09-24 · ativação por flag de conta (§4.11) em 2026-09-24
+**Data:** 2026-09-24 · revisão incorporada em 2026-09-24 · ativação por flag de conta (§4.11) em 2026-09-24 · interrupção por trigger (§4.4) em 2026-09-25
 **Escopo:** reescrita da camada de comportamento do módulo Scout, em namespace próprio, com os
 serviços de comportamento do v1 intocados em produção e depreciados depois.
 
@@ -199,7 +199,7 @@ instrução referencia. O `HandoffTool`, porém, é **sempre-on no agente raiz**
 | 3 | **Capability é contrato do fork**, satisfeita por integração | Arquivo compartilhado não pode nomear linha de banco de uma conta (decorrência direta da decisão 2). Contrato **duro na entrada** (a playbook escreve a chamada), **mole na saída** (texto/JSON ao modelo, validação não-bloqueante). Exit é onde o rigor compra determinismo, porque decide fluxo. |
 | 4 | **`ScoutTool` sempre declara capability**; `call_custom_api` morre no v2 | Sem capability, a tool é pano para manga: superfície de prompt crescendo com configuração de cliente e contrato instável para a playbook. *No primeiro corte não existe provider HTTP — o `ScoutTool` simplesmente não participa do v2 (ver §6, fase 6.1 e checklist de promoção).* |
 | 5 | **Namespace `Custom::ScoutV2::*`**, **flag de conta `scout_v2`** (Super Admin) como único seletor de engine, serviços de comportamento do v1 intocados e depreciados depois | Cada conta roda **uma** engine: com a flag, playground e inbox vão para o v2; sem ela, para o v1. Não há coluna por scout nem seletor na configuração do scout: promover é ato do operador, não do administrador da conta, e o rollback é desmarcar o checkbox, sem deploy. `AgentRunner`, `ResponseAuditor` e `SystemPromptsService` não recebem uma linha de diff; `ProcessMessageJob` e `PlaygroundMessagesController` (arquivos do fork) ganham o branch de despacho; `config/features.yml` (upstream) ganha uma entrada coberta por MANIFEST. Detalhe em §4.11. |
-| 6 | **Instructions tipadas** (`Role`, `Scope`, `Tone` enum, `Response length` enum, `Greeting`) | Tira estilo do balde de prosa que compete por atenção. |
+| 6 | **Instructions tipadas** (`Role`, `Scope`, `Tone` enum, `Response length` enum, `Greeting`) | Tira estilo do balde de prosa que compete por atenção. Valores fechados: `tone` ∈ `friendly` · `neutral` · `matter_of_fact` · `professional` · `humorous` (default `friendly`); `response_length` ∈ `concise` · `standard` · `thorough` (default `concise`). O `Custom` do painel de referência (§2.3) fica de fora: é texto livre, e reabriria o balde de prosa que esta decisão fecha. `Role` e `Scope` são campos de texto **nomeados e curtos** do scout, como no painel; o v2 **não lê `persona`**, porque o contrato do campo é um prompt de sistema livre ("personalidade, tom de voz e diretrizes comerciais… critérios de qualificação, tom de objeções e instruções de pitch", `scout.json:57-59`), e cada um desses assuntos tem camada própria no v2. Sem migração automática: o administrador escreve `role`/`scope`, e o preflight da promoção cobra (§6). `persona` sai do código com o v1. |
 | 7 | **Escalation é camada própria** | Consolida as três cópias atuais da regra de handoff num único lugar, entregue no instante do exit. |
 | 8 | **Frontmatter com `requires:` (capability) e `needs:` (fato de negócio)** | As duas espécies de pendência observadas no produto de referência. |
 | 9 | **V2 nasce sem auditor pós-hoc** | Não é remoção de verificação: é **troca de verificação estocástica por verificação estrutural**. O que ocupa o lugar do auditor é a decisão 12 — sem tool de mutação livre, o desfecho só acontece por exit com payload validado em Ruby, antes de qualquer coisa chegar ao cliente. Carregar também a compensação estocástica contraria o `AGENTS.md` (*"Do not add speculative guards … unless production has proven it necessary"*). Volta com evidência, se voltar. |
@@ -216,11 +216,12 @@ instrução referencia. O `HandoffTool`, porém, é **sempre-on no agente raiz**
 
 | Camada | Conteúdo | Sempre no prompt? |
 |---|---|---|
-| **Instructions** | `Identity` (role, scope) · `Communication` (tone, response_length, greeting) · `Memory` (política de retenção) · `Safety` (anti-alucinação, anti-falsa-promessa, idioma, escopo comercial) | sim |
+| **Instructions** | `Identity` (role, scope — campos nomeados do scout) · `Communication` (tone, response_length, greeting) · `Memory` (política de retenção) · `Safety` (anti-alucinação, anti-falsa-promessa, idioma, escopo comercial) | sim |
 | **Índice de playbooks** | 1 linha por playbook: nome + trigger | sim |
 | **Escalation** | `when_to_escalate` + `procedure_before_handoff` | sim |
 | **Playbook ativa** | corpo (passos) | só quando ativa |
 | **Tool de leitura** | `search_knowledge_base` | sim |
+| **Abertura de playbook** | `open_playbook`, aceitando só o conjunto que o índice lista no turno (§4.4, "Interrupção por trigger") | sim, quando há o que abrir |
 | **Exit de escalação** | `exit_handoff` | sim |
 | **Tools de mutação** | `update_contact` · `manage_opportunity` · demais tools nativas | só quando a playbook ativa as declara |
 | **Capabilities** | resolvidas por adapter, via registry | só quando a playbook ativa as declara |
@@ -255,10 +256,12 @@ sequenceDiagram
     G->>R: ctx montado
     R->>R: when_state → vencedora vs ativa
     alt playbook definida
-        R->>L: Instructions + índice + Escalation + busca + corpo + tools/capabilities/exits da playbook
+        R->>L: Instructions + índice (só interrupções) + Escalation + busca + corpo + tools/capabilities/exits da playbook
     else nenhuma
-        R->>L: Instructions + índice + Escalation + busca
-        L->>L: open_playbook(nome) → corpo como tool result + injeta tools/capabilities/exits
+        R->>L: Instructions + índice (todas) + Escalation + busca
+    end
+    opt modelo abre playbook do índice
+        L->>L: open_playbook(nome) → corpo como tool result + tools/capabilities/exits da aberta
     end
     L->>L: capabilities / tools (loop interno do RubyLLM)
     alt houve desfecho
@@ -389,10 +392,42 @@ preferência.**
 Disso decorre uma **inversão que o desenho assume conscientemente**: `fora_de_prospeccao` tem a
 `priority` máxima e ativação só por trigger — a regra de maior precedência do sistema é a de
 ativação menos determinística. `priority` só arbitra entre playbooks que já casaram por estado;
-não acelera a que depende do modelo. Mitigação no primeiro corte: escrever o trigger dela com
-exclusão explícita (§4.3) e observar `activation_reason` em produção. Se a taxa de não-ativação
-aparecer no Langfuse, o caminho é dar-lhe predicados parciais (contato com oportunidade
-ganha/perdida, conversa anterior resolvida), não afrouxar a precedência.
+não acelera a que depende do modelo. Com a interrupção por trigger (abaixo) ela é alcançável em
+qualquer ponto da conversa, inclusive no meio de um procedimento de estado, mas a abertura continua
+sendo decisão do modelo. Mitigação no primeiro corte: escrever o trigger dela com exclusão
+explícita (§4.3) e observar `activation_reason` em produção. Se a taxa de não-ativação aparecer no
+Langfuse, o caminho é dar-lhe predicados parciais (contato com oportunidade ganha/perdida, conversa
+anterior resolvida), não afrouxar a precedência.
+
+**Interrupção por trigger.** Playbook sem `when_state` é **playbook de interrupção**
+(`fora_de_prospeccao`, `duvida_comercial`, `pausa`). A versão anterior deste desenho só oferecia
+`open_playbook` sem playbook ativa, o que deixava o trio inalcançável durante a maior parte da
+conversa — `identificacao`, `qualificacao` e `agendamento` ficam ativas por estado em quase todo o
+funil — e fazia uma playbook aberta pelo modelo ficar ativa para sempre, porque nada além de um
+exit ou de uma vencedora de estado com `priority` maior a tira do lugar. Regras:
+
+- `open_playbook` é oferecida em todo turno em que há algo que ela possa abrir. Sem playbook ativa,
+  aceita qualquer playbook do catálogo; com playbook ativa, **só playbooks de interrupção** — trocar
+  um procedimento de estado por outro continua sendo decisão do roteador ou de exit, nunca do
+  modelo. O índice lista exatamente o conjunto que `open_playbook` aceita naquele turno.
+- Aberta, a interrupção **é dona do resto do turno**: o corpo do procedimento em curso sai das
+  instruções (`with_instructions`), as tools/capabilities/exits dele saem do catálogo
+  (`with_tools(replace: true)`), as sempre-on (`search_knowledge_base`, `exit_handoff`,
+  `open_playbook`) são registradas de novo e entram o corpo (como resultado de tool) e as
+  declarações da interrupção. É o que mantém literal a coluna `tools` vazia do §6 quando a dúvida
+  chega no meio da qualificação.
+- Interrupção **não persiste**: abri-la não grava `active_playbook`. No turno seguinte o roteador
+  vê o mesmo estado de antes e retoma o procedimento em curso. O "voltar à playbook anterior" sai
+  da estrutura, sem espécie de exit de retorno, sem pilha e sem coluna nova. Se o cliente continua
+  na dúvida, o modelo reabre a interrupção, ao custo de uma tool call.
+- A abertura de interrupção fica registrada no trace do turno (`playbook`, `activation_reason:
+  trigger`), não no estado da conversa. `activation_reason: trigger` no estado continua valendo
+  para playbook **com** `when_state` aberta pelo modelo sem ativa: essa persiste como qualquer
+  procedimento e sai por exit (§4.6) ou por preempção de estado.
+
+Descartados: pilha ou coluna `suspended_playbook` com exit de retorno (coluna nova, espécie de
+exit nova, e a conversa fica presa na interrupção se o modelo não chamar o retorno); injeção
+aditiva, sem trocar o catálogo (a dúvida no meio da qualificação teria `manage_opportunity` à mão).
 
 **A metade por-trigger é um componente substituível.** O roteador expõe uma interface única —
 `ctx → (playbook | nil, confidence)` — e hoje tem duas implementações por trás: `when_state`
@@ -411,8 +446,8 @@ não há como saber *por que* o modelo fez o que fez.
 **Limites:** máximo 2 transições **por turno** — o contador vive no `TurnRunner` e nasce zerado a
 cada execução; estourou, encerra e registra. O `transition_count` da tabela é acumulado histórico,
 para observabilidade: reaproveitá-lo como limite faria um retry do Sidekiq herdar o saldo do turno
-que falhou e matar o roteamento na segunda tentativa. `open_playbook` só quando não há playbook
-forçada por estado; exit terminal zera a ativa.
+que falhou e matar o roteamento na segunda tentativa. `open_playbook` com playbook ativa só abre
+interrupção; exit terminal zera a ativa.
 
 **Validação no boot** (falha alto, conforme `AGENTS.md`): predicado inexistente · capability fora
 do catálogo · exit citado no corpo e não declarado · playbook de destino inexistente · `priority`
@@ -755,8 +790,8 @@ com `requires` insatisfeito, exercitando o caminho de degradação:
 | `identificacao` | `when_state: contact_identity_incomplete` | `update_contact` | — | → `qualificacao` | `identity_warning:105-115` + `phone_request_warning:118-131` |
 | `qualificacao` | `opportunity_open` + `pending_required_fields` | `manage_opportunity` | — | `qualificado` · `desqualificado` · `handoff` | `FunnelSectionBuilder` |
 | `agendamento` | `opportunity_in_stage(qualificado)` + `contact_has_phone` | — | `scheduling`, `customer_registry` | `agendado` · `sem_horario` · `handoff` | — (novo) |
-| `duvida_comercial` | trigger | — | — | → playbook anterior | `knowledge_tool_instruction:159-162` |
-| `pausa` | trigger | — | — | terminal | `guardrails:76` |
+| `duvida_comercial` | trigger (interrupção) | — | — | — (o procedimento em curso volta no turno seguinte, §4.4) | `knowledge_tool_instruction:159-162` |
+| `pausa` | trigger (interrupção) | — | — | — (responder e aguardar é o `ListenExit` implícito) | `guardrails:76` |
 
 Coluna `tools` vazia é literal: naquela playbook o modelo **não tem nenhuma tool de mutação**.
 `search_knowledge_base` não aparece porque é sempre-on (§4.1).
@@ -789,11 +824,12 @@ Fases 3 e 4 são independentes entre si e das anteriores.
 
 **Checklist obrigatório de promoção por conta:** marcar `scout_v2` **desativa as `ScoutTool` da
 conta** (no primeiro corte não existe provider HTTP de capability). Antes de marcar, o operador roda
-o preflight da conta, que responde três perguntas: quais `ScoutTool` deixam de ser oferecidas e se
+o preflight da conta, que responde quatro perguntas: quais `ScoutTool` deixam de ser oferecidas e se
 alguma cobre necessidade não atendida pelas capabilities; quais capabilities de `requires` estão
-insatisfeitas para a conta; e se `exit_handoff` responde a um pedido explícito de atendente **sem
-playbook ativa**, que é o caminho crítico do §4.1. O preflight chama o v2 direto, porque o
-playground da conta segue a flag e só roda v2 depois de marcada (§4.11).
+insatisfeitas para a conta; se `exit_handoff` responde a um pedido explícito de atendente **sem
+playbook ativa**, que é o caminho crítico do §4.1; e quais scouts ativos estão com `role`/`scope`
+vazios, com a `persona` atual impressa para a reescrita (decisão 6). O preflight chama o v2 direto,
+porque o playground da conta segue a flag e só roda v2 depois de marcada (§4.11).
 
 ### Fase 6 — Investigação futura (placeholders)
 

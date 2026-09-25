@@ -271,4 +271,26 @@ RSpec.describe Scout, type: :model do
       expect(conversation.reload.status).to eq('pending')
     end
   end
+
+  describe 'communication style (tone and response_length enums)' do
+    let(:scout) { described_class.create!(valid_attributes) }
+
+    it 'defaults tone to friendly and response_length to concise' do
+      expect(scout.tone).to eq('friendly')
+      expect(scout.response_length).to eq('concise')
+      expect(scout.greeting).to be_nil
+    end
+
+    it 'raises ActiveRecord::NotNullViolation when created with tone: nil' do
+      expect do
+        described_class.create!(valid_attributes.merge(tone: nil))
+      end.to(raise_error { |error| expect(error.class.name).to eq('ActiveRecord::NotNullViolation') })
+    end
+
+    it 'raises ActiveRecord::NotNullViolation when created with response_length: nil' do
+      expect do
+        described_class.create!(valid_attributes.merge(response_length: nil))
+      end.to(raise_error { |error| expect(error.class.name).to eq('ActiveRecord::NotNullViolation') })
+    end
+  end
 end

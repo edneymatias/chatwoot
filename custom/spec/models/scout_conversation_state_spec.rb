@@ -98,6 +98,33 @@ RSpec.describe ScoutConversationState, type: :model do
     end
   end
 
+  describe '#record_trigger_activation!' do
+    let(:state) { described_class.create!(account: account, conversation: conversation) }
+
+    it 'sets active_playbook, activated_at, and activation_reason = :trigger' do
+      freeze_time do
+        result = state.record_trigger_activation!('duvida_comercial')
+
+        expect(result).to eq(state)
+        state.reload
+        expect(state.active_playbook).to eq('duvida_comercial')
+        expect(state.activated_at).to eq(Time.current)
+        expect(state.activation_reason).to eq('trigger')
+        expect(state.trigger?).to be true
+      end
+    end
+
+    it 'persists an unsaved record when called from .for_conversation' do
+      unsaved_state = described_class.for_conversation(conversation)
+      expect(unsaved_state).not_to be_persisted
+
+      unsaved_state.record_trigger_activation!('duvida_comercial')
+      expect(unsaved_state).to be_persisted
+      expect(unsaved_state.active_playbook).to eq('duvida_comercial')
+      expect(unsaved_state.trigger?).to be true
+    end
+  end
+
   describe '#record_transition!' do
     let(:state) { described_class.create!(account: account, conversation: conversation) }
 

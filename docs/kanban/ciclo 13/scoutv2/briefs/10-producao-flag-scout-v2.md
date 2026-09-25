@@ -86,12 +86,16 @@ V1 vivo e a flag é `premium`, enquanto aqui a flag é temporária e o v1 é rem
     (Brief 07);
   - para cada scout ativo da conta, sonda de `exit_handoff` sem playbook ativa: um pedido explícito
     de atendente executado no v2 em modo playground, sem enviar mensagem a contato e sem gravar
-    estado de conversa real.
+    estado de conversa real;
+  - scouts ativos com `role`/`scope` vazios, com a `persona` atual impressa para a reescrita
+    (Brief 12).
 - Sinalização na UI de tools (`ScoutToolsList.vue`) quando a conta tem `scout_v2`: as tools
   configuradas não são usadas pelo Scout. Inclui a constante `SCOUT_V2` em `featureFlags.js` com
   entrada de MANIFEST e i18n em `en.json`/`pt_BR.json`.
 - Depreciação, depois que todas as contas tiverem `scout_v2`:
   - remover o conjunto do v1 listado no §2, com specs e traduções órfãs;
+  - remover `persona` (coluna, `alias_attribute :system_prompt`, `scout_params`, campo da tela e
+    traduções), que só o v1 lê (Brief 12, decisão 3);
   - remover os branches de despacho, deixando o v2 incondicional;
   - marcar `scout_v2` com `deprecated: true`, removendo todas as leituras (backend, frontend e
     constante `SCOUT_V2`) e as entradas de MANIFEST que as sustentavam.
@@ -126,11 +130,12 @@ V1 vivo e a flag é `premium`, enquanto aqui a flag é temporária e o v1 é rem
 
 ### US2 — Preflight antes de promover, e tools fora de uso visíveis
 
-- Para uma conta ainda sem a flag, o operador obtém do preflight três respostas:
+- Para uma conta ainda sem a flag, o operador obtém do preflight quatro respostas:
   - quais `ScoutTool` ativas deixarão de ser oferecidas;
   - quais capabilities exigidas pelas playbooks estão insatisfeitas;
   - para cada scout ativo, se um pedido explícito de atendente **sem playbook ativa** resulta em
-    `exit_handoff`.
+    `exit_handoff`;
+  - quais scouts ativos estão com `role`/`scope` vazios, e a `persona` de cada um.
 - O preflight não envia mensagem a nenhum contato e não altera nenhuma conversa real.
 - Numa conta com `scout_v2`, a tela de tools mostra que as tools configuradas não são usadas pelo
   Scout, e nenhuma `ScoutTool` é oferecida ao modelo.

@@ -4,10 +4,6 @@ class Custom::ScoutV2::TurnRunner
   include Integrations::LlmInstrumentation
   include Custom::Scout::Tools::CallRecorder
 
-  FALLBACK_INSTRUCTIONS = 'Nenhum procedimento específico está ativo para esta conversa. Responda à mensagem do cliente da melhor forma ' \
-                          'possível, use a base de conhecimento quando for útil, e aguarde a próxima mensagem.'
-  TOOL_CLASSES = { 'manage_opportunity' => Custom::Scout::Tools::ManageOpportunity }.freeze
-
   attr_reader :scout, :conversation, :message, :message_history
 
   def initialize(scout:, conversation:, message: nil, message_history: nil, playground: nil)
@@ -26,7 +22,7 @@ class Custom::ScoutV2::TurnRunner
     decision = Custom::ScoutV2::Router.call(ctx, catalog)
 
     persist_state_activation_if_needed(decision, ctx)
-    dispatch_turn(decision, ctx)
+    dispatch_turn(decision, ctx, catalog)
   end
 
   private
@@ -35,8 +31,8 @@ class Custom::ScoutV2::TurnRunner
     Custom::ScoutV2::RoutingSnapshot::Builder.call(conversation: @conversation, catalog: catalog, turn_transition_count: 0)
   end
 
-  def dispatch_turn(decision, ctx)
-    chat = setup_chat(build_instructions(decision.playbook, ctx), build_tools(decision.playbook))
+  def dispatch_turn(decision, ctx, catalog)
+    chat = setup_chat(decision, ctx, catalog)
     last_user_message = resolve_last_user_message_record
     add_history_to_chat(chat, last_user_message)
 
@@ -67,52 +63,45 @@ class Custom::ScoutV2::TurnRunner
   def persist_state_activation_if_needed(decision, ctx)
     return unless decision.playbook.present? && decision.playbook != ctx.active_playbook
 
-    ScoutConversationState.for_conversation(@conversation).record_state_activation!(decision.playbook.name)
+    conversation_state.record_state_activation!(decision.playbook.name)
   end
 
-  def build_instructions(playbook, ctx)
-    return FALLBACK_INSTRUCTIONS if playbook.blank?
-
-    body = playbook.body.strip
-    pending = format_pending_fields(ctx.pending_fields)
-    return body if pending.blank?
-
-    "#{body}\n\n#{pending}"
+  def conversation_state
+    @conversation_state ||= ScoutConversationState.for_conversation(@conversation)
   end
 
-  def format_pending_fields(pending_keys)
-    return nil if pending_keys.blank?
+  def build_instructions(playbook, ctx, catalog)
+    blocks = [
+      Custom::ScoutV2::Instructions::Builder.call(scout: @scout),
+      Custom::ScoutV2::Playbook::IndexBuilder.call(catalog)
+    ]
 
-    definitions = CustomAttributeDefinition.where(
-      account_id: @conversation.account_id,
-      attribute_model: :opportunity_attribute,
-      attribute_key: pending_keys
-    )
-    defs_by_key = definitions.index_by(&:attribute_key)
-
-    lines = pending_keys.map do |key|
-      defn = defs_by_key[key]
-      label = defn&.attribute_display_name.presence || key
-      desc = defn&.attribute_description.presence
-      "- #{label} (chave: #{key})#{desc ? ": #{desc}" : ''}"
-    end
-
-    "Campos pendentes para esta oportunidade:\n#{lines.join("\n")}"
-  end
-
-  def build_tools(playbook)
-    tools = [Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, @conversation, playground: false)]
     if playbook.present?
-      playbook.tools.each do |tool_name|
-        tool_class = TOOL_CLASSES[tool_name]
-        tools << tool_class.new(@scout, @conversation, playground: false) if tool_class
-      end
+      body = playbook.body.strip
+      pending = Custom::ScoutV2::Playbook::PendingFieldsFormatter.call(account_id: @conversation.account_id, pending_keys: ctx.pending_fields)
+      blocks << (pending.present? ? "#{body}\n\n#{pending}" : body)
     end
-    tools.map { |tool| wrap_tool(tool, simulated: false) }
+
+    blocks.join("\n\n")
   end
 
-  def setup_chat(instructions, tools)
-    tools.reduce(@scout.llm_chat.with_instructions(instructions)) { |c, tool| c.with_tool(tool) }
+  def setup_chat(decision, ctx, catalog)
+    chat = @scout.llm_chat.with_instructions(build_instructions(decision.playbook, ctx, catalog))
+    build_tools(decision, catalog, chat).each { |tool| chat.with_tool(wrap_tool(tool, simulated: false)) }
+    chat
+  end
+
+  # open_playbook is offered only when the router forced no playbook (FR-011/FR-012); it keeps the live
+  # chat so the opened playbook's tools join the same chat.ask tool loop.
+  def build_tools(decision, catalog, chat)
+    tools = [Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, @conversation, playground: false)]
+    if decision.playbook
+      tools + Custom::ScoutV2::Tools::Registry.build(decision.playbook.tools, scout: @scout, conversation: @conversation)
+    else
+      tools << Custom::ScoutV2::Tools::OpenPlaybook.new(
+        @scout, @conversation, chat: chat, catalog: catalog, tool_wrapper: ->(tool) { wrap_tool(tool, simulated: false) }
+      )
+    end
   end
 
   def add_history_to_chat(chat, last_user_message)
@@ -169,10 +158,12 @@ class Custom::ScoutV2::TurnRunner
       unmet_requires: (decision.playbook&.requires || []) - ctx.satisfied_capabilities
     }
 
+    activation_reason = decision.playbook.present? ? conversation_state.activation_reason : nil
+
     {
       scout_id: @scout.id,
       playbook: decision.playbook&.name,
-      activation_reason: (decision.playbook.present? ? 'state' : nil),
+      activation_reason: activation_reason,
       unsatisfied_flags: unsatisfied
     }.compact
   end

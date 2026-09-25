@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2126_09_24_000000) do
+ActiveRecord::Schema[7.2].define(version: 2126_09_25_000000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1399,6 +1399,9 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_24_000000) do
     t.jsonb "audience", default: [], null: false
     t.bigint "interest_attribute_definition_id"
     t.jsonb "value_by_interest", default: {}, null: false
+    t.integer "tone", default: 0, null: false
+    t.integer "response_length", default: 0, null: false
+    t.text "greeting"
     t.index ["account_id"], name: "index_ichatr_scouts_on_account_id"
     t.index ["default_pipeline_stage_id"], name: "index_ichatr_scouts_on_default_pipeline_stage_id"
     t.index ["handover_team_id"], name: "index_ichatr_scouts_on_handover_team_id"

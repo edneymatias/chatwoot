@@ -4,7 +4,9 @@
 **Data**: 2026-09-24
 **Master doc**: `docs/kanban/scoutv2/design.md` §4.1, §4.6 (exits e desmonte do auditor), §6 (Fase 1)
 **Depends on**: Brief 04 — `open_playbook` já injeta os exits declarados pela playbook; este brief
-entrega o mecanismo que os executa, e é o que autoriza o v2 a nascer sem auditor pós-hoc.
+entrega o mecanismo que os executa, e é o que autoriza o v2 a nascer sem auditor pós-hoc. Brief 11 —
+define o conjunto sempre-on, reinjetado quando uma interrupção troca o catálogo, onde `exit_handoff`
+entra.
 
 ---
 
@@ -79,7 +81,8 @@ fork — o Captain chama o classificador uma vez (design §1.3).
 - Validação de payload a partir das assinaturas declaradas no frontmatter (`exits:`).
 - `custom/app/services/custom/scout_v2/instructions/escalation.rb`: `when_to_escalate` +
   `procedure_before_handoff`, sempre-on.
-- `exit_handoff` registrado sempre-on no `TurnRunner`.
+- `exit_handoff` registrado sempre-on no `TurnRunner`, no conjunto sempre-on do brief 11 (sobrevive
+  à troca de catálogo de uma interrupção).
 - `custom/app/services/custom/scout_v2/response_schema.rb`: sem `reasoning`.
 - Tools escopadas do v2: `update_contact`, `manage_opportunity` — sem `move_opportunity_stage`, sem
   `handover_to_human`, sem `call_custom_api`.
@@ -97,6 +100,8 @@ fork — o Captain chama o classificador uma vez (design §1.3).
   Captain): explicitamente adiado para o item 6.7 do design.
 - Diretriz anti-falsa-promessa: continua no prompt (`Safety`), porque promessa futura sem ação ("te
   aviso amanhã") é genuinamente global e não é coberta por exit.
+- Retorno à playbook anterior: estrutural (brief 11, interrupção não persiste). Não existe espécie de
+  exit de retorno; as espécies são terminal, transição e escalação.
 
 ## 7. Critérios de aceite (rascunho)
 
@@ -117,7 +122,8 @@ fork — o Captain chama o classificador uma vez (design §1.3).
   escrita na iteração seguinte.
 - Exit terminal encerra a playbook ativa; exit de transição ativa a playbook de destino com
   `activation_reason: transition`; exit de escalação dispara o handoff.
-- Turno que termina sem exit não persiste desfecho nenhum e a playbook ativa permanece.
+- Turno que termina sem exit não persiste desfecho nenhum e a playbook ativa permanece (interrupção
+  aberta no turno não é ativa persistida — brief 11).
 
 ### US3 — Desfecho em Ruby substitui as tools de mutação
 

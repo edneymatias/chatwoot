@@ -14,14 +14,22 @@ documento separaria a remoção de um mecanismo da sua substituição (briefs 05
 | 02 | [Roteador determinístico e estado por conversa](02-roteador-e-estado-de-conversa.md) | Fase 0 | 3 | 01 |
 | 03 | [TurnRunner de playground e primeira playbook](03-turn-runner-playground.md) | Fase 0 | 3 | 02 |
 | 04 | [Instructions tipadas, índice e `open_playbook`](04-instructions-indice-open-playbook.md) | Fase 1 | 3 | 03 |
-| 05 | [Escalation, exits e desmonte do auditor](05-escalation-exits-desmonte-auditor.md) | Fase 1 | 4 | 04 |
-| 06 | [Playbooks do primeiro corte](06-playbooks-primeiro-corte.md) | Fase 1 | 3 | 05 |
+| 05 | [Escalation, exits e desmonte do auditor](05-escalation-exits-desmonte-auditor.md) | Fase 1 | 4 | 04, 11 |
+| 06 | [Playbooks do primeiro corte](06-playbooks-primeiro-corte.md) | Fase 1 | 3 | 05, 11 |
 | 07 | [Capabilities e agendamento ponta a ponta](07-capabilities-e-agendamento.md) | Fase 2 | 3 | 06 |
 | 08 | [Memória tipada de contato](08-memoria-tipada.md) | Fase 3 | 3 | 04 (só a linha de política em `Memory`) |
 | 09 | [Conhecimento determinístico](09-conhecimento-deterministico.md) | Fase 4 | 3 | — |
-| 10 | [Produção: promoção por flag `scout_v2` e depreciação do v1](10-producao-flag-scout-v2.md) | Fase 5 | 4 | 03 (flag e despacho), 06, 07 |
+| 10 | [Produção: promoção por flag `scout_v2` e depreciação do v1](10-producao-flag-scout-v2.md) | Fase 5 | 4 | 03 (flag e despacho), 06, 07, 12 |
+| 11 | [Interrupção por trigger](11-interrupcao-por-trigger.md) | Fase 1 | 3 | 04 |
+| 12 | [Configuração do scout para o v2: Identity e estilo na tela](12-configuracao-do-scout-v2.md) | Fase 1 | 2 | 04 |
 
-**Caminho crítico:** 01 → 02 → 03 → 04 → 05 → 06 → 07 → 10.
+**Caminho crítico:** 01 → 02 → 03 → 04 → 11 → 05 → 06 → 07 → 10. O 11 foi acrescentado depois
+(revisão do design §4.4 em 2026-09-25) e por isso tem número no fim da lista, mas executa entre o 04 e
+o 05. O 12 (revisão da decisão 6 em 2026-09-25) sai do caminho crítico: pode rodar a qualquer momento
+entre o 04 e o 10, de preferência antes do 06.
+**Sequência recomendada a partir do 04:** 11 → 12 → 05 → 06 → 07 → 10. O 12 vem logo depois do 11
+porque não depende de nada além do 04 e porque as verificações de playground do 05 e do 06 ganham com
+`role`/`scope` preenchidos.
 **Paralelizáveis:** 08 e 09 são independentes entre si e do caminho crítico (design §6, "Fases 3 e 4
 são independentes entre si e das anteriores"); 08 US1 (parar de injetar `to_llm_text`) pode ser
 entregue a qualquer momento, inclusive antes do 04.

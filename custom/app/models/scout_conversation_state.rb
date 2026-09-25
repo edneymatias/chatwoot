@@ -27,6 +27,15 @@ class ScoutConversationState < ApplicationRecord
     self
   end
 
+  def record_trigger_activation!(playbook_name)
+    update!(
+      active_playbook: playbook_name,
+      activated_at: Time.current,
+      activation_reason: :trigger
+    )
+    self
+  end
+
   def record_transition!(target_playbook_name, turn_transition_count:)
     if turn_transition_count >= 2
       update!(handoff_limit_reached_at: Time.current)

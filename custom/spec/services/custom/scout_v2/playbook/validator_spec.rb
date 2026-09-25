@@ -41,6 +41,11 @@ RSpec.describe Custom::ScoutV2::Playbook::Validator do
         expect(described_class.call!(catalog)).to be(catalog)
       end
 
+      it 'accepts tools registered in the ScoutV2 tool registry' do
+        attrs[:tools] = ['manage_opportunity']
+        expect(described_class.call!(catalog)).to be(catalog)
+      end
+
       it 'accepts open_playbook calls whose target exists, quoted or not' do
         playbooks.replace([
                             Custom::ScoutV2::Playbook.new(**attrs, name: 'pb1', priority: 1, body: 'Calling open_playbook(pb2)'),
@@ -121,6 +126,12 @@ RSpec.describe Custom::ScoutV2::Playbook::Validator do
         attrs[:requires] = ['unregistered_capability']
         expect(error.class.name).to eq('Custom::ScoutV2::Playbook::Validator::ValidationError')
         expect(error.violations).to contain_exactly(a_string_including(file_path, 'unregistered_capability'))
+      end
+
+      it 'reports a tool missing from the ScoutV2 tool registry' do
+        attrs[:tools] = ['update_contact']
+        expect(error.class.name).to eq('Custom::ScoutV2::Playbook::Validator::ValidationError')
+        expect(error.violations).to contain_exactly(a_string_including(file_path, 'update_contact'))
       end
 
       it 'reports an exit token not declared in the playbook exits' do

@@ -76,6 +76,7 @@ class Custom::ScoutV2::Playbook::Validator
       validate_name_formats(playbook, violations)
       validate_when_state(playbook, violations)
       validate_requires(playbook, violations)
+      validate_tools(playbook, violations)
       validate_body_tokens(playbook, known_playbook_names, violations)
     end
   end
@@ -124,6 +125,14 @@ class Custom::ScoutV2::Playbook::Validator
       next if Custom::ScoutV2::Capabilities::Catalog.known?(cap)
 
       violations << "#{file_ref(playbook)}: Unknown capability: #{cap}"
+    end
+  end
+
+  def validate_tools(playbook, violations)
+    playbook.tools.each do |tool_name|
+      next if Custom::ScoutV2::Tools::Registry::TOOL_CLASSES.key?(tool_name)
+
+      violations << "#{file_ref(playbook)}: Unregistered tool: #{tool_name}"
     end
   end
 

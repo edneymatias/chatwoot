@@ -20,6 +20,11 @@ class Scout < ApplicationRecord
   has_many :scout_required_fields, class_name: 'ScoutRequiredField', dependent: :destroy
   has_many :required_custom_attribute_definitions, through: :scout_required_fields, source: :custom_attribute_definition
 
+  enum :tone, { friendly: 0, neutral: 1, matter_of_fact: 2, professional: 3, humorous: 4 },
+       default: :friendly, scopes: false
+  enum :response_length, { concise: 0, standard: 1, thorough: 2 },
+       default: :concise, scopes: false
+
   validates :account_id, :name, presence: true
   validates :debounce_delay_seconds, numericality: { only_integer: true, greater_than_or_equal_to: 1 }
   validates :responses_quota, numericality: { only_integer: true, greater_than_or_equal_to: -1 }

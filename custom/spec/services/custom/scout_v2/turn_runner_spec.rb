@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'tmpdir'
 
 RSpec.describe Custom::ScoutV2::TurnRunner do
   let(:account) { create(:account) }
@@ -93,14 +94,26 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
         runner.perform
 
         expect(fake_chat).to have_received(:with_instructions) do |instructions|
-          expect(instructions).to include('## Passos')
-          expect(instructions).to include('Pergunte pelos dados de qualificação pendentes')
-          expect(instructions).to include('Campos pendentes para esta oportunidade')
-          expect(instructions).to include('Orçamento (chave: orcamento)')
+          indices = [
+            instructions.index('[Identity]'),
+            instructions.index('[Communication]'),
+            instructions.index('[Memory]'),
+            instructions.index('[Safety]'),
+            instructions.index('[Playbook Index]'),
+            instructions.index('## Passos')
+          ]
+
+          expect(indices).to all(be_a(Integer))
+          expect(indices).to eq(indices.sort)
+          expect(instructions).to include(
+            'Pergunte pelos dados de qualificação pendentes',
+            'Campos pendentes para esta oportunidade',
+            'Orçamento (chave: orcamento)'
+          )
         end
       end
 
-      it 'excludes v1 guardrails and funnel guidelines from prompt' do
+      it 'composes bracketed block headers strictly as Identity, Communication, Memory, Safety, Playbook Index' do
         runner = described_class.new(
           scout: scout,
           conversation: conversation,
@@ -111,9 +124,8 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
         runner.perform
 
         expect(fake_chat).to have_received(:with_instructions) do |instructions|
-          expect(instructions).not_to include('DIRETRIZES DE ESTÁGIO E FUNIL')
-          expect(instructions).not_to include('DIRETRIZES FUNDAMENTAIS DE COMPORTAMENTO')
-          expect(instructions).not_to include('Nunca diga frases como "não tenho acesso"')
+          headers = instructions.scan(/^\[([^\]]+)\]$/).flatten
+          expect(headers).to eq(['Identity', 'Communication', 'Memory', 'Safety', 'Playbook Index'])
         end
       end
 
@@ -135,7 +147,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
 
         tool_names = passed_tools.map(&:name)
         expect(tool_names).to contain_exactly('search_knowledge_base', 'manage_opportunity')
-        expect(tool_names).not_to include('move_opportunity_stage', 'handover_to_human', 'call_custom_api')
+        expect(tool_names).not_to include('open_playbook', 'move_opportunity_stage', 'handover_to_human', 'call_custom_api')
       end
 
       it 'persists active_playbook and activation_reason before returning' do
@@ -155,8 +167,150 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
       end
     end
 
-    context 'when no playbook matches (fallback instructions)' do
-      it 'uses fallback instructions and provides only search_knowledge_base tool' do
+    context 'when no playbook matches (always-on instructions and index)' do
+      it 'assembles prompt with Instructions and Playbook Index blocks and removes fallback instructions' do
+        runner = described_class.new(
+          scout: scout,
+          conversation: conversation,
+          message: 'Dúvida geral',
+          message_history: []
+        )
+
+        runner.perform
+
+        expect(fake_chat).to have_received(:with_instructions) do |instructions|
+          expect(instructions).to include('[Identity]', '[Communication]', '[Memory]', '[Safety]', '[Playbook Index]')
+          expect(instructions).not_to include(
+            'Nenhum procedimento específico está ativo para esta conversa',
+            'use a base de conhecimento quando for útil'
+          )
+        end
+
+        expect(ScoutConversationState.for_conversation(conversation).active_playbook).to be_nil
+      end
+
+      it 'includes every loaded catalog playbook under [Playbook Index]' do
+        catalog = Custom::ScoutV2::Playbook::Loader.load_all
+        expect(catalog.playbooks).not_to be_empty
+
+        runner = described_class.new(
+          scout: scout,
+          conversation: conversation,
+          message: 'Dúvida geral',
+          message_history: []
+        )
+
+        runner.perform
+
+        expect(fake_chat).to have_received(:with_instructions) do |instructions|
+          index_block = instructions[/\[Playbook Index\].*/m]
+          expect(index_block).to be_present
+          catalog.playbooks.each do |pb|
+            expect(index_block).to include("- #{pb.name}: #{pb.trigger.squish}")
+          end
+        end
+      end
+
+      it 'dynamically reflects newly added playbooks in [Playbook Index] across subsequent turns' do
+        captured_instructions = []
+        allow(fake_chat).to receive(:with_instructions) do |instructions|
+          captured_instructions << instructions
+          fake_chat
+        end
+
+        Dir.mktmpdir('scout_v2_turn_runner_dynamic_spec') do |tmp_dir|
+          FileUtils.cp(Rails.root.join('custom/playbooks/qualificacao.md'), File.join(tmp_dir, 'qualificacao.md'))
+
+          with_modified_env SCOUT_V2_PLAYBOOKS_DIR: tmp_dir do
+            first_runner = described_class.new(
+              scout: scout,
+              conversation: conversation,
+              message: 'Dúvida geral',
+              message_history: []
+            )
+
+            first_runner.perform
+
+            first_index_block = captured_instructions.first[/\[Playbook Index\].*/m]
+            expect(first_index_block).to be_present
+            first_entries = first_index_block.strip.lines[1..]
+            expect(first_entries.size).to eq(1)
+            expect(first_entries.first).to include('- qualificacao:')
+            expect(first_index_block).not_to include('- duvida_comercial:')
+
+            File.write(File.join(tmp_dir, 'duvida_comercial.md'), <<~MD)
+              ---
+              name: duvida_comercial
+              title: Dúvidas Comerciais
+              priority: 20
+              trigger: O cliente tem dúvidas sobre preços, planos ou serviços comerciais.
+              ---
+
+              ## Passos
+              1. Esclareça as dúvidas comerciais do cliente.
+            MD
+
+            second_runner = described_class.new(
+              scout: scout,
+              conversation: conversation,
+              message: 'Nova dúvida geral',
+              message_history: []
+            )
+
+            second_runner.perform
+
+            second_index_block = captured_instructions.last[/\[Playbook Index\].*/m]
+            expect(second_index_block).to be_present
+            second_entries = second_index_block.strip.lines[1..]
+            expect(second_entries.size).to eq(2)
+            expect(second_index_block).to include(
+              '- qualificacao:',
+              '- duvida_comercial: O cliente tem dúvidas sobre preços, planos ou serviços comerciais.'
+            )
+          end
+        end
+      end
+
+      it 'reflects scout tone, response_length, and greeting updates in the composed instructions' do
+        scout.update!(tone: :humorous, response_length: :thorough, greeting: 'E aí, tudo certo?')
+
+        runner = described_class.new(
+          scout: scout,
+          conversation: conversation,
+          message: 'Dúvida geral',
+          message_history: []
+        )
+
+        runner.perform
+
+        builder = Custom::ScoutV2::Instructions::CommunicationBuilder
+        expect(fake_chat).to have_received(:with_instructions) do |instructions|
+          expect(instructions).to include(
+            builder::TONE_DIRECTIVES['humorous'],
+            builder::RESPONSE_LENGTH_DIRECTIVES['thorough'],
+            '"E aí, tudo certo?"'
+          )
+          expect(instructions).not_to include(builder::TONE_DIRECTIVES['friendly'], builder::RESPONSE_LENGTH_DIRECTIVES['concise'])
+        end
+      end
+
+      it 'composes bracketed block headers strictly as Identity, Communication, Memory, Safety, Playbook Index' do
+        runner = described_class.new(
+          scout: scout,
+          conversation: conversation,
+          message: 'Dúvida geral',
+          message_history: []
+        )
+
+        runner.perform
+
+        expect(fake_chat).to have_received(:with_instructions) do |instructions|
+          headers = instructions.scan(/^\[([^\]]+)\]$/).flatten
+          expect(headers).to eq(['Identity', 'Communication', 'Memory', 'Safety', 'Playbook Index'])
+        end
+      end
+
+      it 'offers open_playbook tool alongside search_knowledge_base when no playbook is forced' do
         passed_tools = []
         allow(fake_chat).to receive(:with_tool) do |tool|
           passed_tools << tool
@@ -172,13 +326,140 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
 
         runner.perform
 
-        expect(fake_chat).to have_received(:with_instructions) do |instructions|
-          expect(instructions).to include('Nenhum procedimento específico está ativo para esta conversa')
-          expect(instructions).to include('Responda à mensagem do cliente da melhor forma possível')
+        tool_names = passed_tools.map(&:name)
+        expect(tool_names).to contain_exactly('search_knowledge_base', 'open_playbook')
+      end
+
+      it 'executes open_playbook during the turn, registering declared tools on live chat, returning body, and persisting trigger activation' do
+        captured_tools = []
+        allow(fake_chat).to receive(:with_tool) do |tool|
+          captured_tools << tool
+          fake_chat
         end
 
-        expect(passed_tools.map(&:name)).to contain_exactly('search_knowledge_base')
-        expect(ScoutConversationState.for_conversation(conversation).active_playbook).to be_nil
+        open_pb_tool_result = nil
+        allow(fake_chat).to receive(:ask) do
+          open_pb_tool = captured_tools.find { |t| t.name == 'open_playbook' }
+          open_pb_tool_result = open_pb_tool.execute(name: 'qualificacao')
+          fake_response
+        end
+
+        runner = described_class.new(
+          scout: scout,
+          conversation: conversation,
+          message: 'Quero qualificar meu lead',
+          message_history: []
+        )
+
+        result = runner.perform
+
+        registered_tool_names = captured_tools.map(&:name)
+        expect(registered_tool_names).to include('manage_opportunity')
+
+        qualificacao_body = Custom::ScoutV2::Playbook::Loader.load_all['qualificacao'].body
+        expect(open_pb_tool_result).to eq(body: qualificacao_body)
+
+        open_pb_call = result[:tool_calls].find { |c| c[:tool_name] == 'open_playbook' }
+        expect(open_pb_call[:result]).to eq(body: qualificacao_body)
+
+        state = ScoutConversationState.for_conversation(conversation)
+        expect(state.active_playbook).to eq('qualificacao')
+        expect(state.activation_reason).to eq('trigger')
+      end
+
+      it 'records tool calls with parity when open_playbook injects a tool executed in the same turn' do
+        captured_tools = []
+        allow(fake_chat).to receive(:with_tool) do |tool|
+          captured_tools << tool
+          fake_chat
+        end
+
+        allow(fake_chat).to receive(:ask) do
+          open_pb_tool = captured_tools.find { |t| t.name == 'open_playbook' }
+          open_pb_tool.execute(name: 'qualificacao')
+
+          manage_opp_tool = captured_tools.find { |t| t.name == 'manage_opportunity' }
+          manage_opp_tool.execute(action: 'create', title: 'Oportunidade Mid-Turn')
+
+          fake_response
+        end
+
+        runner = described_class.new(
+          scout: scout,
+          conversation: conversation,
+          message: 'Quero qualificar meu lead e criar oportunidade',
+          message_history: []
+        )
+
+        result = runner.perform
+
+        manage_opp_call = result[:tool_calls].find { |c| c[:tool_name] == 'manage_opportunity' }
+        expect(manage_opp_call).to be_present
+        expect(manage_opp_call[:arguments]).to eq(action: 'create', title: 'Oportunidade Mid-Turn')
+        expect(manage_opp_call[:simulated]).to be(false)
+        expect(manage_opp_call[:result]).to be_present
+      end
+
+      it 'handles open_playbook with an unknown name gracefully, returning error in tool result and continuing turn without failure' do
+        captured_tools = []
+        allow(fake_chat).to receive(:with_tool) do |tool|
+          captured_tools << tool
+          fake_chat
+        end
+
+        allow(fake_chat).to receive(:ask) do
+          open_pb_tool = captured_tools.find { |t| t.name == 'open_playbook' }
+          open_pb_tool.execute(name: 'non_existent_playbook')
+          fake_response
+        end
+
+        runner = described_class.new(
+          scout: scout,
+          conversation: conversation,
+          message: 'Quero algo inexistente',
+          message_history: []
+        )
+
+        result = runner.perform
+
+        expect(result[:reply]).to eq(fake_response.content)
+
+        open_pb_call = result[:tool_calls].find { |c| c[:tool_name] == 'open_playbook' }
+        expect(open_pb_call).to be_present
+        expect(open_pb_call[:result]).to be_a(Hash)
+        expect(open_pb_call[:result][:error]).to include('Playbook desconhecida: non_existent_playbook')
+
+        registered_tool_names = captured_tools.map(&:name)
+        expect(registered_tool_names).not_to include('manage_opportunity')
+
+        state = ScoutConversationState.for_conversation(conversation)
+        expect(state.active_playbook).to be_nil
+        expect(state.activation_reason).to be_nil
+      end
+
+      it 'populates turn metadata with trigger activation_reason when conversation was trigger-activated' do
+        state = ScoutConversationState.for_conversation(conversation)
+        state.record_trigger_activation!('qualificacao')
+
+        allow(fake_chat).to receive(:ask).and_return(fake_response)
+
+        allow(ChatwootApp).to receive(:otel_enabled?).and_return(true)
+        mock_span = instance_double(OpenTelemetry::Trace::Span)
+        allow(mock_span).to receive(:set_attribute)
+        mock_tracer = instance_double(OpenTelemetry::Trace::Tracer)
+        allow(OpentelemetryConfig).to receive(:tracer).and_return(mock_tracer)
+        allow(mock_tracer).to receive(:in_span).and_yield(mock_span)
+
+        runner = described_class.new(
+          scout: scout,
+          conversation: conversation,
+          message: 'Continuando com a playbook aberta',
+          message_history: []
+        )
+
+        runner.perform
+
+        expect(mock_span).to have_received(:set_attribute).with('langfuse.trace.metadata.activation_reason', 'trigger').at_least(:once)
       end
     end
 
