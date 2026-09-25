@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2126_09_11_140000) do
+ActiveRecord::Schema[7.2].define(version: 2126_09_24_000000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1289,6 +1289,22 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_11_140000) do
     t.index ["account_id"], name: "index_ichatr_scout_account_configs_on_account_id", unique: true
   end
 
+  create_table "ichatr_scout_conversation_states", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "conversation_id", null: false
+    t.string "active_playbook"
+    t.datetime "activated_at"
+    t.integer "activation_reason"
+    t.integer "transition_count", default: 0, null: false
+    t.datetime "handoff_limit_reached_at"
+    t.string "last_exit"
+    t.jsonb "unsatisfied_flags", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_ichatr_scout_conversation_states_on_account_id"
+    t.index ["conversation_id"], name: "index_ichatr_scout_conversation_states_on_conversation_id", unique: true
+  end
+
   create_table "ichatr_scout_inboxes", force: :cascade do |t|
     t.bigint "scout_id", null: false
     t.bigint "inbox_id", null: false
@@ -1922,6 +1938,8 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_11_140000) do
   add_foreign_key "ichatr_pipeline_stage_required_fields", "ichatr_pipeline_stages", column: "pipeline_stage_id"
   add_foreign_key "ichatr_pipeline_stages", "accounts"
   add_foreign_key "ichatr_scout_account_configs", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scout_conversation_states", "accounts", on_delete: :cascade
+  add_foreign_key "ichatr_scout_conversation_states", "conversations", on_delete: :cascade
   add_foreign_key "ichatr_scout_inboxes", "ichatr_scouts", column: "scout_id", on_delete: :cascade
   add_foreign_key "ichatr_scout_inboxes", "inboxes", on_delete: :cascade
   add_foreign_key "ichatr_scout_knowledge_embeddings", "accounts", on_delete: :cascade

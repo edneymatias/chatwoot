@@ -7,21 +7,21 @@ RSpec.describe Custom::ScoutV2::Predicates::Evaluator do
   let(:won_opp) { Struct.new(:status).new('won') }
 
   let(:ctx_all_met) do
-    Custom::ScoutV2::RoutingContext.new(
+    Custom::ScoutV2::RoutingSnapshot.new(
       opportunity: open_opp,
       pending_fields: ['email']
     )
   end
 
   let(:ctx_none_met) do
-    Custom::ScoutV2::RoutingContext.new(
+    Custom::ScoutV2::RoutingSnapshot.new(
       opportunity: won_opp,
       pending_fields: []
     )
   end
 
   let(:ctx_opp_only) do
-    Custom::ScoutV2::RoutingContext.new(
+    Custom::ScoutV2::RoutingSnapshot.new(
       opportunity: open_opp,
       pending_fields: []
     )
