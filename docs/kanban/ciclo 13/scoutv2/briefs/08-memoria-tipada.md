@@ -85,7 +85,7 @@ prompt como instrução acidental ao modelo.
 - Qualquer alteração em `app/services/llm_formatter/contact_llm_formatter.rb` ou em `app/models/
   note.rb` (upstream, compartilhados com o Captain) — o v2 simplesmente deixa de chamar o formatter.
 - O prompt do v1: `contact_context_section` e `memory_notes_warning` continuam como estão para
-  scouts em `engine: v1`; a remoção é da depreciação (brief 10).
+  contas sem a flag `scout_v2`; a remoção é da depreciação (brief 10).
 - Backfill de notas existentes, job classificador, reescrita de registro.
 - `CreatePrivateNote` como tool global: é nota de conversa, não memória de contato (design §4.8).
 - Despromoção automática de nota promovida.

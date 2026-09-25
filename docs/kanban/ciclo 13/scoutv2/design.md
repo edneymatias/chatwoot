@@ -1,7 +1,7 @@
 # ScoutV2 — Playbooks, Capabilities e Memória Tipada
 
 **Status:** revisado de ponta a ponta (ver `revisao.md`) e fechado para implementação
-**Data:** 2026-09-24 · revisão incorporada em 2026-09-24
+**Data:** 2026-09-24 · revisão incorporada em 2026-09-24 · ativação por flag de conta (§4.11) em 2026-09-24
 **Escopo:** reescrita da camada de comportamento do módulo Scout, em namespace próprio, com os
 serviços de comportamento do v1 intocados em produção e depreciados depois.
 
@@ -198,7 +198,7 @@ instrução referencia. O `HandoffTool`, porém, é **sempre-on no agente raiz**
 | 2 | **Playbook é arquivo versionado no fork** (frontmatter + corpo), autoria do fork | Banco exigiria UI; UI só se paga com edição por conta, que é não-objetivo explícito. O ciclo de deploy já existe hoje para qualquer mudança de comportamento (regras são heredoc em Ruby), então arquivo não adiciona fricção — reduz, por isolar cada regra num `.md`. Correção propaga para todas as contas num deploy. |
 | 3 | **Capability é contrato do fork**, satisfeita por integração | Arquivo compartilhado não pode nomear linha de banco de uma conta (decorrência direta da decisão 2). Contrato **duro na entrada** (a playbook escreve a chamada), **mole na saída** (texto/JSON ao modelo, validação não-bloqueante). Exit é onde o rigor compra determinismo, porque decide fluxo. |
 | 4 | **`ScoutTool` sempre declara capability**; `call_custom_api` morre no v2 | Sem capability, a tool é pano para manga: superfície de prompt crescendo com configuração de cliente e contrato instável para a playbook. *No primeiro corte não existe provider HTTP — o `ScoutTool` simplesmente não participa do v2 (ver §6, fase 6.1 e checklist de promoção).* |
-| 5 | **Namespace `Custom::ScoutV2::*`**, playground primeiro, `engine` por scout, serviços de comportamento do v1 intocados e depreciados depois | v1 vai ao ar e continua recebendo correções enquanto o v2 é construído; rollback é flipar uma coluna. `AgentRunner`, `ResponseAuditor` e `SystemPromptsService` não recebem uma linha de diff; `Scout` e `ProcessMessageJob` (ambos arquivos do fork) ganham a coluna `engine` e o branch de despacho — não há diff upstream. |
+| 5 | **Namespace `Custom::ScoutV2::*`**, **flag de conta `scout_v2`** (Super Admin) como único seletor de engine, serviços de comportamento do v1 intocados e depreciados depois | Cada conta roda **uma** engine: com a flag, playground e inbox vão para o v2; sem ela, para o v1. Não há coluna por scout nem seletor na configuração do scout: promover é ato do operador, não do administrador da conta, e o rollback é desmarcar o checkbox, sem deploy. `AgentRunner`, `ResponseAuditor` e `SystemPromptsService` não recebem uma linha de diff; `ProcessMessageJob` e `PlaygroundMessagesController` (arquivos do fork) ganham o branch de despacho; `config/features.yml` (upstream) ganha uma entrada coberta por MANIFEST. Detalhe em §4.11. |
 | 6 | **Instructions tipadas** (`Role`, `Scope`, `Tone` enum, `Response length` enum, `Greeting`) | Tira estilo do balde de prosa que compete por atenção. |
 | 7 | **Escalation é camada própria** | Consolida as três cópias atuais da regra de handoff num único lugar, entregue no instante do exit. |
 | 8 | **Frontmatter com `requires:` (capability) e `needs:` (fato de negócio)** | As duas espécies de pendência observadas no produto de referência. |
@@ -206,6 +206,7 @@ instrução referencia. O `HandoffTool`, porém, é **sempre-on no agente raiz**
 | 10 | **Memória tipada em dois tipos** (`fato`/`episodio`), com **gate por origem**: só nota escrita pelo Scout e classificada `fato` entra no prompt | Elimina estruturalmente o caso "transferido em 12/08 lido como preferência atual", hoje combatido com um parágrafo sempre-on (`:134-141`). Nota humana é sinal misto por natureza ("cliente chato, manda pro humano" é instrução acidental) e fica fora do prompt por padrão — entra só por promoção explícita do atendente (§6.6). O gate por origem dispensa classificar nota que ninguém vai ler. |
 | 11 | **Conhecimento: extração determinística, sem edição de derivado** | Reprocessar o mesmo site hoje gera 15, 20 ou 30 pares — casamento por identidade de par seria código morto. Artefato de build se regenera, não se conserta. |
 | 12 | **Toda tool de mutação é escopada**; `move_opportunity_stage` e `handover_to_human` deixam de existir como tool | É o vício do v1 em miniatura: num turno de dúvida ou de pausa, dar ao modelo a chave do CRM é superfície de efeito colateral sem contrapartida. Transição e transferência são **desfecho**, e desfecho é exit decidido em Ruby — manter a tool ao lado do exit seria manter dois caminhos para o mesmo efeito, escolhidos por sorteio. Sempre-on ficam só a leitura (`search_knowledge_base`) e a saída de emergência (`exit_handoff`, §4.1). |
+| 13 | **Modelo, provider e API key são os do v1** (`ScoutAccountConfig`, por conta) | Com uma engine por conta, v1 e v2 nunca disputam a mesma configuração; o `TurnRunner` monta o chat por `Scout#llm_chat`, como o `AgentRunner`. Configuração por engine só com evidência (§4.11). |
 
 ---
 
@@ -660,6 +661,61 @@ resolver-ou-transferir de forma assíncrona. É o formato certo para o caso "o m
 escalado e não escalou", e é o que a fase 6.7 deve considerar antes de qualquer reintrodução de
 auditoria por turno.
 
+### 4.11 Ativação e configuração de modelo
+
+**Ativação: uma flag de conta, uma engine por conta.** A engine é escolhida pela flag `scout_v2` em
+`config/features.yml`: `column: feature_flags_ext_1`, `enabled: false`, anexada ao fim do arquivo
+(regra de `features.yml:12-16`) e coberta por uma entrada de MANIFEST, como já acontece com `scout` e
+`erp_integration` (`bin/sync-custom-module-hooks:195-209`). O Super Admin já exibe todo flag de
+`features.yml` como checkbox na tela da conta (`app/views/super_admin/accounts/show.html.erb:36-52`),
+então não é preciso tela nova. `scout` (`features.yml:276-279`) continua sendo o gate do módulo;
+`scout_v2` só escolhe a engine.
+
+Dois pontos de despacho leem a flag, e são os únicos: `Custom::Scout::ProcessMessageJob`
+(`process_message_job.rb:53`, hoje fixo em `AgentRunner`) e
+`Api::V1::Accounts::Scouts::PlaygroundMessagesController#create` (`playground_messages_controller.rb:14`,
+hoje fixo em `PlaygroundRunner`). Com a flag, os dois vão para o v2; sem ela, para o v1 inalterado.
+Não existe coluna `engine`, seletor na tela do scout nem exceção por scout. Os porteiros e rotinas
+ortogonais ao turno (audiência, quota, debounce, follow-up — §6) são os mesmos nas duas engines.
+
+Precedente upstream: o Captain V2 é escolhido do mesmo jeito, pela flag de conta
+`captain_integration_v2` (`features.yml:184-187`, lida em `response_builder_job.rb:210-212`), e não
+por coluna no assistant.
+
+**Consequências assumidas:**
+
+- *A promoção é por conta.* Uma conta com vários scouts passa todos juntos. É aceitável: o v2 existe
+  para substituir o v1, não para conviver com ele dentro da conta.
+- *"Playground primeiro" passa a ser "conta de desenvolvimento primeiro".* Com a flag, playground e
+  inbox da conta rodam v2; não dá para ter v2 no playground e v1 na inbox da mesma conta. As fases
+  0–4 rodam numa conta de desenvolvimento com a flag, e contas de produção só são marcadas na fase 5.
+- *O playground da conta candidata não serve para verificar antes de promover*, porque ele segue a
+  flag. O checklist de promoção (§6) vira um preflight executável que chama o v2 direto contra os
+  scouts da conta, sem passar pelos pontos de despacho.
+- *O administrador da conta não intervém.* Continua configurando scouts, modelo e integrações como
+  hoje; não vê nem escolhe engine.
+
+**Configuração de modelo: a do v1, sem mudança.** O `TurnRunner` monta o chat por `Scout#llm_chat`
+(`scout.rb:55-71`), que lê `ScoutAccountConfig`: `provider`, `model_name` e `api_key`, uma linha por
+conta (`db/schema.rb:1282-1290`), editada pelo administrador da conta em `ScoutSettings.vue`. A
+temperatura continua sendo o `0.6` default de `llm_chat`, e embeddings seguem o mesmo
+`EmbeddingConfig`. Como a conta roda uma engine só, não existe o caso de v1 e v2 precisarem de
+modelos diferentes na mesma conta. Risco remanescente: o v2 depende mais de tool calling confiável
+que o v1 (`open_playbook` no meio do turno, exits com payload validado). Se o modelo configurado
+falhar nisso de forma observável no Langfuse, o primeiro remédio é trocar o modelo da conta;
+configuração por engine só com evidência de conflito.
+
+**Depreciação.** Quando todas as contas tiverem `scout_v2`, o v1 sai do código junto com os branches
+de despacho, e o v2 passa a ser incondicional. A entrada da flag não é apagada: a posição de bit é
+persistida (`features.yml:15-16`), então ela fica com `deprecated: true` (convenção de
+`features.yml:10`) e sem nenhuma leitura restante no código.
+
+**Alternativa descartada: coluna `engine` por scout.** Era a versão anterior desta decisão. Três
+problemas: (1) o Super Admin não tem tela de scout, então "expor no super admin" exigiria dashboard
+novo; (2) exposta na configuração do scout, deixaria qualquer administrador da conta promover e pular
+o checklist, que existe porque o v2 desliga as `ScoutTool`; (3) v1 e v2 conviveriam na mesma conta
+dividindo um único `ScoutAccountConfig`, sem modelo próprio para cada engine.
+
 ---
 
 ## 5. Divergências conscientes do Botpress
@@ -681,9 +737,11 @@ auditoria por turno.
 
 ### Fase 0 — Fundação
 Loader + validação no boot · router + predicados · estado por conversa
-(`ichatr_scout_conversation_states`) · `TurnRunner` no playground, já instrumentado com os
-metadados de playbook (§4.9) · **uma** playbook (`qualificacao`), zero capability.
-**Prova:** specs de router sem LLM nenhum + conversa de playground qualificando um lead.
+(`ichatr_scout_conversation_states`) · flag de conta `scout_v2` e despacho nos dois pontos (§4.11) ·
+`TurnRunner` já instrumentado com os metadados de playbook (§4.9) · **uma** playbook
+(`qualificacao`), zero capability.
+**Prova:** specs de router sem LLM nenhum + conversa de playground qualificando um lead, numa conta
+de desenvolvimento com `scout_v2`.
 *Critério de corte: se o roteador não passar nas specs sem LLM, o resto não vale a pena.*
 
 ### Fase 1 — Comportamento
@@ -723,16 +781,19 @@ Chunking determinístico · visualização dos pares com metadados.
 **Prova:** mesma fonte reprocessada duas vezes → mesma contagem.
 
 ### Fase 5 — Produção
-`engine: v2` por scout · observabilidade de ativação · depreciação do v1.
-**Prova:** primeiro scout real em v2, com `activation_reason` legível em toda conversa.
+Promoção por conta via `scout_v2`, com preflight · sinalização das `ScoutTool` fora de uso ·
+observabilidade de ativação · depreciação do v1.
+**Prova:** primeira conta real em v2, com `activation_reason` legível em toda conversa.
 
 Fases 3 e 4 são independentes entre si e das anteriores.
 
-**Checklist obrigatório de promoção por scout:** ligar `engine: v2` **desativa as `ScoutTool`
-daquele scout** (no primeiro corte não existe provider HTTP de capability). Verificar se alguma
-delas cobre necessidade não atendida pelas capabilities antes de promover. Verificar também que
-`exit_handoff` responde no playground a um pedido explícito de atendente **sem playbook ativa** —
-é o caminho crítico do §4.1.
+**Checklist obrigatório de promoção por conta:** marcar `scout_v2` **desativa as `ScoutTool` da
+conta** (no primeiro corte não existe provider HTTP de capability). Antes de marcar, o operador roda
+o preflight da conta, que responde três perguntas: quais `ScoutTool` deixam de ser oferecidas e se
+alguma cobre necessidade não atendida pelas capabilities; quais capabilities de `requires` estão
+insatisfeitas para a conta; e se `exit_handoff` responde a um pedido explícito de atendente **sem
+playbook ativa**, que é o caminho crítico do §4.1. O preflight chama o v2 direto, porque o
+playground da conta segue a flag e só roda v2 depois de marcada (§4.11).
 
 ### Fase 6 — Investigação futura (placeholders)
 
@@ -787,10 +848,12 @@ texto aparece numa string, o que é testar implementação, não comportamento.
 |---|---|
 | Trigger textual ativa a playbook errada | Estado tem precedência sempre; trigger só no resíduo. `activation_reason` registra a causa em toda conversa, tornando o erro observável. |
 | `fora_de_prospeccao` tem `priority` máxima mas ativação só por trigger | Inversão assumida e documentada em §4.4; trigger redigido com exclusão explícita, taxa de não-ativação observável por `activation_reason`. Correção, se necessária: predicados parciais, não afrouxar a precedência. |
-| Duas bases (v1 e v2) convivendo | Namespace separado; serviços de comportamento do v1 sem diff; depreciação explícita na fase 5. |
+| Duas bases (v1 e v2) convivendo | Namespace separado; serviços de comportamento do v1 sem diff; uma engine por conta, nunca as duas (§4.11); depreciação explícita na fase 5. |
 | Remover o auditor expõe erro que ele cobria | Verificação estrutural substitui a estocástica (decisões 9 + 12); instrumentação desde a fase 1; reintrodução cirúrgica é a fase 6.7, com evidência. |
 | Playbook curada não cobre especificidade de um cliente | Parametrização por dado (estágios, campos, catálogo, persona) primeiro; packs por vertical (6.2) quando houver segundo vertical. |
-| `engine: v2` desativa `ScoutTool` do scout | Checklist obrigatório de promoção; 6.1 quando houver demanda. |
+| `scout_v2` desativa as `ScoutTool` da conta | Preflight obrigatório antes de marcar a flag; sinalização na UI de tools; 6.1 quando houver demanda. |
+| `scout_v2` marcada por engano numa conta de produção antes da fase 5 | Flag nasce `enabled: false` e só o Super Admin a altera; rollback é desmarcar, sem deploy. O estado v2 gravado (`ichatr_scout_conversation_states`) é ignorado pelo v1. |
+| Modelo configurado na conta não sustenta o tool calling do v2 | Mesma `ScoutAccountConfig` do v1 (decisão 13); falha aparece no Langfuse (`activation_reason`, `exit_action`); primeiro remédio é trocar o modelo da conta, não criar configuração por engine. |
 | Nota humana útil fica invisível ao modelo | Consequência aceita do gate por origem (§4.8): o custo de ignorar um fato é menor que o de obedecer a uma instrução acidental. Promoção manual cobre o caso real. |
 | Histórico de conversa sem janela infla o contexto | **Pré-existente ao v2 e ortogonal a ele**: `agent_runner.rb:165-167` carrega todas as mensagens não-privadas sem limite, e o v2 herda isso intacto. Não entra neste corte; vira spec própria se conversa longa aparecer no Langfuse estourando orçamento. |
 | Exit devolvendo `Tool::Halt` deixa o cliente sem resposta | Regra explícita em §4.6 (handler retorna texto — o `HandoffTool` do Captain V2 faz o mesmo); coberto por flow test de cada exit, que verifica mensagem final além do efeito. |
@@ -821,6 +884,12 @@ texto aparece numa string, o que é testar implementação, não comportamento.
 **Integração ERP (este repo):** `base_adapter.rb:9-25` · `adapter_factory.rb:5-10` ·
 `younus/client.rb:6,9-19,24-73` · `config/integration/apps.yml:341-350` (`category: erp` em
 `:348`, `visible_properties` em `:350`) · `erp_controller.rb:19-22`
+
+**Ativação e modelo (este repo):** `config/features.yml:10,12-16,184-187,276-279` ·
+`app/views/super_admin/accounts/show.html.erb:36-52` · `bin/sync-custom-module-hooks:195-209` ·
+`process_message_job.rb:53` · `playground_messages_controller.rb:14` · `scout.rb:55-71` ·
+`db/schema.rb:1282-1290` (`ichatr_scout_account_configs`) ·
+`enterprise/app/jobs/captain/conversation/response_builder_job.rb:210-212` (`captain_integration_v2`)
 
 **Captain (upstream, base 4.18.0 — lido neste repo):**
 `enterprise/app/services/captain/llm/system_prompts_service.rb:263-314` (prompt monolítico V1),

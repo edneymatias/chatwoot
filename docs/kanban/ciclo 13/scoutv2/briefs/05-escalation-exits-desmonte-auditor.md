@@ -89,7 +89,7 @@ fork — o Captain chama o classificador uma vez (design §1.3).
 ## 6. Fora de escopo
 
 - Remover ou alterar `ResponseAuditor`, `ActionClassifierService` e `ClaimConsistencyService` **do
-  v1**: eles continuam existindo e rodando para scouts em `engine: v1`. O v2 apenas não os chama.
+  v1**: eles continuam existindo e rodando nas contas sem a flag `scout_v2`. O v2 apenas não os chama.
   A remoção física é da depreciação (brief 10).
 - Fail-safes de infraestrutura (quota, API key, falha de parse): permanecem, inclusive no v2 —
   são falha de sistema, não compensação de comportamento.

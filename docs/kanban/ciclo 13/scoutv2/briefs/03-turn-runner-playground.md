@@ -2,7 +2,7 @@
 
 **Status**: Pronto para speckit
 **Data**: 2026-09-24
-**Master doc**: `docs/kanban/scoutv2/design.md` §4.2 (ciclo do turno), §4.9 (observabilidade), §6 (Fase 0)
+**Master doc**: `docs/kanban/scoutv2/design.md` §4.2 (ciclo do turno), §4.9 (observabilidade), §4.11 (ativação), §6 (Fase 0)
 **Depends on**: Brief 01 (catálogo carregado) e Brief 02 (roteador + estado por conversa) — este
 brief é o que fecha a Fase 0 do design, provando o conjunto num turno real de playground.
 
@@ -49,7 +49,7 @@ padrão já disponível em Ruby no próprio repositório. Não se aplica o resto
 
 | # | Decisão | Justificativa |
 |---|---|---|
-| 1 | **Playground primeiro**, produção só na Fase 5 | v1 vai ao ar e continua recebendo correções enquanto o v2 é construído; rollback é flipar uma coluna (design decisão 5) |
+| 1 | **Conta de desenvolvimento primeiro**: o v2 é alcançado pela flag de conta `scout_v2`, declarada neste brief; produção só na Fase 5 | Uma engine por conta (design decisão 5 e §4.11): a flag leva playground e inbox da conta juntos para o v2. Em produção ela fica desmarcada até o preflight do brief 10; o rollback é desmarcar no Super Admin, sem deploy. A flag nasce aqui porque é o único caminho até o v2, e as verificações de playground dos briefs 04–07 dependem dela |
 | 2 | Namespace `Custom::ScoutV2::*`, com `AgentRunner`, `ResponseAuditor` e `SystemPromptsService` do v1 **sem diff** | Duas bases convivem sem interferência; a depreciação é explícita e posterior (brief 10) |
 | 3 | Instrumentação **desde o primeiro turno**, não como fase posterior | Já existe e o v1 já a usa; herdar custa pouco e é o que torna a Fase 1 observável desde o início (design §4.9) |
 | 4 | `qualificacao` é a **primeira e única** playbook deste brief, com zero capability | É a que tem origem mais direta no v1 (`FunnelSectionBuilder`) e não depende de integração externa (design §6, Fase 0) |
@@ -61,8 +61,14 @@ padrão já disponível em Ruby no próprio repositório. Não se aplica o resto
   roteador, monta o prompt do turno, executa `chat.ask`, persiste o estado e despacha a resposta.
 - Instrumentação no `TurnRunner`: `instrument_agent_session` + `instrument_llm_call`, com
   `metadata:` carregando `playbook`, `activation_reason` e `unsatisfied_flags`.
-- Caminho de playground para o v2 (novo runner ou seleção de engine dentro do existente, sem
-  alterar o comportamento do playground do v1).
+- Flag `scout_v2` em `config/features.yml` (`column: feature_flags_ext_1`, `enabled: false`, no fim
+  do arquivo, `features.yml:12-16`), com entrada de MANIFEST em `bin/sync-custom-module-hooks` no
+  mesmo formato das de `scout`/`erp_integration` (`:195-209`), para a posição de bit não mudar entre
+  syncs.
+- Branch de despacho nos dois únicos pontos: `custom/app/jobs/custom/scout/process_message_job.rb:53`
+  (`AgentRunner` → v2 com a flag) e
+  `custom/app/controllers/api/v1/accounts/scouts/playground_messages_controller.rb:14`
+  (`PlaygroundRunner` → v2 com a flag). Sem a flag, os dois seguem exatamente como hoje.
 - `custom/playbooks/qualificacao.md`: corpo derivado de `system_prompts/funnel_section_builder.rb`,
   `when_state: [opportunity_open, pending_required_fields]`, `tools: [manage_opportunity]`.
 - Tool `manage_opportunity` disponível ao v2 em versão escopada (declarada pela playbook, não
@@ -74,7 +80,9 @@ padrão já disponível em Ruby no próprio repositório. Não se aplica o resto
 - Exits, Escalation e remoção do auditor — brief 05. Neste brief o v2 simplesmente **não tem**
   auditor: não há o que remover, porque nada dele é chamado.
 - As outras cinco playbooks — brief 06.
-- Produção, coluna `engine`, despacho por scout — brief 10.
+- Promoção de conta de produção, preflight, sinalização das `ScoutTool` na UI e depreciação do v1 —
+  brief 10.
+- Coluna `engine` por scout ou seletor de engine na tela do scout: descartados (design §4.11).
 - Qualquer diff em `agent_runner.rb`, `response_auditor.rb`, `system_prompts_service.rb`.
 
 ## 7. Critérios de aceite (rascunho)
@@ -89,6 +97,9 @@ padrão já disponível em Ruby no próprio repositório. Não se aplica o resto
   (`search_knowledge_base`); `move_opportunity_stage`, `handover_to_human` e `call_custom_api` não
   são oferecidas.
 - O estado da conversa (playbook ativa, `activation_reason`) fica persistido ao fim do turno.
+- Conta sem `scout_v2`: playground e inbox continuam no v1, com comportamento idêntico ao de hoje.
+- Conta com `scout_v2`: playground e inbox passam pelo v2; desmarcar a flag no Super Admin traz o v1
+  de volta sem deploy.
 
 ### US2 — O turno é legível no Langfuse desde o primeiro dia
 
@@ -112,6 +123,8 @@ padrão já disponível em Ruby no próprio repositório. Não se aplica o resto
 - `custom/spec/services/custom/scout_v2/turn_runner_spec.rb`: composição do prompt e do catálogo de
   tools a partir de uma playbook fixa, com o cliente LLM dublado — verifica **o que foi montado**,
   não texto de resposta.
+- Spec do job de mensagem e do controller de playground: com a flag vai para o runner v2, sem a flag
+  vai para o runner v1.
 - Verificação comportamental via playground (mesmo padrão das fases anteriores do Scout): diálogo
   de qualificação ponta a ponta, com trace conferido no Langfuse.
 

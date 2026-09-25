@@ -19,7 +19,7 @@ documento separaria a remoção de um mecanismo da sua substituição (briefs 05
 | 07 | [Capabilities e agendamento ponta a ponta](07-capabilities-e-agendamento.md) | Fase 2 | 3 | 06 |
 | 08 | [Memória tipada de contato](08-memoria-tipada.md) | Fase 3 | 3 | 04 (só a linha de política em `Memory`) |
 | 09 | [Conhecimento determinístico](09-conhecimento-deterministico.md) | Fase 4 | 3 | — |
-| 10 | [Produção: `engine: v2`, promoção e depreciação](10-producao-engine-v2.md) | Fase 5 | 4 | 06, 07 |
+| 10 | [Produção: promoção por flag `scout_v2` e depreciação do v1](10-producao-flag-scout-v2.md) | Fase 5 | 4 | 03 (flag e despacho), 06, 07 |
 
 **Caminho crítico:** 01 → 02 → 03 → 04 → 05 → 06 → 07 → 10.
 **Paralelizáveis:** 08 e 09 são independentes entre si e do caminho crítico (design §6, "Fases 3 e 4
