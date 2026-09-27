@@ -70,10 +70,10 @@ class Custom::ScoutV2::TurnRunner
     @conversation_state ||= ScoutConversationState.for_conversation(@conversation)
   end
 
-  def build_instructions(playbook, ctx, catalog)
+  def build_instructions(playbook, ctx, openable)
     blocks = [
       Custom::ScoutV2::Instructions::Builder.call(scout: @scout),
-      Custom::ScoutV2::Playbook::IndexBuilder.call(catalog)
+      Custom::ScoutV2::Playbook::IndexBuilder.call(openable)
     ]
 
     if playbook.present?
@@ -86,22 +86,29 @@ class Custom::ScoutV2::TurnRunner
   end
 
   def setup_chat(decision, ctx, catalog)
-    chat = @scout.llm_chat.with_instructions(build_instructions(decision.playbook, ctx, catalog))
-    build_tools(decision, catalog, chat).each { |tool| chat.with_tool(wrap_tool(tool, simulated: false)) }
+    openable = Custom::ScoutV2::Playbook::OpenableSet.call(catalog: catalog, pinned: decision.playbook)
+    chat = @scout.llm_chat.with_instructions(build_instructions(decision.playbook, ctx, openable))
+    build_tools(decision, openable, chat).each { |tool| chat.with_tool(wrap_tool(tool, simulated: false)) }
     chat
   end
 
-  # open_playbook is offered only when the router forced no playbook (FR-011/FR-012); it keeps the live
-  # chat so the opened playbook's tools join the same chat.ask tool loop.
-  def build_tools(decision, catalog, chat)
-    tools = [Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, @conversation, playground: false)]
-    if decision.playbook
-      tools + Custom::ScoutV2::Tools::Registry.build(decision.playbook.tools, scout: @scout, conversation: @conversation)
-    else
+  # open_playbook is offered iff the openable set is non-empty (FR-004) — the full catalog when no procedure is pinned,
+  # or situational playbooks when a procedure is pinned; it keeps the live chat so its tools join the same chat.ask loop.
+  def build_tools(decision, openable, chat)
+    always_on_tools = [Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, @conversation, playground: false)]
+    tools = always_on_tools.dup
+    tools.concat(Custom::ScoutV2::Tools::Registry.build(decision.playbook.tools, scout: @scout, conversation: @conversation)) if decision.playbook
+    if openable.any?
+      turn_setup = Custom::ScoutV2::Tools::OpenPlaybook::TurnSetup.new(
+        baseline_instructions: build_instructions(nil, nil, openable),
+        baseline_tools: always_on_tools,
+        tool_wrapper: ->(tool) { wrap_tool(tool, simulated: false) }
+      )
       tools << Custom::ScoutV2::Tools::OpenPlaybook.new(
-        @scout, @conversation, chat: chat, catalog: catalog, tool_wrapper: ->(tool) { wrap_tool(tool, simulated: false) }
+        @scout, @conversation, chat: chat, openable: openable, turn_setup: turn_setup
       )
     end
+    tools
   end
 
   def add_history_to_chat(chat, last_user_message)

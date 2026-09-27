@@ -129,7 +129,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
         end
       end
 
-      it 'composes the tool catalog with only declared tools plus search_knowledge_base' do
+      it 'composes the tool catalog with declared tools plus search_knowledge_base and no undeclared registry tools' do
         passed_tools = []
         allow(fake_chat).to receive(:with_tool) do |tool|
           passed_tools << tool
@@ -146,8 +146,8 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
         runner.perform
 
         tool_names = passed_tools.map(&:name)
-        expect(tool_names).to contain_exactly('search_knowledge_base', 'manage_opportunity')
-        expect(tool_names).not_to include('open_playbook', 'move_opportunity_stage', 'handover_to_human', 'call_custom_api')
+        expect(tool_names).to include('search_knowledge_base', 'manage_opportunity')
+        expect(tool_names).not_to include('move_opportunity_stage', 'handover_to_human', 'call_custom_api')
       end
 
       it 'persists active_playbook and activation_reason before returning' do

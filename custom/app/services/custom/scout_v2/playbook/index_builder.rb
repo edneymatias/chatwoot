@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Custom::ScoutV2::Playbook::IndexBuilder
-  EMPTY_CATALOG_LINE = 'Nenhum procedimento específico habilitado no catálogo.'
+  EMPTY_INDEX_LINE = 'Nenhum playbook disponível para abrir neste turno.'
 
   class << self
     def call(catalog)
@@ -19,7 +19,7 @@ class Custom::ScoutV2::Playbook::IndexBuilder
     if playbooks.blank?
       <<~SECTION.strip
         [Playbook Index]
-        #{EMPTY_CATALOG_LINE}
+        #{EMPTY_INDEX_LINE}
       SECTION
     else
       lines = playbooks.map { |pb| "- #{pb.name}: #{pb.trigger.squish}" }

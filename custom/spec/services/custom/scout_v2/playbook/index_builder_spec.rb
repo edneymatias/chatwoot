@@ -58,14 +58,14 @@ RSpec.describe Custom::ScoutV2::Playbook::IndexBuilder do
     context 'when catalog is empty' do
       let(:catalog) { Custom::ScoutV2::Playbook::Catalog.new([]) }
 
-      it 'outputs header and a single non-list line stating none are enabled' do
+      it 'outputs header and a single non-list line stating no playbook is available to open this turn' do
         result = described_class.call(catalog)
 
         lines = result.strip.split("\n")
         expect(lines.size).to eq(2)
         expect(lines[0]).to eq('[Playbook Index]')
         expect(lines[1]).not_to start_with('-')
-        expect(lines[1]).to include('Nenhum procedimento')
+        expect(lines[1]).to eq('Nenhum playbook disponível para abrir neste turno.')
       end
     end
   end
