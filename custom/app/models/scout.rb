@@ -25,6 +25,10 @@ class Scout < ApplicationRecord
   enum :response_length, { concise: 0, standard: 1, thorough: 2 },
        default: :concise, scopes: false
 
+  normalizes :role, :scope, with: ->(v) { v.strip.presence }
+
+  validates :role, :scope, length: { maximum: 500 }
+
   validates :account_id, :name, presence: true
   validates :debounce_delay_seconds, numericality: { only_integer: true, greater_than_or_equal_to: 1 }
   validates :responses_quota, numericality: { only_integer: true, greater_than_or_equal_to: -1 }

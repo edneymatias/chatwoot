@@ -704,8 +704,24 @@ pt_BR:
         sent: 'E-mail de confirmação enviado.'
         already_confirmed: 'O usuário já está confirmado.'
   activerecord:
+    attributes:
+      scout:
+        role: 'Papel'
+        scope: 'Escopo'
+        tone: 'Tom'
+        response_length: 'Tamanho da resposta'
     errors:
       models:
+        scout:
+          attributes:
+            tone:
+              inclusion: 'não está incluído na lista de tons suportados (friendly, neutral, matter_of_fact, professional, humorous)'
+            response_length:
+              inclusion: 'não está incluído na lista de tamanhos de resposta suportados (concise, standard, thorough)'
+            role:
+              too_long: 'é muito longo (máximo de %{count} caracteres)'
+            scope:
+              too_long: 'é muito longo (máximo de %{count} caracteres)'
         scout_tool:
           attributes:
             auth_type:

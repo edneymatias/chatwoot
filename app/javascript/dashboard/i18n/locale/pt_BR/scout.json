@@ -62,7 +62,34 @@
       "QUOTA_LABEL": "Quota Mensal de Respostas (-1 para ilimitado)",
       "QUOTA_HINT": "Número máximo de respostas por ciclo (-1 para sem limite).",
       "SAVE_BUTTON": "Salvar Alterações",
-      "SAVED_SUCCESS": "Configurações do Scout salvas com sucesso."
+      "SAVED_SUCCESS": "Configurações do Scout salvas com sucesso.",
+      "V2_SECTION_TITLE": "Nova versão do Scout",
+      "V2_SECTION_DESCRIPTION": "Configure a identidade, instruções e estilo de comunicação para a nova versão do motor Scout.",
+      "ROLE_LABEL": "Papel e Objetivo",
+      "ROLE_PLACEHOLDER": "ex: SDR da clínica que atende pacientes adultos em São Paulo...",
+      "ROLE_HINT": "Define o que o assistente faz, seu objetivo comercial e público-alvo para a nova versão do Scout.",
+      "SCOPE_LABEL": "Escopo e Limites",
+      "SCOPE_PLACEHOLDER": "ex:\n- Não informa preços de procedimentos\n- Não agenda urgências",
+      "SCOPE_HINT": "Define os tópicos que o assistente pode ou não abordar para a nova versão do Scout.",
+      "TONE_LABEL": "Tom de Voz",
+      "TONE_HINT": "Define o tom de comunicação utilizado pela nova versão do Scout.",
+      "TONE_OPTIONS": {
+        "FRIENDLY": "Amigável",
+        "NEUTRAL": "Neutro",
+        "MATTER_OF_FACT": "Direto ao ponto",
+        "PROFESSIONAL": "Profissional",
+        "HUMOROUS": "Bem-humorado"
+      },
+      "RESPONSE_LENGTH_LABEL": "Tamanho da Resposta",
+      "RESPONSE_LENGTH_HINT": "Controla a extensão das mensagens para a nova versão do Scout.",
+      "RESPONSE_LENGTH_OPTIONS": {
+        "CONCISE": "Conciso",
+        "STANDARD": "Padrão",
+        "THOROUGH": "Detalhado"
+      },
+      "GREETING_LABEL": "Saudação Inicial",
+      "GREETING_PLACEHOLDER": "ex: Olá! Aqui é a Clara, da Sorriso Odonto.",
+      "GREETING_HINT": "Mensagem de abertura opcional para a primeira resposta na nova versão do Scout. Deixe em branco se a caixa de entrada já enviar sua própria saudação."
     },
     "INBOXES": {
       "TITLE": "Caixas de Entrada Conectadas",

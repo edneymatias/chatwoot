@@ -62,7 +62,34 @@
       "QUOTA_LABEL": "Monthly Response Quota (-1 for unlimited)",
       "QUOTA_HINT": "Maximum number of AI responses per billing cycle (-1 for no limit).",
       "SAVE_BUTTON": "Save Changes",
-      "SAVED_SUCCESS": "Scout settings saved successfully."
+      "SAVED_SUCCESS": "Scout settings saved successfully.",
+      "V2_SECTION_TITLE": "New version of the Scout",
+      "V2_SECTION_DESCRIPTION": "Configure identity, instructions, and communication style for the new version of the Scout engine.",
+      "ROLE_LABEL": "Role and Purpose",
+      "ROLE_PLACEHOLDER": "e.g., Clinic SDR qualifying adult patients in São Paulo...",
+      "ROLE_HINT": "Defines what the assistant does, its commercial objective, and target audience for the new version of the Scout.",
+      "SCOPE_LABEL": "Scope and Boundaries",
+      "SCOPE_PLACEHOLDER": "e.g.,\n- Does not provide treatment prices\n- Does not schedule emergency appointments",
+      "SCOPE_HINT": "Defines topics the assistant may or may not address for the new version of the Scout.",
+      "TONE_LABEL": "Tone of Voice",
+      "TONE_HINT": "Sets the communication tone used by the new version of the Scout.",
+      "TONE_OPTIONS": {
+        "FRIENDLY": "Friendly",
+        "NEUTRAL": "Neutral",
+        "MATTER_OF_FACT": "Matter of fact",
+        "PROFESSIONAL": "Professional",
+        "HUMOROUS": "Humorous"
+      },
+      "RESPONSE_LENGTH_LABEL": "Response Length",
+      "RESPONSE_LENGTH_HINT": "Controls response conciseness for the new version of the Scout.",
+      "RESPONSE_LENGTH_OPTIONS": {
+        "CONCISE": "Concise",
+        "STANDARD": "Standard",
+        "THOROUGH": "Thorough"
+      },
+      "GREETING_LABEL": "Initial Greeting",
+      "GREETING_PLACEHOLDER": "e.g., Hello! I am Clara, assistant at Sorriso Odonto.",
+      "GREETING_HINT": "Optional opening message for the first turn in the new version of the Scout. Leave blank if your inbox already sends an automated greeting."
     },
     "INBOXES": {
       "TITLE": "Connected Inboxes",

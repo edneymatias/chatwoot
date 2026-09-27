@@ -646,5 +646,32 @@ RSpec.describe Custom::Scout::SystemPromptsService do
         expect(rendered_prompt).to include('sua resposta final não pode conter nenhuma pergunta ao cliente')
       end
     end
+
+    describe 'V1 prompt byte-for-byte invariance with V2 identity and style fields (FR-007, SC-004)' do
+      it 'produces byte-identical prompt before and after configuring the five fields, retaining Persona in account_custom_instructions' do
+        travel_to(Time.zone.parse('2026-09-27 12:00:00')) do
+          initial_prompt = described_class.build(scout: scout, contact: contact, inbox: inbox)
+
+          expect(initial_prompt).to include('<account_custom_instructions>')
+          expect(initial_prompt).to include(scout.system_prompt)
+          expect(initial_prompt).to include('</account_custom_instructions>')
+
+          scout.update!(
+            role: 'Especialista em fechamento de contas B2B enterprise',
+            scope: "- Não informa valores de setup\n- Não atende pessoa física",
+            tone: :humorous,
+            response_length: :thorough,
+            greeting: 'Olá! Sou o especialista da Acme.'
+          )
+
+          updated_prompt = described_class.build(scout: scout, contact: contact, inbox: inbox)
+
+          expect(updated_prompt).to eq(initial_prompt)
+          expect(updated_prompt).not_to include('Especialista em fechamento de contas B2B enterprise')
+          expect(updated_prompt).not_to include('Não informa valores de setup')
+          expect(updated_prompt).not_to include('Olá! Sou o especialista da Acme.')
+        end
+      end
+    end
   end
 end

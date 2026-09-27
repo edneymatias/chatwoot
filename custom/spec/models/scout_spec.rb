@@ -293,4 +293,68 @@ RSpec.describe Scout, type: :model do
       end.to(raise_error { |error| expect(error.class.name).to eq('ActiveRecord::NotNullViolation') })
     end
   end
+
+  describe 'role and scope normalization and length validations' do
+    let(:scout) { described_class.new(valid_attributes) }
+
+    describe 'role normalization' do
+      it 'strips leading and trailing whitespace and newlines' do
+        scout.role = "  \n  SDR da clínica especializada  \n  "
+        expect(scout.role).to eq('SDR da clínica especializada')
+      end
+
+      it 'preserves internal line breaks' do
+        scout.role = " \nLinha 1\nLinha 2 \nLinha 3\n "
+        expect(scout.role).to eq("Linha 1\nLinha 2 \nLinha 3")
+      end
+
+      it 'normalizes whitespace-only strings to nil' do
+        scout.role = "  \n \t  "
+        expect(scout.role).to be_nil
+      end
+    end
+
+    describe 'scope normalization' do
+      it 'strips leading and trailing whitespace and newlines' do
+        scout.scope = "  \n  Apenas dúvidas sobre planos  \n  "
+        expect(scout.scope).to eq('Apenas dúvidas sobre planos')
+      end
+
+      it 'preserves internal line breaks' do
+        scout.scope = " \n- Não informa preços\n- Não agenda urgências\n "
+        expect(scout.scope).to eq("- Não informa preços\n- Não agenda urgências")
+      end
+
+      it 'normalizes whitespace-only strings to nil' do
+        scout.scope = "  \n \t  "
+        expect(scout.scope).to be_nil
+      end
+    end
+
+    describe 'length validations' do
+      it 'accepts role with exactly 500 characters after normalization' do
+        scout.role = "  #{'a' * 500}  "
+        expect(scout).to be_valid
+      end
+
+      it 'rejects role with 501 characters after normalization' do
+        scout.role = 'a' * 501
+        expect(scout).not_to be_valid
+        expect(scout.errors[:role]).to be_present
+        expect(scout.errors.details[:role]).to include(hash_including(error: :too_long, count: 500))
+      end
+
+      it 'accepts scope with exactly 500 characters after normalization' do
+        scout.scope = "  #{'b' * 500}  "
+        expect(scout).to be_valid
+      end
+
+      it 'rejects scope with 501 characters after normalization' do
+        scout.scope = 'b' * 501
+        expect(scout).not_to be_valid
+        expect(scout.errors[:scope]).to be_present
+        expect(scout.errors.details[:scope]).to include(hash_including(error: :too_long, count: 500))
+      end
+    end
+  end
 end

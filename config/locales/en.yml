@@ -737,8 +737,24 @@ en:
         sent: 'Confirmation email sent.'
         already_confirmed: 'User is already confirmed.'
   activerecord:
+    attributes:
+      scout:
+        role: 'Role'
+        scope: 'Scope'
+        tone: 'Tone'
+        response_length: 'Response length'
     errors:
       models:
+        scout:
+          attributes:
+            tone:
+              inclusion: 'is not included in the list of supported tones (friendly, neutral, matter_of_fact, professional, humorous)'
+            response_length:
+              inclusion: 'is not included in the list of supported response lengths (concise, standard, thorough)'
+            role:
+              too_long: 'is too long (maximum is %{count} characters)'
+            scope:
+              too_long: 'is too long (maximum is %{count} characters)'
         scout_tool:
           attributes:
             auth_type:

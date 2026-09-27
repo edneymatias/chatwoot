@@ -294,6 +294,30 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
         end
       end
 
+      it 'reflects saved scout role and scope updates in the composed instructions (FR-019)' do
+        scout.update!(
+          role: 'SDR de qualificação B2B em São Paulo',
+          scope: "- Não informa preços de contratos anuais\n- Não atende fora do horário comercial"
+        )
+
+        runner = described_class.new(
+          scout: scout,
+          conversation: conversation,
+          message: 'Dúvida geral',
+          message_history: []
+        )
+
+        runner.perform
+
+        expect(fake_chat).to have_received(:with_instructions) do |instructions|
+          expect(instructions).to include('SDR de qualificação B2B em São Paulo')
+          expect(instructions).to include("- Não informa preços de contratos anuais\n- Não atende fora do horário comercial")
+          expect(instructions).to include("Você é #{scout.name}, assistente da empresa #{scout.account.name}.")
+          expect(instructions).not_to include('assistente inteligente de qualificação comercial e vendas')
+          expect(instructions).not_to include('Seu objetivo é qualificar leads')
+        end
+      end
+
       it 'composes bracketed block headers strictly as Identity, Communication, Memory, Safety, Playbook Index' do
         runner = described_class.new(
           scout: scout,

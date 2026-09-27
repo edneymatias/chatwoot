@@ -5,7 +5,7 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
 
   before_action :check_authorization
   before_action :set_scout, only: %i[show update destroy sync_required_attributes]
-
+  before_action :validate_enum_attributes, only: %i[create update]
   def index
     @scouts = Current.account.scouts.includes(:inboxes, :required_custom_attribute_definitions, :interest_attribute_definition)
                      .order(created_at: :desc)
@@ -67,8 +67,8 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
       name persona debounce_delay_seconds responses_quota enabled
       default_pipeline_stage_id qualified_stage_id unqualified_stage_id rescue_stage_id handover_team_id
       default_country_code default_area_code interest_attribute_definition_id
+      role scope tone response_length greeting
     ]
-
     scout_source = params.key?(:scout) ? params.require(:scout) : params
     scout_source.permit(
       *allowed,
@@ -105,5 +105,38 @@ class Api::V1::Accounts::ScoutsController < Api::V1::Accounts::BaseController
         }
       }
     }
+  end
+
+  def validate_enum_attributes
+    errors = []
+    validate_enum_field(:tone, Scout.tones, errors)
+    validate_enum_field(:response_length, Scout.response_lengths, errors)
+    return if errors.empty?
+
+    render json: { error: errors.join(', ') }, status: :unprocessable_entity
+  end
+
+  def validate_enum_field(attribute, allowed_keys, errors)
+    return unless enum_param_provided?(attribute)
+
+    val = enum_param_value(attribute)
+    return if val.is_a?(String) && allowed_keys.key?(val)
+
+    dummy = Scout.new
+    dummy.errors.add(attribute, :inclusion)
+    errors.concat(dummy.errors.full_messages)
+  end
+
+  def enum_param_provided?(attribute)
+    (params.key?(:scout) && params[:scout].respond_to?(:key?) && params[:scout].key?(attribute)) ||
+      params.key?(attribute)
+  end
+
+  def enum_param_value(attribute)
+    if params.key?(:scout) && params[:scout].respond_to?(:key?) && params[:scout].key?(attribute)
+      params[:scout][attribute]
+    else
+      params[attribute]
+    end
   end
 end

@@ -69,5 +69,34 @@ RSpec.describe Custom::ScoutV2::Instructions::Builder do
       expect(safety_section).to include('Idioma: Detecte o idioma em que o cliente está escrevendo e responda sempre no mesmo idioma')
       expect(safety_section).to include('Escopo comercial: Mantenha-se estritamente dentro do escopo comercial da empresa')
     end
+
+    context 'with persona set on the scout' do
+      before do
+        scout.update!(persona: 'MARCADOR_PERSONA_UNICA_12345')
+      end
+
+      it 'contains no persona content in any section when role and scope are empty' do
+        scout.update!(role: nil, scope: nil)
+        result = described_class.call(scout: scout)
+
+        expect(result).not_to include('MARCADOR_PERSONA_UNICA_12345')
+        safety_section = result.split("\n\n").find { |s| s.start_with?('[Safety]') }
+        expect(safety_section).to include('Anti-alucinação: Nunca invente informações, dados, preços ou políticas')
+        expect(safety_section).to include('Escopo comercial: Mantenha-se estritamente dentro do escopo comercial da empresa')
+      end
+
+      it 'contains no persona content in any section and keeps safety rules when role and scope are both filled' do
+        scout.update!(
+          role: 'SDR responsável por qualificar clínicas',
+          scope: "- não dá orientações médicas\n- não passa valores de procedimentos"
+        )
+        result = described_class.call(scout: scout)
+
+        expect(result).not_to include('MARCADOR_PERSONA_UNICA_12345')
+        safety_section = result.split("\n\n").find { |s| s.start_with?('[Safety]') }
+        expect(safety_section).to include('Anti-alucinação: Nunca invente informações, dados, preços ou políticas')
+        expect(safety_section).to include('Escopo comercial: Mantenha-se estritamente dentro do escopo comercial da empresa')
+      end
+    end
   end
 end
