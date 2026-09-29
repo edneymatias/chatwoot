@@ -36,7 +36,7 @@ class ScoutConversationState < ApplicationRecord
     self
   end
 
-  def record_transition!(target_playbook_name, turn_transition_count:)
+  def record_transition!(target_playbook_name, turn_transition_count:, completed: nil)
     if turn_transition_count >= 2
       update!(handoff_limit_reached_at: Time.current)
       false
@@ -45,19 +45,34 @@ class ScoutConversationState < ApplicationRecord
         active_playbook: target_playbook_name,
         activated_at: Time.current,
         activation_reason: :transition,
-        transition_count: transition_count + 1
+        transition_count: transition_count + 1,
+        completed_playbooks: updated_completed_playbooks(completed)
       )
       true
     end
   end
 
-  def record_terminal_exit!(exit_name)
+  def record_terminal_exit!(exit_name, completed: nil)
     update!(
       active_playbook: nil,
       activated_at: nil,
       activation_reason: nil,
-      last_exit: exit_name
+      last_exit: exit_name,
+      completed_playbooks: updated_completed_playbooks(completed)
     )
     self
+  end
+
+  def record_unsatisfied_items!(record)
+    update!(unsatisfied_flags: record)
+    self
+  end
+
+  private
+
+  def updated_completed_playbooks(completed)
+    return completed_playbooks if completed.blank?
+
+    (completed_playbooks + [completed.to_s]).uniq
   end
 end

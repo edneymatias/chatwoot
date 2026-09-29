@@ -138,10 +138,20 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
       let(:provider_requests) { [] }
       let(:provider_responses) { [] }
 
+      let(:gemini_step) do
+        lambda do |parts|
+          {
+            status: 200,
+            headers: { 'Content-Type' => 'application/json' },
+            body: { candidates: [{ content: { role: 'model', parts: parts } }] }.to_json
+          }
+        end
+      end
+
       around do |example|
         if example.metadata[:catalog] == :procedure_only
           Dir.mktmpdir('scout_v2_procedure_only_catalog') do |tmp_dir|
-            FileUtils.cp(Rails.root.join('custom/playbooks/qualificacao.md'), File.join(tmp_dir, 'qualificacao.md'))
+            FileUtils.cp(Rails.root.join('custom/spec/fixtures/scout_v2/qualificacao_procedure.md'), File.join(tmp_dir, 'qualificacao.md'))
             with_modified_env SCOUT_V2_PLAYBOOKS_DIR: tmp_dir do
               example.run
             end
@@ -154,7 +164,7 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           end
         else
           Dir.mktmpdir('scout_v2_fixture_catalog') do |tmp_dir|
-            FileUtils.cp(Rails.root.join('custom/playbooks/qualificacao.md'), File.join(tmp_dir, 'qualificacao.md'))
+            FileUtils.cp(Rails.root.join('custom/spec/fixtures/scout_v2/qualificacao_procedure.md'), File.join(tmp_dir, 'qualificacao.md'))
             File.write(File.join(tmp_dir, 'pausa.md'), <<~YAML)
               ---
               name: pausa
@@ -248,8 +258,9 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           expect(system_text).to include('- duvida_comercial: O cliente tem dúvidas sobre preços')
           expect(system_text).not_to include('- qualificacao:')
 
-          offered_tools = provider_requests[0].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
-          expect(offered_tools).to include('open_playbook')
+          open_playbook_decl = provider_requests[0].dig('tools', 0, 'functionDeclarations')&.find { |f| f['name'] == 'open_playbook' }
+          expect(open_playbook_decl).to be_present
+          expect(open_playbook_decl['description']).to eq('Open a playbook by name from the playbook index to activate its procedure and tools')
         end
       end
 
@@ -507,7 +518,7 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           open_text = open_resp.dig('functionResponse', 'response', 'content', 0, 'text')
           expect(open_text).to include('Confirme a pausa com gentileza.')
           req1_tools = provider_requests[1].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
-          expect(req1_tools).to contain_exactly('search_knowledge_base', 'open_playbook')
+          expect(req1_tools).to contain_exactly('search_knowledge_base', 'open_playbook', 'exit_handoff')
         end
 
         it 'records exactly open_playbook and search_knowledge_base in response tool_calls', :aggregate_failures do
@@ -588,13 +599,13 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           expect(provider_requests.size).to eq(4)
 
           tools1 = provider_requests[1].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
-          expect(tools1).to contain_exactly('search_knowledge_base', 'open_playbook')
+          expect(tools1).to contain_exactly('search_knowledge_base', 'open_playbook', 'exit_handoff')
 
           tools2 = provider_requests[2].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
-          expect(tools2).to contain_exactly('search_knowledge_base', 'open_playbook', 'manage_opportunity')
+          expect(tools2).to contain_exactly('search_knowledge_base', 'open_playbook', 'manage_opportunity', 'exit_handoff')
 
           tools3 = provider_requests[3].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
-          expect(tools3).to contain_exactly('search_knowledge_base', 'open_playbook')
+          expect(tools3).to contain_exactly('search_knowledge_base', 'open_playbook', 'exit_handoff')
 
           tool_calls = response.parsed_body['tool_calls']
           expect(tool_calls.size).to eq(3)
@@ -789,7 +800,8 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
             'custom_attributes' => { 'orcamento' => '5000' }
           }
           expect(manage_call['arguments']).to eq(expected_args)
-          expect(state.reload.attributes).to eq(snapshot)
+          expect(state.reload.attributes.except('unsatisfied_flags', 'updated_at')).to eq(snapshot.except('unsatisfied_flags', 'updated_at'))
+          expect(state.unsatisfied_flags).to be_present
 
           # Turn 2
           post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
@@ -842,7 +854,7 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           ]
         end
 
-        it 'leaves conversation state untouched on turn 1 and resumes pinned procedure on turn 2' do
+        it 'leaves conversation state untouched on turn 1 and resumes pinned procedure on turn 2', :aggregate_failures do
           state = ScoutConversationState.for_conversation(sandbox_conversation)
           travel_to(1.hour.ago) { state.record_state_activation!('qualificacao') }
           snapshot = state.reload.attributes.dup
@@ -854,7 +866,8 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
 
           expect(response).to have_http_status(:ok)
           expect(provider_requests.size).to eq(2)
-          expect(state.reload.attributes).to eq(snapshot)
+          expect(state.reload.attributes.except('unsatisfied_flags', 'updated_at')).to eq(snapshot.except('unsatisfied_flags', 'updated_at'))
+          expect(state.unsatisfied_flags).to be_present
 
           # Turn 2
           post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
@@ -874,36 +887,9 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
             .with { |req| provider_requests << JSON.parse(req.body) }
             .to_return(
-              {
-                status: 200,
-                headers: { 'Content-Type' => 'application/json' },
-                body: {
-                  candidates: [{
-                    content: {
-                      role: 'model',
-                      parts: [{ functionCall: { name: 'open_playbook', args: { name: 'pausa' } } }]
-                    }
-                  }]
-                }.to_json
-              },
-              {
-                status: 200,
-                headers: { 'Content-Type' => 'application/json' },
-                body: {
-                  candidates: [{
-                    content: { role: 'model', parts: [{ text: 'Pausa confirmada.' }] }
-                  }]
-                }.to_json
-              },
-              {
-                status: 200,
-                headers: { 'Content-Type' => 'application/json' },
-                body: {
-                  candidates: [{
-                    content: { role: 'model', parts: [{ text: 'Sem playbook ativa.' }] }
-                  }]
-                }.to_json
-              }
+              gemini_step.call([{ functionCall: { name: 'open_playbook', args: { name: 'pausa' } } }]),
+              gemini_step.call([{ text: 'Pausa confirmada.' }]),
+              gemini_step.call([{ text: 'Sem playbook ativa.' }])
             )
 
           # Turn 1
@@ -913,7 +899,10 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
 
           expect(response).to have_http_status(:ok)
           expect(provider_requests.size).to eq(2)
-          expect(ScoutConversationState.where(conversation_id: sandbox_conversation.id)).to be_empty
+          state1 = ScoutConversationState.find_by(conversation_id: sandbox_conversation.id)
+          expect(state1).to be_present
+          expect(state1.active_playbook).to be_nil
+          expect(state1.unsatisfied_flags['procedure']).to be_nil
 
           # Turn 2
           post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
@@ -926,7 +915,10 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           expect(turn2_system).not_to include('Pergunte pelos dados de qualificação pendentes')
           expect(turn2_system).not_to include('Confirme a pausa com gentileza.')
           expect(turn2_system).to include('[Playbook Index]')
-          expect(ScoutConversationState.where(conversation_id: sandbox_conversation.id)).to be_empty
+          state2 = ScoutConversationState.find_by(conversation_id: sandbox_conversation.id)
+          expect(state2).to be_present
+          expect(state2.active_playbook).to be_nil
+          expect(state2.unsatisfied_flags['procedure']).to be_nil
         end
       end
 
@@ -1041,7 +1033,7 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           expect(state.activation_reason).to eq('trigger')
 
           tools_last = provider_requests[2].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
-          expect(tools_last).to contain_exactly('search_knowledge_base', 'open_playbook')
+          expect(tools_last).to contain_exactly('search_knowledge_base', 'open_playbook', 'exit_handoff')
 
           index_last = provider_requests[2].dig('contents', 0, 'parts', 0, 'text')
           expect(index_last).to include('- qualificacao:')
@@ -1101,7 +1093,7 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           expect(state.activation_reason).to eq('trigger')
 
           tools_last = provider_requests[2].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
-          expect(tools_last).to contain_exactly('search_knowledge_base', 'open_playbook', 'manage_opportunity')
+          expect(tools_last).to contain_exactly('search_knowledge_base', 'open_playbook', 'manage_opportunity', 'exit_handoff')
         end
       end
 
@@ -1162,7 +1154,8 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           expect(response).to have_http_status(:ok)
           expect(response.parsed_body['reply']).to eq('Final.')
           expect(provider_requests.size).to eq(3)
-          expect(state.reload.attributes).to eq(snapshot)
+          expect(state.reload.attributes.except('unsatisfied_flags', 'updated_at')).to eq(snapshot.except('unsatisfied_flags', 'updated_at'))
+          expect(state.unsatisfied_flags).to be_present
 
           req1_system = provider_requests[1].dig('contents', 0, 'parts', 0, 'text')
           expect(req1_system).to include('[Playbook Index]')
@@ -1174,7 +1167,7 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           expect(err_text).to include('Playbook desconhecida: qualificacao. Disponíveis: duvida_comercial, pausa')
 
           tools_req2 = provider_requests[2].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
-          expect(tools_req2).to contain_exactly('search_knowledge_base', 'open_playbook')
+          expect(tools_req2).to contain_exactly('search_knowledge_base', 'open_playbook', 'exit_handoff')
         end
       end
 
@@ -1225,7 +1218,7 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           expect(req0_system).to include('- duvida_comercial:')
           expect(req0_system).not_to include('- qualificacao:')
           req0_tools = provider_requests[0].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
-          expect(req0_tools).to contain_exactly('search_knowledge_base', 'manage_opportunity', 'open_playbook')
+          expect(req0_tools).to contain_exactly('search_knowledge_base', 'manage_opportunity', 'open_playbook', 'exit_handoff')
         end
 
         it 'drops procedure body on situational takeover while preserving stored trigger state' do
@@ -1246,9 +1239,744 @@ RSpec.describe 'Api::V1::Accounts::Scouts::PlaygroundMessages', type: :request d
           req1_system = provider_requests[1].dig('contents', 0, 'parts', 0, 'text')
           expect(req1_system).not_to include('Pergunte pelos dados de qualificação pendentes')
           req1_tools = provider_requests[1].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
-          expect(req1_tools).to contain_exactly('search_knowledge_base', 'open_playbook')
-          expect(state.reload.attributes).to eq(snapshot)
+          expect(req1_tools).to contain_exactly('search_knowledge_base', 'open_playbook', 'exit_handoff')
+          expect(state.reload.attributes.except('unsatisfied_flags', 'updated_at')).to eq(snapshot.except('unsatisfied_flags', 'updated_at'))
+          expect(state.unsatisfied_flags).to be_present
           expect(state.trigger?).to be true
+        end
+      end
+
+      context 'with Scout V2 exits and escalation (US1)' do
+        it 'verifies US1-AS1 and US1-AS5: system text headers end with Playbook Index, Escalation and CLOSING_INSTRUCTION is absent' do
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(gemini_step.call([{ text: 'Olá, como posso ajudar?' }]))
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          expect(provider_requests.size).to eq(1)
+
+          system_text = provider_requests[0].dig('contents', 0, 'parts', 0, 'text')
+          headers = system_text.scan(/^\[([^\]]+)\]$/).flatten
+          expect(headers.last(2)).to eq(['Playbook Index', 'Escalation'])
+          expect(system_text).not_to include('sem perguntas')
+          expect(system_text).not_to include('encerramento')
+        end
+
+        it 'verifies US1-AS2 and US1-AS3: exit_handoff declared in provider requests with nothing pinned, pinned, and after takeover' do
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(
+              gemini_step.call([{ functionCall: { name: 'open_playbook', args: { name: 'pausa' } } }]),
+              gemini_step.call([{ text: 'Pausa confirmada.' }])
+            )
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          expect(provider_requests.size).to eq(2)
+
+          tools_req0 = provider_requests[0].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
+          expect(tools_req0).to include('exit_handoff')
+          handoff_decl = provider_requests[0].dig('tools', 0, 'functionDeclarations').find { |f| f['name'] == 'exit_handoff' }
+          expect(handoff_decl['parameters']).to eq(
+            'type' => 'OBJECT',
+            'properties' => { 'reason' => { 'type' => 'STRING' } },
+            'required' => ['reason']
+          )
+
+          tools_req1 = provider_requests[1].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
+          expect(tools_req1).to include('exit_handoff')
+        end
+
+        it 'verifies FR-023: playground exit_handoff records last_exit == handoff, clears active procedure, and lists tool call',
+           :aggregate_failures do
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          state.record_state_activation!('qualificacao')
+
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(
+              gemini_step.call([{ functionCall: { name: 'exit_handoff', args: { reason: 'Cliente pediu atendente humano' } } }]),
+              gemini_step.call([{ text: 'Um atendente já dará continuidade ao seu atendimento.' }])
+            )
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          expect(sandbox_conversation.reload.status).to eq('open')
+          expect(sandbox_conversation.team_id).to be_nil
+          expect(sandbox_conversation.messages.where(private: true)).to be_empty
+
+          expect(state.reload.last_exit).to eq('handoff')
+          expect(state.active_playbook).to be_nil
+
+          tool_calls = response.parsed_body['tool_calls']
+          expect(tool_calls.size).to eq(1)
+          expect(tool_calls[0]['tool_name']).to eq('exit_handoff')
+          expect(tool_calls[0]['arguments']).to eq('reason' => 'Cliente pediu atendente humano')
+          expect(tool_calls[0]['result']).to include('Transferência para atendimento humano realizada.')
+          expect(tool_calls[0]['result']).to include('Escreva agora sua resposta final ao cliente')
+        end
+
+        it 'verifies FR-015: a call after exit_handoff in the same turn returns TURN_ENDED_ERROR and is recorded' do
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(
+              gemini_step.call(
+                [
+                  { functionCall: { name: 'exit_handoff', args: { reason: 'Primeiro encerra' } } },
+                  { functionCall: { name: 'search_knowledge_base', args: { query: 'duvida' } } }
+                ]
+              ),
+              gemini_step.call([{ text: 'Até logo.' }])
+            )
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          tool_calls = response.parsed_body['tool_calls']
+          expect(tool_calls.size).to eq(2)
+          expect(tool_calls[0]['tool_name']).to eq('exit_handoff')
+          expect(tool_calls[1]['tool_name']).to eq('search_knowledge_base')
+          expect(tool_calls[1]['result']).to eq('error' => Custom::ScoutV2::TurnScope::TURN_ENDED_ERROR)
+        end
+      end
+
+      context 'with Scout V2 declared exits (US2)' do
+        around do |example|
+          Dir.mktmpdir('scout_v2_us2_catalog') do |tmp_dir|
+            File.write(File.join(tmp_dir, 'fluxo_teste.md'), <<~MD)
+              ---
+              name: fluxo_teste
+              title: Fluxo de teste
+              priority: 20
+              when_state:
+                - opportunity_open
+              trigger: Fixture com exits declarados.
+              tools: [manage_opportunity]
+              exits:
+                concluido:
+                  kind: terminal
+                  fields: { resumo: string }
+                seguir_outro:
+                  kind: transition
+                  target: outro_procedimento
+                qualificado:
+                  kind: escalation
+                  fields: { quantidade: integer, motivo: string, retorno_em: datetime }
+              ---
+              Passos do fluxo teste.
+            MD
+
+            File.write(File.join(tmp_dir, 'outro_procedimento.md'), <<~MD)
+              ---
+              name: outro_procedimento
+              title: Outro Procedimento
+              priority: 15
+              when_state:
+                - opportunity_open
+              trigger: Procedimento destino da transicao.
+              tools: []
+              exits:
+                finalizado:
+                  kind: terminal
+                  fields: { detalhe: string }
+                voltar_teste:
+                  kind: transition
+                  target: fluxo_teste
+              ---
+              Passos do outro procedimento.
+            MD
+
+            File.write(File.join(tmp_dir, 'pausa.md'), <<~MD)
+              ---
+              name: pausa
+              title: Pausa
+              priority: 50
+              trigger: Pausa
+              ---
+              Corpo da pausa.
+            MD
+
+            with_modified_env SCOUT_V2_PLAYBOOKS_DIR: tmp_dir do
+              example.run
+            end
+          end
+        end
+
+        it 'verifies US2-AS1: declared exits present only while their playbook is in effect' do
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          state.record_state_activation!('fluxo_teste')
+
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(
+              gemini_step.call([{ functionCall: { name: 'open_playbook', args: { name: 'pausa' } } }]),
+              gemini_step.call([{ text: 'Pausa confirmada.' }])
+            )
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+          expect(response).to have_http_status(:ok)
+          expect(provider_requests.size).to eq(2)
+
+          tools_req0 = provider_requests[0].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
+          expect(tools_req0).to include('exit_concluido', 'exit_seguir_outro', 'exit_qualificado', 'exit_handoff')
+          declarations_req0 = provider_requests[0].dig('tools', 0, 'functionDeclarations').index_by { |f| f['name'] }
+          expect(declarations_req0['exit_qualificado']['parameters']).to eq(
+            'type' => 'OBJECT',
+            'properties' => {
+              'quantidade' => { 'type' => 'INTEGER' },
+              'motivo' => { 'type' => 'STRING' },
+              'retorno_em' => { 'type' => 'STRING', 'format' => 'date-time' }
+            },
+            'required' => %w[quantidade motivo retorno_em]
+          )
+          expect(declarations_req0['exit_seguir_outro']).not_to have_key('parameters')
+
+          tools_req1 = provider_requests[1].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
+          expect(tools_req1).not_to include('exit_concluido', 'exit_seguir_outro', 'exit_qualificado')
+          expect(tools_req1).to include('exit_handoff')
+        end
+
+        it 'verifies US2-AS10 and FR-007: refuses second procedure when one was opened mid-turn', :aggregate_failures do
+          steps = [
+            gemini_step.call([{ functionCall: { name: 'open_playbook', args: { name: 'fluxo_teste' } } }]),
+            gemini_step.call([{ functionCall: { name: 'open_playbook', args: { name: 'outro_procedimento' } } }]),
+            gemini_step.call([{ text: 'Continuando com fluxo teste.' }])
+          ]
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(*steps)
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          tool_calls = response.parsed_body['tool_calls']
+          expect(tool_calls.size).to eq(2)
+          expect(tool_calls[0]['tool_name']).to eq('open_playbook')
+          expect(tool_calls[0].dig('result', 'body')).to include('Passos do fluxo teste.')
+
+          expect(tool_calls[1]['tool_name']).to eq('open_playbook')
+          expect(tool_calls[1].dig('result', 'error')).to include('Já existe um procedimento em andamento neste turno: fluxo_teste')
+
+          tools_req1 = provider_requests[1].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
+          expect(tools_req1).to include('exit_concluido', 'exit_seguir_outro', 'exit_qualificado')
+
+          tools_req2 = provider_requests[2].dig('tools', 0, 'functionDeclarations')
+          expect(tools_req2).to eq(provider_requests[1].dig('tools', 0, 'functionDeclarations'))
+
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          expect(state.active_playbook).to eq('fluxo_teste')
+          expect(state.last_exit).to be_nil
+        end
+
+        it 'verifies US2-AS10 and FR-007: refuses procedure after a transition in the same turn', :aggregate_failures do
+          steps = [
+            gemini_step.call([{ functionCall: { name: 'open_playbook', args: { name: 'fluxo_teste' } } }]),
+            gemini_step.call([{ functionCall: { name: 'exit_seguir_outro', args: {} } }]),
+            gemini_step.call([{ functionCall: { name: 'open_playbook', args: { name: 'fluxo_teste' } } }]),
+            gemini_step.call([{ text: 'Continuando com outro procedimento.' }])
+          ]
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(*steps)
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          tool_calls = response.parsed_body['tool_calls']
+          expect(tool_calls.size).to eq(3)
+          expect(tool_calls[0]['tool_name']).to eq('open_playbook')
+          expect(tool_calls[1]['tool_name']).to eq('exit_seguir_outro')
+          expect(tool_calls[2]['tool_name']).to eq('open_playbook')
+          expect(tool_calls[2].dig('result', 'error')).to include('Já existe um procedimento em andamento neste turno: outro_procedimento')
+
+          tools_req2 = provider_requests[2].dig('tools', 0, 'functionDeclarations')
+          tools_req3 = provider_requests[3].dig('tools', 0, 'functionDeclarations')
+          expect(tools_req3).to eq(tools_req2)
+
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          expect(state.active_playbook).to eq('outro_procedimento')
+          expect(state.activation_reason).to eq('transition')
+          expect(state.transition_count).to eq(1)
+          expect(state.last_exit).to be_nil
+        end
+
+        it 'verifies US2-AS2, US2-AS3, and US2-AS9: invalid payload rejected then corrected in same turn, terminal data in tool_calls',
+           :aggregate_failures do
+          contact = sandbox_conversation.contact.reload
+          contact_snapshot = contact.attributes.dup
+          opportunity = Opportunity.create!(
+            account: account,
+            contact: contact,
+            active_conversation: sandbox_conversation,
+            origin_conversation: sandbox_conversation,
+            title: 'Negócio Teste',
+            pipeline_stage: lead_stage
+          ).reload
+          opportunity_snapshot = opportunity.attributes.dup
+
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          state.record_state_activation!('fluxo_teste')
+          steps = [
+            gemini_step.call([{ functionCall: { name: 'exit_concluido', args: { resumo: 123, extra: 'bad' } } }]),
+            gemini_step.call([{ functionCall: { name: 'exit_concluido', args: { resumo: 'Atendimento concluído' } } }]),
+            gemini_step.call([{ text: 'Tudo pronto e resolvido!' }])
+          ]
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(*steps)
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          expect(response.parsed_body['reply']).to eq('Tudo pronto e resolvido!')
+
+          tool_calls = response.parsed_body['tool_calls']
+          expect(tool_calls.size).to eq(2)
+          expect(tool_calls[0]['result']['error']).to include("campo 'resumo' deve ser string", "campo 'extra' não declarado")
+          expect(tool_calls[1]['result']).to eq("Desfecho 'concluido' registrado. Escreva agora sua resposta final ao cliente.")
+          expect(tool_calls[1]['arguments']).to eq('resumo' => 'Atendimento concluído')
+
+          expect(state.reload.last_exit).to eq('concluido')
+          expect(state.active_playbook).to be_nil
+
+          expect(opportunity.reload.attributes).to eq(opportunity_snapshot)
+          expect(contact.reload.attributes).to eq(contact_snapshot)
+        end
+
+        it 'verifies US2-AS5: transition returns target body and subsequent step offers target exits',
+           :aggregate_failures do
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          state.record_state_activation!('fluxo_teste')
+
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(
+              gemini_step.call([{ functionCall: { name: 'exit_seguir_outro', args: {} } }]),
+              gemini_step.call([{ text: 'Seguindo para o outro procedimento.' }])
+            )
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          tool_calls = response.parsed_body['tool_calls']
+          expect(tool_calls.size).to eq(1)
+          expect(tool_calls[0]['result']).to include('Passos do outro procedimento.')
+
+          req1_system = provider_requests[1].dig('contents', 0, 'parts', 0, 'text')
+          expect(req1_system).not_to include('Passos do fluxo teste.')
+
+          tools_req1 = provider_requests[1].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
+          expect(tools_req1).to include('exit_finalizado', 'exit_handoff')
+          expect(tools_req1).not_to include('exit_concluido', 'exit_seguir_outro', 'manage_opportunity')
+
+          expect(state.reload.active_playbook).to eq('outro_procedimento')
+          expect(state.activation_reason).to eq('transition')
+          expect(state.transition_count).to eq(1)
+        end
+
+        it 'verifies FR-016 and FR-024: same-step transition followed by obsolete exit records unavailable-tool error',
+           :aggregate_failures do
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          state.record_state_activation!('fluxo_teste')
+
+          steps = [
+            gemini_step.call(
+              [
+                { functionCall: { name: 'exit_seguir_outro', args: {} } },
+                { functionCall: { name: 'exit_concluido', args: { resumo: 'Fechando antes da hora' } } }
+              ]
+            ),
+            gemini_step.call([{ text: 'Transição realizada com sucesso.' }])
+          ]
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(*steps)
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          tool_calls = response.parsed_body['tool_calls']
+          expect(tool_calls.size).to eq(2)
+          expect(tool_calls[0]['tool_name']).to eq('exit_seguir_outro')
+          expect(tool_calls[1]['tool_name']).to eq('exit_concluido')
+          expect(tool_calls[1].dig('result', 'error')).to include("Model tried to call unavailable tool 'exit_concluido'")
+
+          expect(state.reload.active_playbook).to eq('outro_procedimento')
+          expect(state.last_exit).to be_nil
+        end
+
+        it 'verifies FR-011 and Edge Cases: third transition in one turn returns TRANSITION_LIMIT_ERROR and sets handoff_limit_reached_at',
+           :aggregate_failures do
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          state.record_state_activation!('fluxo_teste')
+
+          steps = [
+            gemini_step.call([{ functionCall: { name: 'exit_seguir_outro', args: {} } }]),
+            gemini_step.call([{ functionCall: { name: 'exit_voltar_teste', args: {} } }]),
+            gemini_step.call([{ functionCall: { name: 'exit_seguir_outro', args: {} } }]),
+            gemini_step.call([{ text: 'Limite de transições atingido, encerrando atendimento.' }])
+          ]
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(*steps)
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          tool_calls = response.parsed_body['tool_calls']
+          expect(tool_calls.size).to eq(3)
+          expect(tool_calls[0]['tool_name']).to eq('exit_seguir_outro')
+          expect(tool_calls[1]['tool_name']).to eq('exit_voltar_teste')
+          expect(tool_calls[2]['tool_name']).to eq('exit_seguir_outro')
+
+          expected_limit_error = format(Custom::ScoutV2::Exits::Transition::TRANSITION_LIMIT_ERROR, target: 'outro_procedimento')
+          expect(tool_calls[2].dig('result', 'error')).to eq(expected_limit_error)
+
+          expect(state.reload.handoff_limit_reached_at).to be_present
+          expect(state.active_playbook).to eq('fluxo_teste')
+          expect(state.activation_reason).to eq('transition')
+          expect(state.transition_count).to eq(2)
+          expect(state.last_exit).to be_nil
+
+          tools_req2 = provider_requests[2].dig('tools', 0, 'functionDeclarations')
+          tools_req3 = provider_requests[3].dig('tools', 0, 'functionDeclarations')
+          expect(tools_req3).to eq(tools_req2)
+        end
+      end
+
+      context 'with Scout V2 tool catalog and stage moves (US3)' do
+        around do |example|
+          Dir.mktmpdir('scout_v2_us3_catalog') do |tmp_dir|
+            File.write(File.join(tmp_dir, 'fluxo_ambos.md'), <<~MD)
+              ---
+              name: fluxo_ambos
+              title: Fluxo com ambos os tools
+              priority: 20
+              when_state:
+                - opportunity_open
+              trigger: Ambos os tools disponiveis.
+              tools: [update_contact, manage_opportunity]
+              exits:
+                fechar:
+                  kind: terminal
+                  stage: qualified
+              ---
+              Passos com ambos.
+            MD
+
+            File.write(File.join(tmp_dir, 'pausa.md'), <<~MD)
+              ---
+              name: pausa
+              title: Pausa
+              priority: 50
+              trigger: Pausar atendimento.
+              ---
+              Pausa situacional.
+            MD
+
+            with_modified_env SCOUT_V2_PLAYBOOKS_DIR: tmp_dir do
+              example.run
+            end
+          end
+        end
+
+        it 'verifies US3-AS1, SC-006, and US3-AS5: removed tools never offered with nothing pinned, after mid-turn open, or after takeover',
+           :aggregate_failures do
+          steps = [
+            gemini_step.call([{ functionCall: { name: 'open_playbook', args: { name: 'fluxo_ambos' } } }]),
+            gemini_step.call([{ functionCall: { name: 'open_playbook', args: { name: 'pausa' } } }]),
+            gemini_step.call([{ text: 'Atendimento pausado.' }])
+          ]
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(*steps)
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          expect(provider_requests.size).to eq(3)
+
+          provider_requests.each do |req|
+            tool_names = req.dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
+            expect(tool_names).not_to include('move_opportunity_stage', 'handover_to_human', 'call_custom_api')
+          end
+
+          # Request 0: nothing pinned
+          req0_names = provider_requests[0].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
+          expect(req0_names).to include('search_knowledge_base', 'exit_handoff', 'open_playbook')
+          expect(req0_names).not_to include('manage_opportunity', 'update_contact', 'exit_fechar')
+
+          # Request 1: after mid-turn procedure open
+          req1_tools = provider_requests[1].dig('tools', 0, 'functionDeclarations') || []
+          req1_names = req1_tools.map { |f| f['name'] }
+          expect(req1_names).to include('manage_opportunity', 'update_contact', 'exit_fechar', 'exit_handoff')
+          manage_decl = req1_tools.find { |f| f['name'] == 'manage_opportunity' }
+          expect(manage_decl.dig('parameters', 'properties')&.keys).not_to include('stage_id')
+
+          # Request 2: after situational takeover
+          req2_names = provider_requests[2].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
+          expect(req2_names).to include('search_knowledge_base', 'exit_handoff', 'open_playbook')
+          expect(req2_names).not_to include('manage_opportunity', 'update_contact', 'exit_fechar')
+        end
+
+        it 'verifies US3-AS2, US3-AS3, and US1-AS6: stage move with missing required fields fails, succeeds after fill without closing instruction',
+           :aggregate_failures do
+          orcamento_def = CustomAttributeDefinition.create!(
+            account: account,
+            attribute_key: 'orcamento',
+            attribute_display_name: 'Orçamento',
+            attribute_model: 'opportunity_attribute',
+            attribute_display_type: 'number'
+          )
+          ScoutRequiredField.create!(scout: scout, custom_attribute_definition: orcamento_def)
+
+          opportunity = Opportunity.create!(
+            account: account,
+            contact: sandbox_conversation.contact,
+            active_conversation: sandbox_conversation,
+            origin_conversation: sandbox_conversation,
+            title: 'Negócio Sandbox',
+            pipeline_stage: lead_stage
+          )
+
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          state.record_state_activation!('fluxo_ambos')
+
+          steps = [
+            gemini_step.call([{ functionCall: { name: 'exit_fechar', args: {} } }]),
+            gemini_step.call(
+              [
+                { functionCall: {
+                  name: 'manage_opportunity',
+                  args: { action: 'update', opportunity_id: opportunity.id, custom_attributes: { 'orcamento' => '5000' } }
+                } },
+                { functionCall: { name: 'exit_fechar', args: {} } }
+              ]
+            ),
+            gemini_step.call([{ text: 'Oportunidade qualificada com sucesso!' }])
+          ]
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(*steps)
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          tool_calls = response.parsed_body['tool_calls']
+          expect(tool_calls.size).to eq(3)
+
+          # First exit attempt failed due to missing orcamento
+          expect(tool_calls[0]['tool_name']).to eq('exit_fechar')
+          expect(tool_calls[0]['result']['error']).to include('Orçamento')
+
+          # Second attempt succeeded after filling orcamento
+          expect(tool_calls[1]['tool_name']).to eq('manage_opportunity')
+          expect(tool_calls[2]['tool_name']).to eq('exit_fechar')
+          expect(tool_calls[2]['result']).to eq("Desfecho 'fechar' registrado. Escreva agora sua resposta final ao cliente.")
+          expect(tool_calls[2]['result']).not_to include('sem perguntas')
+          expect(tool_calls[2]['result']).not_to include('encerramento')
+
+          expect(opportunity.reload.pipeline_stage_id).to eq(qualified_stage.id)
+          expect(state.reload.last_exit).to eq('fechar')
+        end
+
+        it 'verifies FR-014 and Edge Cases: stage-declaring exit errors when no active opportunity exists' do
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          state.record_state_activation!('fluxo_ambos')
+
+          steps = [
+            gemini_step.call([{ functionCall: { name: 'exit_fechar', args: {} } }]),
+            gemini_step.call([{ text: 'Não foi possível mover o estágio pois não há oportunidade.' }])
+          ]
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(*steps)
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          tool_calls = response.parsed_body['tool_calls']
+          expect(tool_calls.size).to eq(1)
+          expect(tool_calls[0]['tool_name']).to eq('exit_fechar')
+          expect(tool_calls[0].dig('result', 'error')).to eq('A oportunidade não pode mudar de estágio: a conversa não tem oportunidade.')
+
+          expect(state.reload.last_exit).to be_nil
+        end
+
+        it 'verifies FR-014 and Edge Cases: stage-declaring exit errors when scout qualified_stage is unset' do
+          scout.update!(qualified_stage: nil)
+          opportunity = Opportunity.create!(
+            account: account,
+            contact: sandbox_conversation.contact,
+            active_conversation: sandbox_conversation,
+            origin_conversation: sandbox_conversation,
+            title: 'Negócio Sandbox',
+            pipeline_stage: lead_stage
+          )
+
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          state.record_state_activation!('fluxo_ambos')
+
+          steps = [
+            gemini_step.call([{ functionCall: { name: 'exit_fechar', args: {} } }]),
+            gemini_step.call([{ text: 'Não foi possível mover o estágio pois o estágio não está configurado.' }])
+          ]
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(*steps)
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          tool_calls = response.parsed_body['tool_calls']
+          expect(tool_calls.size).to eq(1)
+          expect(tool_calls[0]['tool_name']).to eq('exit_fechar')
+          expected_error = "A oportunidade não pode mudar de estágio: o estágio 'qualified' não está configurado para este assistente."
+          expect(tool_calls[0].dig('result', 'error')).to eq(expected_error)
+
+          expect(opportunity.reload.pipeline_stage_id).to eq(lead_stage.id)
+          expect(state.reload.last_exit).to be_nil
+        end
+
+        it 'verifies FR-014 and US3-AS3: stage move sees opportunity created earlier in same turn',
+           :aggregate_failures do
+          steps = [
+            gemini_step.call([{ functionCall: { name: 'open_playbook', args: { name: 'fluxo_ambos' } } }]),
+            gemini_step.call([{ functionCall: { name: 'manage_opportunity', args: { action: 'create', title: 'Oportunidade Nova' } } }]),
+            gemini_step.call([{ functionCall: { name: 'exit_fechar', args: {} } }]),
+            gemini_step.call([{ text: 'Oportunidade criada e qualificada com sucesso.' }])
+          ]
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(*steps)
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          expect(state.reload.last_exit).to eq('fechar')
+
+          opp = sandbox_conversation.reload_active_opportunity
+          expect(opp).to be_present
+          expect(opp.title).to eq('Oportunidade Nova')
+          expect(opp.pipeline_stage_id).to eq(qualified_stage.id)
+        end
+
+        it 'verifies US1-AS1, FR-001, and US3-AS1: system text order with pinned procedure and removed tools absent',
+           :aggregate_failures do
+          state = ScoutConversationState.for_conversation(sandbox_conversation)
+          state.record_state_activation!('fluxo_ambos')
+
+          steps = [
+            gemini_step.call([{ text: 'Continuando com fluxo ambos.' }])
+          ]
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(*steps)
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          expect(provider_requests.size).to eq(1)
+
+          system_text = provider_requests[0].dig('contents', 0, 'parts', 0, 'text')
+          index_pos = system_text.index('[Playbook Index]')
+          escalation_pos = system_text.index('[Escalation]')
+          body_pos = system_text.index('Passos com ambos.')
+
+          expect(index_pos).to be < escalation_pos
+          expect(escalation_pos).to be < body_pos
+
+          tool_names = provider_requests[0].dig('tools', 0, 'functionDeclarations')&.map { |f| f['name'] } || []
+          expect(tool_names).not_to include('move_opportunity_stage', 'handover_to_human', 'call_custom_api')
+        end
+      end
+
+      context 'with Scout V2 plain-text final reply and unreadable handling (US4)' do
+        it 'verifies US4-AS3 and FR-020: reply is plain text verbatim and no request sets response schema' do
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(gemini_step.call([{ text: 'Texto final do modelo sem schema.' }]))
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          expect(response.parsed_body['reply']).to eq('Texto final do modelo sem schema.')
+
+          generation_config = provider_requests[0]['generationConfig'] || {}
+          expect(generation_config['responseMimeType']).not_to eq('application/json')
+          expect(generation_config['responseSchema']).to be_nil
+        end
+
+        it 'verifies unreadable/whitespace reply with no escalation returns simulation error' do
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(gemini_step.call([{ text: '   ' }]))
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          expect(response.parsed_body['reply']).to eq('Erro ao executar simulação: Resposta final do modelo vazia ou ilegível.')
+          expect(response.parsed_body['error']).to eq('Resposta final do modelo vazia ou ilegível.')
+        end
+
+        it 'verifies unreadable reply after exit_handoff returns standard handoff message and keeps last_exit' do
+          stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
+            .with { |req| provider_requests << JSON.parse(req.body) }
+            .to_return(
+              gemini_step.call([{ functionCall: { name: 'exit_handoff', args: { reason: 'Preciso de ajuda humana' } } }]),
+              gemini_step.call([{ text: '' }])
+            )
+
+          post "/api/v1/accounts/#{account.id}/scouts/#{scout.id}/playground_messages",
+               params: valid_params,
+               headers: agent.create_new_auth_token
+
+          expect(response).to have_http_status(:ok)
+          expect(response.parsed_body['reply']).to eq(I18n.t('conversations.scout.handoff'))
+          state = ScoutConversationState.find_by(conversation_id: sandbox_conversation.id)
+          expect(state&.last_exit).to eq('handoff')
         end
       end
     end

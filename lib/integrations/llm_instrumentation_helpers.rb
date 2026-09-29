@@ -66,9 +66,24 @@ module Integrations::LlmInstrumentationHelpers
 
     return attrs unless params[:metadata].is_a?(Hash)
 
+    # Create combined metadata JSON for trace.metadata (only trace-relevant scalar fields)
+    # Include only fields relevant to execution trace: playbook, activation_reason
+    trace_relevant_keys = %w[playbook activation_reason]
+    metadata_for_trace = {}
     params[:metadata].each do |key, value|
-      attrs[format(ATTR_LANGFUSE_METADATA, key)] = value.to_s
+      # Convert value to appropriate format for JSON serialization
+      if value.is_a?(Hash) || value.is_a?(Array)
+        # For nested structures, set individual attribute with JSON
+        attrs[format(ATTR_LANGFUSE_METADATA, key)] = value.to_json
+      else
+        # For scalars, add to combined metadata only if trace-relevant, and always as individual attribute
+        metadata_for_trace[key] = value if trace_relevant_keys.include?(key.to_s)
+        attrs[format(ATTR_LANGFUSE_METADATA, key)] = value.to_s
+      end
     end
+
+    # Set combined metadata JSON (contains only scalar top-level fields)
+    attrs[ATTR_LANGFUSE_METADATA_ROOT] = metadata_for_trace.to_json if metadata_for_trace.present?
 
     attrs
   end

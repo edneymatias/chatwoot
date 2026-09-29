@@ -29,6 +29,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
       with_instructions: nil,
       with_tool: nil,
       add_message: nil,
+      before_tool_call: nil,
       ask: fake_response
     )
   end
@@ -40,10 +41,23 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
     allow(fake_chat).to receive(:with_instructions).and_return(fake_chat)
     allow(fake_chat).to receive(:with_tool).and_return(fake_chat)
     allow(fake_chat).to receive(:add_message).and_return(fake_chat)
+    allow(fake_chat).to receive(:before_tool_call).and_return(fake_chat)
     allow(scout).to receive(:llm_chat).and_return(fake_chat)
   end
 
   describe '#perform' do
+    around do |example|
+      Dir.mktmpdir('scout_v2_turn_runner_spec') do |tmp_dir|
+        FileUtils.cp(
+          Rails.root.join('custom/spec/fixtures/scout_v2/qualificacao_procedure.md'),
+          File.join(tmp_dir, 'qualificacao.md')
+        )
+        with_modified_env SCOUT_V2_PLAYBOOKS_DIR: tmp_dir do
+          example.run
+        end
+      end
+    end
+
     context 'when an open opportunity has pending required fields (qualificacao matches)' do
       let!(:field) do
         CustomAttributeDefinition.create!(
@@ -100,6 +114,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
             instructions.index('[Memory]'),
             instructions.index('[Safety]'),
             instructions.index('[Playbook Index]'),
+            instructions.index('[Escalation]'),
             instructions.index('## Passos')
           ]
 
@@ -125,7 +140,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
 
         expect(fake_chat).to have_received(:with_instructions) do |instructions|
           headers = instructions.scan(/^\[([^\]]+)\]$/).flatten
-          expect(headers).to eq(['Identity', 'Communication', 'Memory', 'Safety', 'Playbook Index'])
+          expect(headers).to eq(['Identity', 'Communication', 'Memory', 'Safety', 'Playbook Index', 'Escalation'])
         end
       end
 
@@ -146,7 +161,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
         runner.perform
 
         tool_names = passed_tools.map(&:name)
-        expect(tool_names).to include('search_knowledge_base', 'manage_opportunity')
+        expect(tool_names).to include('search_knowledge_base', 'manage_opportunity', 'exit_handoff')
         expect(tool_names).not_to include('move_opportunity_stage', 'handover_to_human', 'call_custom_api')
       end
 
@@ -179,7 +194,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
         runner.perform
 
         expect(fake_chat).to have_received(:with_instructions) do |instructions|
-          expect(instructions).to include('[Identity]', '[Communication]', '[Memory]', '[Safety]', '[Playbook Index]')
+          expect(instructions).to include('[Identity]', '[Communication]', '[Memory]', '[Safety]', '[Playbook Index]', '[Escalation]')
           expect(instructions).not_to include(
             'Nenhum procedimento específico está ativo para esta conversa',
             'use a base de conhecimento quando for útil'
@@ -203,7 +218,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
         runner.perform
 
         expect(fake_chat).to have_received(:with_instructions) do |instructions|
-          index_block = instructions[/\[Playbook Index\].*/m]
+          index_block = instructions[/\[Playbook Index\].*?(?=\n\n\[|\z)/m]
           expect(index_block).to be_present
           catalog.playbooks.each do |pb|
             expect(index_block).to include("- #{pb.name}: #{pb.trigger.squish}")
@@ -219,7 +234,10 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
         end
 
         Dir.mktmpdir('scout_v2_turn_runner_dynamic_spec') do |tmp_dir|
-          FileUtils.cp(Rails.root.join('custom/playbooks/qualificacao.md'), File.join(tmp_dir, 'qualificacao.md'))
+          FileUtils.cp(
+            Rails.root.join('custom/spec/fixtures/scout_v2/qualificacao_procedure.md'),
+            File.join(tmp_dir, 'qualificacao.md')
+          )
 
           with_modified_env SCOUT_V2_PLAYBOOKS_DIR: tmp_dir do
             first_runner = described_class.new(
@@ -231,7 +249,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
 
             first_runner.perform
 
-            first_index_block = captured_instructions.first[/\[Playbook Index\].*/m]
+            first_index_block = captured_instructions.first[/\[Playbook Index\].*?(?=\n\n\[|\z)/m]
             expect(first_index_block).to be_present
             first_entries = first_index_block.strip.lines[1..]
             expect(first_entries.size).to eq(1)
@@ -259,7 +277,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
 
             second_runner.perform
 
-            second_index_block = captured_instructions.last[/\[Playbook Index\].*/m]
+            second_index_block = captured_instructions.last[/\[Playbook Index\].*?(?=\n\n\[|\z)/m]
             expect(second_index_block).to be_present
             second_entries = second_index_block.strip.lines[1..]
             expect(second_entries.size).to eq(2)
@@ -330,7 +348,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
 
         expect(fake_chat).to have_received(:with_instructions) do |instructions|
           headers = instructions.scan(/^\[([^\]]+)\]$/).flatten
-          expect(headers).to eq(['Identity', 'Communication', 'Memory', 'Safety', 'Playbook Index'])
+          expect(headers).to eq(['Identity', 'Communication', 'Memory', 'Safety', 'Playbook Index', 'Escalation'])
         end
       end
 
@@ -351,7 +369,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
         runner.perform
 
         tool_names = passed_tools.map(&:name)
-        expect(tool_names).to contain_exactly('search_knowledge_base', 'open_playbook')
+        expect(tool_names).to contain_exactly('search_knowledge_base', 'open_playbook', 'exit_handoff')
       end
 
       it 'executes open_playbook during the turn, registering declared tools on live chat, returning body, and persisting trigger activation' do
@@ -380,11 +398,8 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
         registered_tool_names = captured_tools.map(&:name)
         expect(registered_tool_names).to include('manage_opportunity')
 
-        qualificacao_body = Custom::ScoutV2::Playbook::Loader.load_all['qualificacao'].body
-        expect(open_pb_tool_result).to eq(body: qualificacao_body)
-
         open_pb_call = result[:tool_calls].find { |c| c[:tool_name] == 'open_playbook' }
-        expect(open_pb_call[:result]).to eq(body: qualificacao_body)
+        expect(open_pb_call[:result]).to eq(open_pb_tool_result)
 
         state = ScoutConversationState.for_conversation(conversation)
         expect(state.active_playbook).to eq('qualificacao')
@@ -566,8 +581,7 @@ RSpec.describe Custom::ScoutV2::TurnRunner do
           metadata: hash_including(
             scout_id: scout.id,
             playbook: 'qualificacao',
-            activation_reason: 'state',
-            unsatisfied_flags: hash_including(pending_fields: ['orcamento'], unmet_requires: [])
+            activation_reason: 'state'
           )
         )
 

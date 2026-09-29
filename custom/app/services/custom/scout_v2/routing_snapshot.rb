@@ -3,7 +3,8 @@
 Custom::ScoutV2::RoutingSnapshot = Data.define(
   :conversation, :contact, :inbox, :scout, :opportunity,
   :opportunity_stage_role, :pending_fields, :active_playbook,
-  :transitions, :satisfied_capabilities
+  :transitions, :satisfied_capabilities, :completed_playbooks,
+  :satisfied_business_facts
 ) do
   def initialize(**attrs)
     super(
@@ -16,7 +17,9 @@ Custom::ScoutV2::RoutingSnapshot = Data.define(
       pending_fields: (attrs[:pending_fields] || []).freeze,
       active_playbook: attrs[:active_playbook],
       transitions: attrs[:transitions] || 0,
-      satisfied_capabilities: (attrs[:satisfied_capabilities] || []).freeze
+      satisfied_capabilities: (attrs[:satisfied_capabilities] || []).freeze,
+      completed_playbooks: (attrs[:completed_playbooks] || []).freeze,
+      satisfied_business_facts: (attrs[:satisfied_business_facts] || []).freeze
     )
   end
 end

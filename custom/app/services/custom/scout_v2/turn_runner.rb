@@ -38,8 +38,15 @@ class Custom::ScoutV2::TurnRunner
 
     attachments = extract_attachment_urls(last_user_message)
     response = execute_chat(chat, decision, ctx, attachments)
+    persist_unsatisfied_items!
 
-    { reply: response&.content.to_s, tool_calls: recorded_tool_calls }
+    reply = response&.content.to_s
+    if reply.blank?
+      return handle_unreadable_output unless @turn_scope.ended?
+      return { reply: I18n.t('conversations.scout.handoff'), tool_calls: recorded_tool_calls } if @turn_scope.escalated?
+    end
+
+    { reply: reply, tool_calls: recorded_tool_calls }
   end
 
   def playground?
@@ -73,42 +80,33 @@ class Custom::ScoutV2::TurnRunner
   def build_instructions(playbook, ctx, openable)
     blocks = [
       Custom::ScoutV2::Instructions::Builder.call(scout: @scout),
-      Custom::ScoutV2::Playbook::IndexBuilder.call(openable)
+      Custom::ScoutV2::Playbook::IndexBuilder.call(openable),
+      Custom::ScoutV2::Instructions::Builder::ESCALATION_SECTION
     ]
-
-    if playbook.present?
-      body = playbook.body.strip
-      pending = Custom::ScoutV2::Playbook::PendingFieldsFormatter.call(account_id: @conversation.account_id, pending_keys: ctx.pending_fields)
-      blocks << (pending.present? ? "#{body}\n\n#{pending}" : body)
-    end
+    blocks << Custom::ScoutV2::Playbook::ContentBuilder.call(playbook: playbook, ctx: ctx) if playbook.present?
 
     blocks.join("\n\n")
   end
 
   def setup_chat(decision, ctx, catalog)
     openable = Custom::ScoutV2::Playbook::OpenableSet.call(catalog: catalog, pinned: decision.playbook)
-    chat = @scout.llm_chat.with_instructions(build_instructions(decision.playbook, ctx, openable))
-    build_tools(decision, openable, chat).each { |tool| chat.with_tool(wrap_tool(tool, simulated: false)) }
-    chat
-  end
+    baseline_instructions = build_instructions(nil, ctx, openable)
+    instructions = decision.playbook.present? ? build_instructions(decision.playbook, ctx, openable) : baseline_instructions
+    chat = @scout.llm_chat.with_instructions(instructions)
 
-  # open_playbook is offered iff the openable set is non-empty (FR-004) — the full catalog when no procedure is pinned,
-  # or situational playbooks when a procedure is pinned; it keeps the live chat so its tools join the same chat.ask loop.
-  def build_tools(decision, openable, chat)
-    always_on_tools = [Custom::Scout::Tools::SearchKnowledgeBase.new(@scout, @conversation, playground: false)]
-    tools = always_on_tools.dup
-    tools.concat(Custom::ScoutV2::Tools::Registry.build(decision.playbook.tools, scout: @scout, conversation: @conversation)) if decision.playbook
-    if openable.any?
-      turn_setup = Custom::ScoutV2::Tools::OpenPlaybook::TurnSetup.new(
-        baseline_instructions: build_instructions(nil, nil, openable),
-        baseline_tools: always_on_tools,
-        tool_wrapper: ->(tool) { wrap_tool(tool, simulated: false) }
-      )
-      tools << Custom::ScoutV2::Tools::OpenPlaybook.new(
-        @scout, @conversation, chat: chat, openable: openable, turn_setup: turn_setup
-      )
-    end
-    tools
+    # Wire real TurnScope with all initialization infrastructure
+    tool_wrapper = proc { |tool| wrap_tool(tool, simulated: false) }
+    scope = Custom::ScoutV2::TurnScope.new(
+      chat: chat,
+      catalog: catalog,
+      baseline_instructions: baseline_instructions,
+      tool_wrapper: tool_wrapper,
+      playground: @playground
+    )
+    scope.setup_initial_tools!(decision: decision, ctx: ctx, scout: @scout, conversation: @conversation, openable: openable)
+    @turn_scope = scope
+
+    chat
   end
 
   def add_history_to_chat(chat, last_user_message)
@@ -135,16 +133,39 @@ class Custom::ScoutV2::TurnRunner
   end
 
   def execute_chat(chat, decision, ctx, attachments)
-    params = instrumentation_params(chat, @message, decision, ctx)
+    params = instrumentation_params(chat, @message, decision)
 
     instrument_agent_session(params) do
-      instrument_llm_call(params) do
+      response = instrument_llm_call(params) do
         attachments.any? ? chat.ask(@message, with: attachments) : chat.ask(@message)
       end
+      @unsatisfied_items_record = Custom::ScoutV2::UnsatisfiedItems.trace!(
+        playbook: @turn_scope.catalog[@turn_scope.active_procedure_name],
+        conversation: @conversation,
+        scout: @scout,
+        ctx: ctx
+      )
+      response
     end
   end
 
-  def instrumentation_params(chat, prompt_text, decision, ctx)
+  def persist_unsatisfied_items!
+    return if @unsatisfied_items_record.blank?
+
+    conversation_state.record_unsatisfied_items!(@unsatisfied_items_record)
+  end
+
+  def handle_unreadable_output
+    error_msg = 'Resposta final do modelo vazia ou ilegível.'
+    if playground?
+      { reply: "Erro ao executar simulação: #{error_msg}", tool_calls: recorded_tool_calls, error: error_msg }
+    else
+      Custom::Scout::HandoffService.new(scout: @scout, conversation: @conversation).perform(message: nil, reason: error_msg)
+      { reply: '', tool_calls: recorded_tool_calls }
+    end
+  end
+
+  def instrumentation_params(chat, prompt_text, decision)
     config = ScoutAccountConfig.find_by(account_id: @scout.account_id)
 
     {
@@ -155,23 +176,17 @@ class Custom::ScoutV2::TurnRunner
       feature_name: 'scout_v2_turn_runner',
       model: config&.model_name || 'gemini-2.0-flash',
       messages: chat_message_history(chat, prompt_text),
-      metadata: metadata_for(decision, ctx)
+      metadata: metadata_for(decision)
     }
   end
 
-  def metadata_for(decision, ctx)
-    unsatisfied = {
-      pending_fields: ctx.pending_fields,
-      unmet_requires: (decision.playbook&.requires || []) - ctx.satisfied_capabilities
-    }
-
+  def metadata_for(decision)
     activation_reason = decision.playbook.present? ? conversation_state.activation_reason : nil
 
     {
       scout_id: @scout.id,
       playbook: decision.playbook&.name,
-      activation_reason: activation_reason,
-      unsatisfied_flags: unsatisfied
+      activation_reason: activation_reason
     }.compact
   end
 

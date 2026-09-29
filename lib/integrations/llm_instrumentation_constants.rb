@@ -23,6 +23,7 @@ module Integrations::LlmInstrumentationConstants
   ATTR_LANGFUSE_USER_ID = 'langfuse.user.id'
   ATTR_LANGFUSE_SESSION_ID = 'langfuse.session.id'
   ATTR_LANGFUSE_TAGS = 'langfuse.trace.tags'
+  ATTR_LANGFUSE_METADATA_ROOT = 'langfuse.trace.metadata'
   ATTR_LANGFUSE_METADATA = 'langfuse.trace.metadata.%s'
   ATTR_LANGFUSE_TRACE_INPUT = 'langfuse.trace.input'
   ATTR_LANGFUSE_TRACE_OUTPUT = 'langfuse.trace.output'

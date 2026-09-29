@@ -14,6 +14,10 @@ class Custom::ScoutV2::Instructions::Builder
     - Escopo comercial: Mantenha-se estritamente dentro do escopo comercial da empresa, recusando solicitações alheias a este domínio.
     - Base de conhecimento: Uma base de conhecimento corporativa está disponível para consulta com informações institucionais e comerciais.
   SECTION
+  ESCALATION_SECTION = <<~SECTION.strip.freeze
+    [Escalation]
+    Se o cliente solicitar falar com um agente humano, ou se a situação exigir conhecimento/autoridade além do seu escopo, ofereça transferência para o atendimento humano sem resistência. Reconheça os limites da automação e priorize a satisfação do cliente com handoff apropriado.
+  SECTION
 
   def self.call(scout:)
     [

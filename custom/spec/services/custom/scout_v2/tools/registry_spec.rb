@@ -7,14 +7,24 @@ RSpec.describe Custom::ScoutV2::Tools::Registry do
   let(:scout) { Scout.create!(account: account, name: 'Test Scout') }
   let(:conversation) { create(:conversation, account: account) }
 
+  describe 'TOOL_CLASSES' do
+    it 'maps exactly manage_opportunity to v2 subclass and update_contact, omitting stage-change and transfer tools' do
+      expect(described_class::TOOL_CLASSES.keys).to contain_exactly('manage_opportunity', 'update_contact')
+      expect(described_class::TOOL_CLASSES['manage_opportunity']).to eq(Custom::ScoutV2::Tools::ManageOpportunity)
+      expect(described_class::TOOL_CLASSES['update_contact']).to eq(Custom::Scout::Tools::UpdateContact)
+      expect(described_class::TOOL_CLASSES).not_to have_key('move_opportunity_stage')
+      expect(described_class::TOOL_CLASSES).not_to have_key('handover_to_human')
+      expect(described_class::TOOL_CLASSES).not_to have_key('call_custom_api')
+    end
+  end
+
   describe '.build' do
     it 'instantiates known tools' do
-      tools = described_class.build(['manage_opportunity'], scout: scout, conversation: conversation)
+      tools = described_class.build(%w[manage_opportunity update_contact], scout: scout, conversation: conversation)
 
-      expect(tools.size).to eq(1)
-      expect(tools.first).to be_a(Custom::Scout::Tools::ManageOpportunity)
-      expect(tools.first.scout).to eq(scout)
-      expect(tools.first.conversation).to eq(conversation)
+      expect(tools.size).to eq(2)
+      expect(tools.first).to be_a(Custom::ScoutV2::Tools::ManageOpportunity)
+      expect(tools.last).to be_a(Custom::Scout::Tools::UpdateContact)
     end
 
     it 'raises KeyError when given an unregistered tool name' do

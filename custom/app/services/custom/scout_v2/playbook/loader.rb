@@ -6,6 +6,7 @@
 # so a mistyped `SCOUT_V2_PLAYBOOKS_DIR` fails boot instead of loading zero playbooks.
 class Custom::ScoutV2::Playbook::Loader
   FRONTMATTER_PATTERN = /\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n(.*))?\z/m
+  ALLOWED_EXIT_KEYS = %w[kind fields target stage].freeze
 
   class << self
     def load_all(dir = ENV['SCOUT_V2_PLAYBOOKS_DIR'].presence || Rails.root.join('custom/playbooks'))
@@ -89,9 +90,48 @@ class Custom::ScoutV2::Playbook::Loader
   end
 
   def normalize_exits(raw_exits, load_errors)
-    return raw_exits if raw_exits.is_a?(Hash)
+    return {} if raw_exits.nil?
 
-    load_errors << "exits must be a mapping (got #{raw_exits.inspect})" unless raw_exits.nil?
-    {}
+    unless raw_exits.is_a?(Hash)
+      load_errors << "exits must be a mapping (got #{raw_exits.inspect})"
+      return {}
+    end
+
+    raw_exits.each_with_object({}) do |(exit_name, entry), result|
+      decl = build_exit_declaration(exit_name.to_s, entry, load_errors)
+      result[exit_name.to_s] = decl if decl
+    end
+  end
+
+  def build_exit_declaration(exit_name, entry, load_errors)
+    unless entry.is_a?(Hash)
+      load_errors << "Invalid exit '#{exit_name}': expected a mapping"
+      return nil
+    end
+
+    unknown_keys = entry.keys.map(&:to_s) - ALLOWED_EXIT_KEYS
+    unknown_keys.each { |key| load_errors << "Invalid exit '#{exit_name}': unknown key '#{key}'" }
+
+    fields = normalize_exit_fields(exit_name, entry['fields'], load_errors)
+    Custom::ScoutV2::Playbook::ExitDeclaration.new(
+      name: exit_name,
+      kind: entry['kind']&.to_s,
+      fields: fields,
+      target: entry['target']&.to_s,
+      stage: entry['stage']&.to_s
+    )
+  end
+
+  def normalize_exit_fields(exit_name, raw_fields, load_errors)
+    return {} if raw_fields.nil?
+
+    unless raw_fields.is_a?(Hash)
+      load_errors << "Invalid exit '#{exit_name}': fields must be a mapping"
+      return {}
+    end
+
+    raw_fields.each_with_object({}) do |(k, v), acc|
+      acc[k.to_s] = v.to_s
+    end
   end
 end

@@ -62,6 +62,7 @@ superfície de alucinação projetada, num caminho que escreve no ERP do cliente
 | 3 | Resolução por **registro**, não por factory de vendor: `CapabilityRegistry.resolve(:scheduling, account:)` | Quem satisfaz é detalhe de implementação; playbook e adapter não se conhecem (design §4.5) |
 | 4 | O adapter injeta credenciais e IDs de configuração; o modelo vê **só** `date`, `service`, `slot_id` e afins | Remove a superfície de alucinação medida na tabela do §1 |
 | 5 | **`ScoutTool` não participa do v2** neste corte; `call_custom_api` morre | Sem capability, a tool é contrato instável para a playbook. Provider HTTP de capability é o item 6.1 do design, com gatilho declarado: primeiro cliente sem adapter para a capability de que precisa (design decisão 4) |
+| 6 | O telefone de `customer_registry` vem do **registro do contato**, injetado pelo adapter como os IDs de configuração; o modelo não o fornece | Desde o esclarecimento do brief 06, o lead pode recusar o telefone e `identificacao` não volta na mesma conversa (design §4.4, `completed_playbooks`), e `qualificado` é transição direta para `agendamento` (design §6, Fase 1) — pinagem por transição não exige `contact_has_phone`. Então lead qualificado sem telefone **chega** a `agendamento`. Com o telefone vindo do contato, esse caso falha na entrada, antes da requisição, em vez de depender de o modelo não inventar um número |
 
 ## 5. Escopo preliminar
 
@@ -71,12 +72,15 @@ superfície de alucinação projetada, num caminho que escreve no ERP do cliente
   ... output ... end`.
 - `capabilities/scheduling.rb`: `list_slots(date, service?)` → lista com `slot_id`/`starts_at`;
   `book(slot_id, notes?)` → `appointment_id`.
-- `capabilities/customer_registry.rb`: `find_by_phone(phone)`; `create(...)`.
+- `capabilities/customer_registry.rb`: `find_by_phone`; `create(...)` — telefone injetado do
+  registro do contato pelo adapter, não recebido do modelo (decisão 6).
 - `custom/app/services/erp/younus/client.rb` + `adapter.rb`: 4 métodos novos cobrindo os endpoints
   da tabela do §1, com `idEmpresa`/`idUsuario`/`idConvenio`/`idAgenda`/`idServico` vindos das
   settings do hook, não do modelo.
 - `custom/playbooks/agendamento.md`: passos completos (cadastro → horários → reserva → confirmação
-  → exit), sem pendência.
+  → exit), sem pendência. O `when_state` já traz `playbook_not_completed(agendamento)` desde o
+  brief 06 (escalação também conclui o procedimento, design §4.4); aqui ele passa a cobrir também
+  `agendado`/`sem_horario`, alcançáveis pela primeira vez, sem mudança no arquivo.
 - Exposição das capabilities resolvidas ao modelo como tools, só com a playbook ativa (mecanismo do
   brief 04).
 
@@ -111,12 +115,20 @@ superfície de alucinação projetada, num caminho que escreve no ERP do cliente
 
 ### US3 — Agendamento ponta a ponta no playground
 
-- Lead qualificado com telefone: `agendamento` ativa por estado, localiza ou cria o cadastro,
-  oferece **no máximo três** horários em linguagem natural, reserva o escolhido e encerra em
-  `exit_agendado` com `opportunity_id` e `starts_at` preenchidos.
+- Lead qualificado com telefone: `agendamento` entra por transição do exit `qualificado`, no mesmo
+  turno da qualificação, localiza ou cria o cadastro, oferece **no máximo três** horários em
+  linguagem natural, reserva o escolhido e encerra em `exit_agendado` com `opportunity_id` e
+  `starts_at` preenchidos.
 - Sem horário na janela pedida, oferece a próxima data disponível; recusadas todas, encerra em
   `exit_sem_horario` com motivo.
 - Pedido de atendente, urgência clínica ou duas falhas de cadastro encerram em `exit_handoff`.
+- Depois de `exit_agendado`, `exit_sem_horario` ou `exit_handoff`, a mensagem seguinte do lead na
+  mesma conversa — inclusive depois de o humano devolver a conversa — não refixa `agendamento`, nem
+  oferece horários de novo.
+- Lead qualificado **sem** telefone (recusou ou ignorou o pedido em `identificacao`): `agendamento`
+  entra pela transição de `qualificado` mesmo assim; nenhuma chamada a `customer_registry` sai sem
+  telefone do contato, e a playbook encerra em `exit_handoff` com motivo de telefone ausente, no
+  mesmo turno, sem pedir o telefone de novo (`agendamento` não tem `update_contact`).
 - O IDs enviados ao ERP vêm do hook, verificável no registro da chamada.
 - `exit_agendado` é impossível sem que `scheduling.book` tenha rodado — a asserção que substitui o
   `ClaimConsistencyService` nesse caminho (design §4.6).
@@ -130,6 +142,8 @@ superfície de alucinação projetada, num caminho que escreve no ERP do cliente
 - `custom/spec/services/erp/younus/client_spec.rb` (extensão): os 4 métodos novos, com IDs de
   configuração injetados e não recebidos por parâmetro.
 - Flow test de `agendamento` com capabilities dubladas: caminho feliz, sem horário, e handoff.
+- Flow test de `agendamento` alcançada pela transição de `qualificado` com lead sem telefone: nenhuma
+  requisição ao ERP, desfecho `exit_handoff` no mesmo turno.
 - Verificação no playground contra o hook real, conferindo os IDs enviados.
 
 ---

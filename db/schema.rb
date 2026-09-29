@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2126_09_27_000000) do
+ActiveRecord::Schema[7.2].define(version: 2126_09_28_000000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1301,6 +1301,7 @@ ActiveRecord::Schema[7.2].define(version: 2126_09_27_000000) do
     t.jsonb "unsatisfied_flags", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "completed_playbooks", default: [], null: false
     t.index ["account_id"], name: "index_ichatr_scout_conversation_states_on_account_id"
     t.index ["conversation_id"], name: "index_ichatr_scout_conversation_states_on_conversation_id", unique: true
   end

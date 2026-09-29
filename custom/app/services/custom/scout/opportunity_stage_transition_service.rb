@@ -12,11 +12,16 @@ class Custom::Scout::OpportunityStageTransitionService
 
   attr_reader :handoff_needed
 
+  def moved?
+    @moved == true
+  end
+
   def initialize(scout:, conversation:, opportunity:)
     @scout = scout
     @conversation = conversation
     @opportunity = opportunity
     @handoff_needed = false
+    @moved = false
   end
 
   def call(stage_id:)
@@ -33,6 +38,7 @@ class Custom::Scout::OpportunityStageTransitionService
     @opportunity.pipeline_stage_id = stage.id
 
     if @opportunity.save
+      @moved = true
       handle_post_save_handoff
       build_success_message(stage)
     else

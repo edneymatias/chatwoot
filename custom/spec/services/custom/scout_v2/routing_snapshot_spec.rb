@@ -47,6 +47,16 @@ RSpec.describe Custom::ScoutV2::RoutingSnapshot do
       expect(snapshot.satisfied_capabilities).to eq([])
       expect(snapshot.satisfied_capabilities).to be_frozen
     end
+
+    it 'defaults completed_playbooks to a frozen empty array' do
+      expect(snapshot.completed_playbooks).to eq([])
+      expect(snapshot.completed_playbooks).to be_frozen
+    end
+
+    it 'defaults satisfied_business_facts to a frozen empty array' do
+      expect(snapshot.satisfied_business_facts).to eq([])
+      expect(snapshot.satisfied_business_facts).to be_frozen
+    end
   end
 
   describe 'explicit values' do
@@ -90,19 +100,37 @@ RSpec.describe Custom::ScoutV2::RoutingSnapshot do
     it 'freezes passed arrays' do
       fields = %w[email phone]
       caps = %w[search]
-      snapshot = described_class.new(pending_fields: fields, satisfied_capabilities: caps)
+      completed = %w[identificacao]
+      facts = %w[politica_reagendamento]
+      snapshot = described_class.new(
+        pending_fields: fields,
+        satisfied_capabilities: caps,
+        completed_playbooks: completed,
+        satisfied_business_facts: facts
+      )
 
       expect(snapshot.pending_fields).to be_frozen
       expect(snapshot.satisfied_capabilities).to be_frozen
+      expect(snapshot.completed_playbooks).to be_frozen
+      expect(snapshot.satisfied_business_facts).to be_frozen
     end
 
-    it 'coerces nil arrays to frozen empty arrays' do
-      snapshot = described_class.new(pending_fields: nil, satisfied_capabilities: nil)
+    it 'coerces nil arrays to frozen empty arrays', :aggregate_failures do
+      snapshot = described_class.new(
+        pending_fields: nil,
+        satisfied_capabilities: nil,
+        completed_playbooks: nil,
+        satisfied_business_facts: nil
+      )
 
       expect(snapshot.pending_fields).to eq([])
       expect(snapshot.pending_fields).to be_frozen
       expect(snapshot.satisfied_capabilities).to eq([])
       expect(snapshot.satisfied_capabilities).to be_frozen
+      expect(snapshot.completed_playbooks).to eq([])
+      expect(snapshot.completed_playbooks).to be_frozen
+      expect(snapshot.satisfied_business_facts).to eq([])
+      expect(snapshot.satisfied_business_facts).to be_frozen
     end
   end
 

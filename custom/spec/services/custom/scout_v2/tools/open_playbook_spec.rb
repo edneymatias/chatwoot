@@ -7,9 +7,8 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
     described_class.new(
       scout,
       conversation,
-      chat: chat,
       openable: openable,
-      turn_setup: turn_setup
+      scope: scope
     )
   end
 
@@ -75,10 +74,11 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
   let(:baseline_tools) { [Custom::Scout::Tools::SearchKnowledgeBase.new(scout, conversation, playground: false)] }
   let(:tool_wrapper) { ->(t) { Object.new.extend(Custom::Scout::Tools::CallRecorder).wrap_tool(t, simulated: false) } }
   let(:chat) { scout.llm_chat }
-  let(:turn_setup) do
-    Custom::ScoutV2::Tools::OpenPlaybook::TurnSetup.new(
+  let(:scope) do
+    Custom::ScoutV2::TurnScope.new(
+      chat: chat,
+      catalog: openable,
       baseline_instructions: baseline_instructions,
-      baseline_tools: baseline_tools,
       tool_wrapper: tool_wrapper
     )
   end
@@ -86,6 +86,15 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
   before do
     account.enable_features!('scout', 'scout_v2', 'opportunities')
     ScoutAccountConfig.create!(account_id: account.id, api_key: 'test-key', model_name: 'gemini-2.0-flash')
+    ctx = Custom::ScoutV2::RoutingSnapshot::Builder.call(conversation: conversation, catalog: openable)
+    decision = Custom::ScoutV2::Router.call(ctx, openable)
+    scope.setup_initial_tools!(
+      decision: decision,
+      ctx: ctx,
+      scout: scout,
+      conversation: conversation,
+      openable: openable.playbooks
+    )
   end
 
   describe '#name' do
@@ -109,7 +118,7 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
 
         expect(result[:error]).to include('Playbook desconhecida: inexistente')
         expect(result[:error]).to include('Disponíveis: pausa, duvida_comercial, qualificacao')
-        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity)
+        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity, :exit_handoff)
         expect(chat.messages.first.content.to_s).to eq('PROCEDURE BODY')
         state = ScoutConversationState.for_conversation(conversation)
         expect(state.active_playbook).to eq('qualificacao')
@@ -125,7 +134,7 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
           expect(result).to eq(
             error: 'Playbook desconhecida: qualificacao. Disponíveis: duvida_comercial, pausa'
           )
-          expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity)
+          expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity, :exit_handoff)
           expect(chat.messages.first.content.to_s).to eq('PROCEDURE BODY')
 
           state = ScoutConversationState.for_conversation(conversation)
@@ -142,7 +151,7 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
 
         expect(result).to eq({ body: pausa.body })
         expect(chat.messages.first.content.to_s).to eq(baseline_instructions)
-        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook)
+        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :exit_handoff)
         expect(state.reload.attributes).to eq(initial_state_attributes)
       end
 
@@ -154,7 +163,7 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
 
         expect(result).to eq({ body: duvida_comercial.body })
         expect(chat.messages.first.content.to_s).to eq(baseline_instructions)
-        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity)
+        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity, :exit_handoff)
         expect(chat.tools[:manage_opportunity]).to be_a(Custom::Scout::Tools::ManageOpportunity)
         expect(chat.tools[:manage_opportunity]).not_to equal(initial_procedure_tool)
         expect(state.reload.attributes).to eq(initial_state_attributes)
@@ -169,16 +178,16 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
 
       it 'updates available tools on each consecutive takeover without accumulation' do
         tool.execute(name: 'pausa')
-        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook)
+        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :exit_handoff)
 
         tool.execute(name: 'duvida_comercial')
-        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity)
+        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity, :exit_handoff)
 
         tool.execute(name: 'pausa')
-        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook)
+        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :exit_handoff)
 
         tool.execute(name: 'pausa')
-        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook)
+        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :exit_handoff)
       end
     end
 
@@ -199,7 +208,7 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
 
         expect(result).to eq({ body: pausa.body })
         expect(chat.messages.first.content.to_s).to eq(baseline_instructions)
-        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook)
+        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :exit_handoff)
         expect(ScoutConversationState.where(conversation_id: conversation.id)).to be_empty
       end
 
@@ -209,7 +218,7 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
 
           expect(result).to eq({ body: qualificacao.body })
           expect(chat.messages.first.content.to_s).to eq('INITIAL')
-          expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity)
+          expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity, :exit_handoff)
 
           state = ScoutConversationState.for_conversation(conversation)
           expect(state.active_playbook).to eq('qualificacao')
@@ -222,7 +231,7 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
         tool.execute(name: 'qualificacao')
         tool.execute(name: 'pausa')
 
-        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook)
+        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :exit_handoff)
         state = ScoutConversationState.for_conversation(conversation)
         expect(state.active_playbook).to eq('qualificacao')
         expect(state.activation_reason).to eq('trigger')
@@ -232,7 +241,7 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
         tool.execute(name: 'pausa')
         tool.execute(name: 'qualificacao')
 
-        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity)
+        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :manage_opportunity, :exit_handoff)
         state = ScoutConversationState.for_conversation(conversation)
         expect(state.active_playbook).to eq('qualificacao')
         expect(state.activation_reason).to eq('trigger')
@@ -243,7 +252,7 @@ RSpec.describe Custom::ScoutV2::Tools::OpenPlaybook do
 
         expect(result[:error]).to include('Playbook desconhecida: inexistente')
         expect(result[:error]).to include('Disponíveis: pausa, duvida_comercial, qualificacao')
-        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook)
+        expect(chat.tools.keys).to contain_exactly(:search_knowledge_base, :open_playbook, :exit_handoff)
         expect(chat.messages.first.content.to_s).to eq('INITIAL')
         state = ScoutConversationState.for_conversation(conversation)
         expect(state.active_playbook).to be_nil

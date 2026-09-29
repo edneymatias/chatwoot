@@ -164,6 +164,30 @@ RSpec.describe ScoutConversationState, type: :model do
 
         expect(state.last_exit).to eq('prior_exit')
       end
+
+      it 'adds completed to completed_playbooks in the same write with set semantics and keeps order' do
+        state.update!(completed_playbooks: ['identificacao'])
+
+        state.record_transition!('passo_2', turn_transition_count: 0, completed: 'qualificacao')
+        state.reload
+
+        expect(state.completed_playbooks).to eq(%w[identificacao qualificacao])
+        expect(state.active_playbook).to eq('passo_2')
+        expect(state.transition_count).to eq(1)
+
+        state.record_transition!('passo_3', turn_transition_count: 1, completed: 'qualificacao')
+        state.reload
+        expect(state.completed_playbooks).to eq(%w[identificacao qualificacao])
+      end
+
+      it 'adds nothing to completed_playbooks when completed is nil' do
+        state.update!(completed_playbooks: ['identificacao'])
+
+        state.record_transition!('passo_2', turn_transition_count: 0, completed: nil)
+        state.reload
+
+        expect(state.completed_playbooks).to eq(['identificacao'])
+      end
     end
 
     context 'when turn_transition_count reaches the cap (>= 2)' do
@@ -192,6 +216,16 @@ RSpec.describe ScoutConversationState, type: :model do
           expect(state.active_playbook).to eq('passo_3')
           expect(state.handoff_limit_reached_at).to eq(Time.current)
         end
+      end
+
+      it 'ignores completed: when transition is refused at cap' do
+        state.update!(active_playbook: 'passo_3', transition_count: 2, completed_playbooks: ['identificacao'])
+
+        result = state.record_transition!('passo_4', turn_transition_count: 2, completed: 'qualificacao')
+
+        expect(result).to be false
+        state.reload
+        expect(state.completed_playbooks).to eq(['identificacao'])
       end
     end
 
@@ -243,6 +277,65 @@ RSpec.describe ScoutConversationState, type: :model do
 
       expect(state.active_playbook).to eq('novo_playbook')
       expect(state.last_exit).to eq('agendado')
+    end
+
+    it 'adds completed to completed_playbooks in the same write with set semantics' do
+      state.update!(completed_playbooks: ['identificacao'])
+
+      state.record_terminal_exit!('agendado', completed: 'qualificacao')
+      state.reload
+
+      expect(state.completed_playbooks).to eq(%w[identificacao qualificacao])
+      expect(state.active_playbook).to be_nil
+      expect(state.last_exit).to eq('agendado')
+
+      state.record_terminal_exit!('outro', completed: 'qualificacao')
+      state.reload
+      expect(state.completed_playbooks).to eq(%w[identificacao qualificacao])
+    end
+
+    it 'adds nothing to completed_playbooks when completed is nil' do
+      state.update!(completed_playbooks: ['identificacao'])
+
+      state.record_terminal_exit!('agendado', completed: nil)
+      state.reload
+
+      expect(state.completed_playbooks).to eq(['identificacao'])
+    end
+  end
+
+  describe '#record_unsatisfied_items!' do
+    let(:state) { described_class.create!(account: account, conversation: conversation) }
+
+    it 'overwrites unsatisfied_flags with the given record' do
+      record = {
+        'procedure' => 'agendamento',
+        'pending_fields' => [],
+        'unmet_requires' => %w[scheduling customer_registry],
+        'unmet_needs' => ['politica_reagendamento']
+      }
+
+      result = state.record_unsatisfied_items!(record)
+
+      expect(result).to eq(state)
+      state.reload
+      expect(state.unsatisfied_flags).to eq(record)
+    end
+
+    it 'persists an unsaved record when called from .for_conversation' do
+      unsaved_state = described_class.for_conversation(conversation)
+      expect(unsaved_state).not_to be_persisted
+
+      record = {
+        'procedure' => nil,
+        'pending_fields' => [],
+        'unmet_requires' => [],
+        'unmet_needs' => []
+      }
+
+      unsaved_state.record_unsatisfied_items!(record)
+      expect(unsaved_state).to be_persisted
+      expect(unsaved_state.unsatisfied_flags).to eq(record)
     end
   end
 end

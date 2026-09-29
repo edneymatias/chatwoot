@@ -354,7 +354,7 @@ execução, não de comportamento, e fica como está.
 
 **Contexto de roteamento**, montado uma vez por turno: `conversation`, `contact`, `inbox`,
 `scout`, `opportunity` (com `stage_role`), `pending_fields`, `active_playbook`, `transitions`,
-`satisfied_capabilities`.
+`satisfied_capabilities`, `completed_playbooks`.
 
 **`when_state` sem DSL:** cada entrada é o nome de um **predicado registrado em Ruby**, com
 argumento opcional; a lista é um **E lógico**. Sem `or`, sem aninhamento — disjunção vira duas
@@ -440,8 +440,30 @@ a costura.
 
 **Persistência** — `ichatr_scout_conversation_states`: `conversation_id`, `active_playbook`,
 `activated_at`, `activation_reason` (`:state | :trigger | :transition`), `transition_count`,
-`last_exit`, `unsatisfied_flags`. `activation_reason` é o que torna a depuração possível: hoje
-não há como saber *por que* o modelo fez o que fez.
+`last_exit`, `unsatisfied_flags`, `completed_playbooks`. `activation_reason` é o que torna a
+depuração possível: hoje não há como saber *por que* o modelo fez o que fez.
+
+**Procedimento concluído não volta na mesma conversa quando o estado não muda.** `when_state` só
+enxerga o banco, e há desfecho que não muda o banco: o lead que recusa (ou ignora) o pedido de
+telefone deixa `contact_identity_incomplete` verdadeiro depois do exit de `identificacao`. Com
+`identificacao` acima de `qualificacao` em `priority`, o roteador a fixaria de novo no turno
+seguinte — laço. Por isso todo exit bem-sucedido acrescenta a `completed_playbooks` o procedimento
+que ele encerra: na transição, a playbook de origem; no terminal e na **escalação**, o procedimento
+em vigor naquele momento (o fixado, o aberto por `open_playbook` ou o destino de transição;
+interrupção não conta, porque não persiste),
+e o predicado `playbook_not_completed(<nome>)` entra no `when_state` da playbook que precisa disso.
+A escalação entra pelo mesmo laço, visto do outro lado: depois da transferência, o desfecho do
+procedimento é do humano; se ele devolver a conversa, o roteador recalcula do zero (brief 05) e
+`opportunity_in_stage(qualificado)` + `contact_has_phone` refixaria `agendamento` — que, degradada,
+só transfere de novo (pingue-pongue), e, com capability, ofereceria horário a quem o humano já
+agendou à mão. Fail-safe de infraestrutura (quota, API key, saída ilegível) não é exit e não
+acrescenta. A régua é
+"tentado", não "recusado" — a mesma do v1 (`identity_warning`/`phone_request_warning`: *"nunca
+repita a pergunta caso já tenha sido feita nesta conversa, mesmo que o visitante não tenha
+respondido"*). Conversa nova nasce com linha de estado nova, e o procedimento pode rodar de novo;
+na mesma conversa, só o modelo o reabre, por `open_playbook` sem ativa, quando o lead traz o
+assunto de volta. Custo aceito: nome dado mais tarde, já em `qualificacao`, não é gravado (lá não
+há `update_contact`).
 
 **Limites:** máximo 2 transições **por turno** — o contador vive no `TurnRunner` e nasce zerado a
 cada execução; estourou, encerra e registra. O `transition_count` da tabela é acumulado histórico,
@@ -666,6 +688,16 @@ produção do `activation_reason` persistido: o trace responde *por que esta pla
 desfecho*, *que pendência* — contra o trace de hoje, com 3 a 8 gerações aninhadas e o laço de
 reparo no meio.
 
+**Pendência é do procedimento em que o turno termina, não do que o roteador escolheu.** O caminho
+mais comum até uma transferência começa em `qualificacao` (nada pendente), transiciona por
+`qualificado` para `agendamento` degradada e termina em `exit_handoff`, que zera a ativa. Por isso
+`unsatisfied_flags` é calculado e gravado **no fim do turno** (estado e trace), para o último
+procedimento em vigor no turno (fixado na entrada, aberto por `open_playbook` ou destino de
+transição; interrupção não conta, porque não persiste), e carrega o nome dele
+(`{ playbook, pending_fields, unmet_requires, unmet_needs }`). O exit que zera a ativa não apaga a
+pendência: é ela que explica a transferência. `playbook`/`activation_reason` do trace continuam
+descrevendo a decisão de roteamento da entrada do turno.
+
 ### 4.10 Alternativas consideradas
 
 **Condicionais dentro do v1, sem arquitetura nova.** Para a metade *state-driven* do roteamento
@@ -787,14 +819,38 @@ com `requires` insatisfeito, exercitando o caminho de degradação:
 | Playbook | Ativação | `tools` | `requires` | Exits | Origem no v1 |
 |---|---|---|---|---|---|
 | `fora_de_prospeccao` | `priority` máxima · trigger | — | — | `handoff` | `guardrails:78` |
-| `identificacao` | `when_state: contact_identity_incomplete` | `update_contact` | — | → `qualificacao` | `identity_warning:105-115` + `phone_request_warning:118-131` |
-| `qualificacao` | `opportunity_open` + `pending_required_fields` | `manage_opportunity` | — | `qualificado` · `desqualificado` · `handoff` | `FunnelSectionBuilder` |
-| `agendamento` | `opportunity_in_stage(qualificado)` + `contact_has_phone` | — | `scheduling`, `customer_registry` | `agendado` · `sem_horario` · `handoff` | — (novo) |
+| `identificacao` | `when_state: contact_identity_incomplete` + `playbook_not_completed(identificacao)` | `update_contact` | — | → `qualificacao` | `identity_warning:105-115` + `phone_request_warning:118-131` |
+| `qualificacao` | `in_qualification` + `playbook_not_completed(qualificacao)` | `manage_opportunity` | — | `qualificado` (→ `agendamento`, estágio qualificado) · `desqualificado` · `handoff` | `FunnelSectionBuilder` + bullet "Intenção Comercial" de `guardrails` |
+| `agendamento` | `opportunity_in_stage(qualificado)` + `contact_has_phone` + `playbook_not_completed(agendamento)` | — | `scheduling`, `customer_registry` | `agendado` · `sem_horario` · `handoff` | — (novo) |
 | `duvida_comercial` | trigger (interrupção) | — | — | — (o procedimento em curso volta no turno seguinte, §4.4) | `knowledge_tool_instruction:159-162` |
 | `pausa` | trigger (interrupção) | — | — | — (responder e aguardar é o `ListenExit` implícito) | `guardrails:76` |
 
+`in_qualification` é a disjunção que o `when_state` não expressa, virada predicado (§4.4): a
+conversa **não tem oportunidade ativa**, ou a oportunidade ativa está aberta com campos
+obrigatórios pendentes. Sem o primeiro ramo, contato com identidade completa desde a primeira
+mensagem (o caso comum no WhatsApp: nome de perfil e telefone do canal) nunca chegaria a
+`qualificacao` — sem playbook ativa não há `manage_opportunity`, e o v1 só evitava isso por ter a
+tool sempre ligada. A oportunidade continua sendo criada pelo modelo **ao identificar interesse
+comercial**, como no v1, agora dentro da playbook; `ContinuityResolverService` segue decidindo
+entre reaproveitar e criar. Sem oportunidade, os campos pendentes apresentados são os requisitos de
+qualificação do scout. `playbook_not_completed` em `qualificacao` e `agendamento` fecha o mesmo laço
+de §4.4: depois de `desqualificado` (fila de revisão humana), de `agendado`/`sem_horario` ou de uma
+escalação seguida de devolução pelo humano, o estado do banco continua casando e o procedimento
+seria refixado no turno seguinte. Em `agendamento` o guard entra já no brief 06, porque ali o único
+desfecho é `exit_handoff` e o pingue-pongue de transferência existe antes de haver capability.
+
 Coluna `tools` vazia é literal: naquela playbook o modelo **não tem nenhuma tool de mutação**.
 `search_knowledge_base` não aparece porque é sempre-on (§4.1).
+
+**`qualificado` é transição, não terminal nem escalação.** O exit move a oportunidade para o
+estágio qualificado (com os campos obrigatórios validados antes da escrita) e ativa `agendamento`
+por transição **no mesmo turno**. Terminal deixaria o lead qualificado sem desfecho até ele voltar a
+escrever — e, sem telefone, sem playbook nenhuma, porque `agendamento` exige `contact_has_phone` por
+estado; pinagem por transição não exige. Escalação reproduziria o v1 ("qualificado ⇒ transfere"),
+mas tornaria `agendamento` inalcançável. Com a transição, conta sem capability de agendamento
+degrada para `exit_handoff` no mesmo turno — o mesmo resultado do v1 — e conta com capability
+agenda. O caminho `identificacao` → `qualificacao` → `agendamento` num turno só cabe no teto de 2
+transições; `exit_handoff` é escalação e não conta.
 
 **Prova:** as cinco playbooks operando no playground; handoff declarado, não inferido;
 `agendamento` degradando com pendência visível em vez de estourar.

@@ -72,18 +72,20 @@ class Custom::ScoutV2::Playbook::Validator
 
     @catalog.playbooks.each do |playbook|
       playbook.load_errors.each { |error| violations << "#{file_ref(playbook)}: #{error}" }
-      validate_required_fields(playbook, violations)
+      validate_text_fields(playbook, violations)
+      validate_priority_field(playbook, violations)
       validate_name_formats(playbook, violations)
-      validate_when_state(playbook, violations)
-      validate_requires(playbook, violations)
+      Custom::ScoutV2::Playbook::DependencyRules.call(
+        playbook: playbook,
+        catalog: @catalog,
+        file_ref: file_ref(playbook),
+        violations: violations
+      )
       validate_tools(playbook, violations)
+      validate_situational_exits(playbook, violations)
+      validate_exit_declarations(playbook, violations)
       validate_body_tokens(playbook, known_playbook_names, violations)
     end
-  end
-
-  def validate_required_fields(playbook, violations)
-    validate_text_fields(playbook, violations)
-    validate_priority_field(playbook, violations)
   end
 
   def validate_text_fields(playbook, violations)
@@ -105,26 +107,12 @@ class Custom::ScoutV2::Playbook::Validator
     end
 
     playbook.exits.each_key do |exit_name|
-      next if exit_name.is_a?(String) && NAME_PATTERN.match?(exit_name)
+      unless NAME_PATTERN.match?(exit_name)
+        violations << "#{file_ref(playbook)}: Invalid exit name: #{exit_name.inspect} (must match #{NAME_PATTERN.source})"
+        next
+      end
 
-      violations << "#{file_ref(playbook)}: Invalid exit name: #{exit_name.inspect} (must match #{NAME_PATTERN.source})"
-    end
-  end
-
-  def validate_when_state(playbook, violations)
-    playbook.when_state.each do |condition|
-      predicate_name = condition.first
-      next if Custom::ScoutV2::Predicates::Registry.registered?(predicate_name)
-
-      violations << "#{file_ref(playbook)}: Unregistered predicate: #{predicate_name}"
-    end
-  end
-
-  def validate_requires(playbook, violations)
-    playbook.requires.each do |cap|
-      next if Custom::ScoutV2::Capabilities::Catalog.known?(cap)
-
-      violations << "#{file_ref(playbook)}: Unknown capability: #{cap}"
+      violations << "#{file_ref(playbook)}: Reserved exit name: handoff" if exit_name == 'handoff'
     end
   end
 
@@ -146,7 +134,7 @@ class Custom::ScoutV2::Playbook::Validator
   def validate_exit_tokens(playbook, violations)
     exit_tokens = playbook.body.scan(EXIT_TOKEN_PATTERN).flatten.uniq
     exit_tokens.each do |exit_name|
-      next if playbook.exits.key?(exit_name)
+      next if exit_name == 'handoff' || playbook.exits.key?(exit_name)
 
       violations << "#{file_ref(playbook)}: Undeclared exit token: exit_#{exit_name}"
     end
@@ -159,5 +147,68 @@ class Custom::ScoutV2::Playbook::Validator
 
       violations << "#{file_ref(playbook)}: Unresolved playbook: #{target_name}"
     end
+  end
+
+  def validate_situational_exits(playbook, violations)
+    return unless playbook.when_state.empty?
+
+    playbook.exits.each_key do |exit_name|
+      violations << "#{file_ref(playbook)}: Situational playbook cannot declare exits: #{exit_name}"
+    end
+  end
+
+  def validate_exit_declarations(playbook, violations)
+    playbook.exits.each_value do |exit_decl|
+      validate_exit_kind(playbook, exit_decl, violations)
+      validate_exit_target(playbook, exit_decl, violations)
+      validate_exit_fields(playbook, exit_decl, violations)
+      validate_exit_stage(playbook, exit_decl, violations)
+    end
+  end
+
+  def validate_exit_kind(playbook, exit_decl, violations)
+    return if Custom::ScoutV2::Playbook::ExitDeclaration::KINDS.include?(exit_decl.kind)
+
+    violations << "#{file_ref(playbook)}: Unknown exit kind for '#{exit_decl.name}': #{exit_decl.kind}"
+  end
+
+  def validate_exit_target(playbook, exit_decl, violations)
+    if exit_decl.kind == 'transition'
+      if exit_decl.target.to_s.strip.empty?
+        violations << "#{file_ref(playbook)}: Transition exit '#{exit_decl.name}' requires a target"
+        return
+      end
+
+      validate_transition_target(playbook, exit_decl, violations)
+    elsif !exit_decl.target.nil?
+      violations << "#{file_ref(playbook)}: Exit '#{exit_decl.name}' declares a target but is not a transition"
+    end
+  end
+
+  def validate_transition_target(playbook, exit_decl, violations)
+    target_pb = @catalog[exit_decl.target]
+    if target_pb.nil?
+      violations << "#{file_ref(playbook)}: Unknown transition target for '#{exit_decl.name}': #{exit_decl.target}"
+    elsif target_pb.name == playbook.name
+      violations << "#{file_ref(playbook)}: Transition exit '#{exit_decl.name}' cannot target its own playbook"
+    elsif target_pb.when_state.empty?
+      violations << "#{file_ref(playbook)}: Transition exit '#{exit_decl.name}' cannot target situational playbook #{target_pb.name}"
+    end
+  end
+
+  def validate_exit_fields(playbook, exit_decl, violations)
+    exit_decl.fields.each do |field_name, field_type|
+      violations << "#{file_ref(playbook)}: Invalid field name in exit '#{exit_decl.name}': #{field_name}" unless NAME_PATTERN.match?(field_name)
+
+      unless Custom::ScoutV2::Playbook::ExitDeclaration::FIELD_TYPES.include?(field_type)
+        violations << "#{file_ref(playbook)}: Unsupported field type in exit '#{exit_decl.name}': #{field_name}: #{field_type}"
+      end
+    end
+  end
+
+  def validate_exit_stage(playbook, exit_decl, violations)
+    return if exit_decl.stage.nil? || Custom::ScoutV2::Playbook::ExitDeclaration::STAGE_ROLES.include?(exit_decl.stage)
+
+    violations << "#{file_ref(playbook)}: Unknown stage role for '#{exit_decl.name}': #{exit_decl.stage}"
   end
 end

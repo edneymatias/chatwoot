@@ -175,5 +175,52 @@ RSpec.describe Custom::ScoutV2::Router do
         expect(decision).to respond_to(:confidence)
       end
     end
+
+    context 'with shipped catalog (US2: situational playbooks never win by state)' do
+      let(:shipped_catalog) { Custom::ScoutV2::Playbook::Loader.load_all(Rails.root.join('custom/playbooks')) }
+      let(:situational_names) { %w[fora_de_prospeccao duvida_comercial pausa] }
+      let(:test_contacts) do
+        [Struct.new(:name, :phone_number).new('lindo-peixe-123', nil), Struct.new(:name, :phone_number).new('Carlos Silva', '+5511999999999')]
+      end
+      let(:test_opportunities) do
+        [
+          nil,
+          { opp: Struct.new(:status).new('open'), pending: ['orcamento'], role: :initial },
+          { opp: Struct.new(:status).new('open'), pending: [], role: :initial },
+          { opp: Struct.new(:status).new('open'), pending: [], role: :qualified },
+          { opp: Struct.new(:status).new('lost'), pending: [], role: :unqualified }
+        ]
+      end
+      let(:completed_subsets) do
+        [[], ['identificacao'], ['qualificacao'], %w[identificacao qualificacao], %w[identificacao qualificacao agendamento]]
+      end
+
+      it 'never routes to a situational playbook under any state combination' do
+        situational_names.each do |name|
+          expect(shipped_catalog[name]).to be_present, "Expected #{name} to be in the shipped catalog"
+        end
+
+        state_combinations.each do |ctx|
+          decision = described_class.call(ctx, shipped_catalog)
+          next if decision.playbook.blank?
+
+          error_msg = "Situational playbook #{decision.playbook.name} won by state for #{ctx.inspect}"
+          expect(situational_names).not_to include(decision.playbook.name), error_msg
+        end
+      end
+
+      def state_combinations
+        test_contacts.product([nil, '+5511999999999'], test_opportunities, completed_subsets).map do |contact_base, phone, opp_cfg, completed|
+          contact = Struct.new(:name, :phone_number).new(contact_base.name, phone)
+          Custom::ScoutV2::RoutingSnapshot.new(
+            contact: contact,
+            opportunity: opp_cfg&.dig(:opp),
+            pending_fields: opp_cfg&.dig(:pending) || [],
+            opportunity_stage_role: opp_cfg&.dig(:role) || :none,
+            completed_playbooks: completed
+          )
+        end
+      end
+    end
   end
 end

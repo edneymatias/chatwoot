@@ -118,9 +118,9 @@ RSpec.describe Custom::ScoutV2::RoutingSnapshot::Builder do
         PipelineStageRequiredField.create!(account: account, pipeline_stage: default_stage, custom_attribute_definition: cad_budget)
       end
 
-      it 'returns empty array when there is no opportunity' do
+      it 'returns scout qualification requirement keys when there is no opportunity' do
         snapshot = described_class.call(conversation: conversation, catalog: catalog)
-        expect(snapshot.pending_fields).to eq([])
+        expect(snapshot.pending_fields).to match_array(%w[lead_email lead_phone])
       end
 
       it 'unions and deduplicates scout and stage required fields blank in custom_attributes' do
@@ -216,6 +216,19 @@ RSpec.describe Custom::ScoutV2::RoutingSnapshot::Builder do
         expect(snapshot.active_playbook).to be_nil
         expect(snapshot.transitions).to eq(0)
         expect(snapshot.satisfied_capabilities).to eq([])
+        expect(snapshot.completed_playbooks).to eq([])
+        expect(snapshot.satisfied_business_facts).to eq([])
+      end
+
+      it 'reads completed_playbooks from the state row' do
+        ScoutConversationState.create!(
+          account: account,
+          conversation: conversation,
+          completed_playbooks: %w[identificacao qualificacao]
+        )
+
+        snapshot = described_class.call(conversation: conversation, catalog: catalog)
+        expect(snapshot.completed_playbooks).to eq(%w[identificacao qualificacao])
       end
     end
   end

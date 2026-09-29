@@ -2,7 +2,8 @@
 
 class Custom::ScoutV2::Tools::Registry
   TOOL_CLASSES = {
-    'manage_opportunity' => Custom::Scout::Tools::ManageOpportunity
+    'manage_opportunity' => Custom::ScoutV2::Tools::ManageOpportunity,
+    'update_contact' => Custom::Scout::Tools::UpdateContact
   }.freeze
 
   class << self

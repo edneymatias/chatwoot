@@ -16,6 +16,12 @@ class Custom::Scout::HandoffService
     'Conversation transferred to human queue successfully.'
   end
 
+  def transfer!(reason:)
+    assign_team_and_user(nil, nil)
+    @conversation.bot_handoff!
+    create_literal_transfer_note(reason)
+  end
+
   private
 
   def account_locale
@@ -68,6 +74,15 @@ class Custom::Scout::HandoffService
 
   def create_transfer_note(_reason)
     content = reason_label_and_prefix(@action_reason, account_locale) + opportunity_reference
+    Messages::MessageBuilder.new(
+      nil,
+      @conversation,
+      { content: content, private: true }
+    ).perform
+  end
+
+  def create_literal_transfer_note(reason)
+    content = "📋 Transferência para atendimento humano: #{reason}#{opportunity_reference}"
     Messages::MessageBuilder.new(
       nil,
       @conversation,

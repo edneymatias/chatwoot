@@ -144,6 +144,9 @@ V1 vivo e a flag é `premium`, enquanto aqui a flag é temporária e o v1 é rem
 
 - Para qualquer conversa de uma conta em v2 é possível ler qual playbook esteve ativa, por que ativou
   (`state` | `trigger` | `transition`), qual foi o desfecho e que pendências existiam.
+- Conversa transferida depois de uma transição no mesmo turno (`qualificacao` → `agendamento` →
+  `exit_handoff`) mostra as pendências de `agendamento`, nomeadas como dela, mesmo com a ativa
+  zerada pelo exit (design §4.9).
 - Os mesmos campos estão no trace do Langfuse (`playbook`, `activation_reason`, `exit_action`,
   `unsatisfied_flags`), sem o laço de reparo e sem as 3–8 gerações aninhadas do v1.
 - A taxa de ativação de `fora_de_prospeccao` por trigger é mensurável: é o instrumento da inversão
