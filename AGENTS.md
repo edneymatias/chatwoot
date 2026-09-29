@@ -109,6 +109,7 @@ commands with `docker compose exec <service>`.
 - Don’t write multiple versions or backups for the same logic — pick the best approach and implement it
 - Prefer `with_modified_env` (from spec helpers) over stubbing `ENV` directly in specs
 - Specs in parallel/reloading environments: prefer comparing `error.class.name` over constant class equality when asserting raised errors
+- Before running a test suite for a multi-file or TDD task, batch all planned edits and run a syntax-only check first; run the full suite once per red/green transition, never after each individual edit. See skill `minimizing-test-reruns`.
 
 ## Codex Worktree Workflow
 
