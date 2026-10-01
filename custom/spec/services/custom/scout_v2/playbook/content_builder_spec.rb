@@ -260,7 +260,7 @@ RSpec.describe Custom::ScoutV2::Playbook::ContentBuilder do
           rendered_empty = described_class.call(playbook: agendamento, ctx: ctx_empty)
           expect(rendered_empty.scan(/\(PENDENTE — indisponível: customer_registry\)/).count).to eq(1)
           expect(rendered_empty.scan(/\(PENDENTE — indisponível: scheduling\)/).count).to eq(3)
-          expect(rendered_empty.scan(/\(PENDENTE — indisponível: politica_reagendamento\)/).count).to eq(1)
+          expect(rendered_empty.scan(/\(PENDENTE — indisponível: politica_reagendamento\)/).count).to eq(0)
           expect(rendered_empty).to include(described_class::PENDING_STEPS_NOTICE)
 
           # Full satisfaction
@@ -269,11 +269,54 @@ RSpec.describe Custom::ScoutV2::Playbook::ContentBuilder do
             contact: contact,
             scout: scout,
             satisfied_capabilities: %w[scheduling customer_registry],
-            satisfied_business_facts: %w[politica_reagendamento]
+            satisfied_business_facts: []
           )
           rendered_full = described_class.call(playbook: agendamento, ctx: ctx_full)
           expect(rendered_full).not_to include('PENDENTE')
           expect(rendered_full).not_to include(described_class::PENDING_STEPS_NOTICE)
+        end
+      end
+
+      context 'when playbook requires customer_registry (FR-020)' do
+        let(:playbook_with_req) do
+          Custom::ScoutV2::Playbook.new(
+            name: 'agendamento_test',
+            title: 'Agendamento Test',
+            priority: 10,
+            trigger: 'trigger',
+            when_state: [],
+            requires: %w[customer_registry scheduling],
+            body: 'Corpo agendamento.'
+          )
+        end
+
+        it 'appends PHONE_MISSING_NOTICE when contact phone is blank' do
+          contact.update!(phone_number: nil)
+          ctx = Custom::ScoutV2::RoutingSnapshot.new(
+            conversation: conversation,
+            contact: contact,
+            scout: scout,
+            satisfied_capabilities: %w[scheduling customer_registry],
+            satisfied_business_facts: []
+          )
+          rendered = described_class.call(playbook: playbook_with_req, ctx: ctx)
+          expect(rendered).to include(
+            'O contato não tem telefone registrado. Não chame ferramentas customer_registry_*, ' \
+            'não peça o telefone ao cliente e chame exit_handoff neste mesmo turno informando que o telefone está ausente.'
+          )
+        end
+
+        it 'does not append PHONE_MISSING_NOTICE when contact has a phone number' do
+          contact.update!(phone_number: '+5511999990648')
+          ctx = Custom::ScoutV2::RoutingSnapshot.new(
+            conversation: conversation,
+            contact: contact,
+            scout: scout,
+            satisfied_capabilities: %w[scheduling customer_registry],
+            satisfied_business_facts: []
+          )
+          rendered = described_class.call(playbook: playbook_with_req, ctx: ctx)
+          expect(rendered).not_to include('O contato não tem telefone registrado')
         end
       end
     end

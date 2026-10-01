@@ -4,6 +4,8 @@ class Custom::ScoutV2::Playbook::ContentBuilder
   PENDING_STEPS_NOTICE = 'Passos marcados como PENDENTE dependem de integrações ou políticas ainda indisponíveis. ' \
                          'Não simule, não prometa e não confirme essas ações. Se o cliente precisar delas, use exit_handoff.'
 
+  PHONE_MISSING_NOTICE = 'O contato não tem telefone registrado. Não chame ferramentas customer_registry_*, ' \
+                         'não peça o telefone ao cliente e chame exit_handoff neste mesmo turno informando que o telefone está ausente.'
   def self.call(playbook:, ctx:)
     new(playbook: playbook, ctx: ctx).call
   end
@@ -21,9 +23,9 @@ class Custom::ScoutV2::Playbook::ContentBuilder
       rendered_body,
       (PENDING_STEPS_NOTICE if has_pending),
       build_contact_gaps_block(condition_names),
-      build_pending_fields_block(condition_names)
+      build_pending_fields_block(condition_names),
+      build_phone_missing_notice_block
     ].compact_blank
-
     blocks.join("\n\n")
   end
 
@@ -44,6 +46,16 @@ class Custom::ScoutV2::Playbook::ContentBuilder
       account_id: resolve_account_id,
       pending_keys: resolve_pending_keys
     )
+  end
+
+  def build_phone_missing_notice_block
+    return unless (@playbook.requires || []).include?('customer_registry')
+
+    contact = @ctx.conversation&.contact || @ctx.contact
+    contact = contact.reload if contact.respond_to?(:reload) && contact.respond_to?(:persisted?) && contact.persisted?
+    return if contact&.phone_number.present?
+
+    PHONE_MISSING_NOTICE
   end
 
   def resolve_account_id

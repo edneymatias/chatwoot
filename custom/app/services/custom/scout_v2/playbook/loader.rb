@@ -6,7 +6,7 @@
 # so a mistyped `SCOUT_V2_PLAYBOOKS_DIR` fails boot instead of loading zero playbooks.
 class Custom::ScoutV2::Playbook::Loader
   FRONTMATTER_PATTERN = /\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n(.*))?\z/m
-  ALLOWED_EXIT_KEYS = %w[kind fields target stage].freeze
+  ALLOWED_EXIT_KEYS = %w[kind fields target stage precondition].freeze
 
   class << self
     def load_all(dir = ENV['SCOUT_V2_PLAYBOOKS_DIR'].presence || Rails.root.join('custom/playbooks'))
@@ -118,7 +118,8 @@ class Custom::ScoutV2::Playbook::Loader
       kind: entry['kind']&.to_s,
       fields: fields,
       target: entry['target']&.to_s,
-      stage: entry['stage']&.to_s
+      stage: entry['stage']&.to_s,
+      precondition: entry['precondition']&.to_s
     )
   end
 

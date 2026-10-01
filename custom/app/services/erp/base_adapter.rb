@@ -1,9 +1,15 @@
 # frozen_string_literal: true
 
 class Erp::BaseAdapter
+  attr_reader :hook, :settings
+
   def initialize(hook)
     @hook = hook
-    @settings = hook.settings || {}
+    @settings = hook&.settings || {}
+  end
+
+  def operation_identifier_keys(_operation_name)
+    []
   end
 
   def self.erp_name
@@ -67,6 +73,15 @@ class Erp::BaseAdapter
     match_with_ninth_digit_tolerance?(contact_digits, erp_digits)
   end
 
+  def normalize_phone_digits(phone)
+    digits = phone.to_s.gsub(/\D/, '')
+    return '' if digits.blank?
+
+    digits = digits.delete_prefix('55') if digits.start_with?('55') && digits.length.between?(12, 14)
+    digits = digits.delete_prefix('0') if digits.start_with?('0') && digits.length.between?(11, 12)
+    digits
+  end
+
   private
 
   def fetch_from_cache(contact, cached_id)
@@ -99,15 +114,6 @@ class Erp::BaseAdapter
 
   def sanitize_phone_for_search(phone)
     normalize_phone_digits(phone)
-  end
-
-  def normalize_phone_digits(phone)
-    digits = phone.to_s.gsub(/\D/, '')
-    return '' if digits.blank?
-
-    digits = digits.delete_prefix('55') if digits.start_with?('55') && digits.length.between?(12, 14)
-    digits = digits.delete_prefix('0') if digits.start_with?('0') && digits.length.between?(11, 12)
-    digits
   end
 
   def match_with_ninth_digit_tolerance?(phone_a, phone_b)

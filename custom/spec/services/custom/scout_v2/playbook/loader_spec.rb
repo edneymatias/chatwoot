@@ -262,6 +262,23 @@ RSpec.describe Custom::ScoutV2::Playbook::Loader do
         expect(playbook.load_errors).to be_empty
       end
 
+      it 'parses precondition on exit declaration without load errors' do
+        File.write(File.join(tmp_dir, 'a.md'), <<~MD)
+          ---
+          #{header.chomp}
+          exits:
+            agendado:
+              kind: terminal
+              precondition: booking
+          ---
+        MD
+        playbook = described_class.load_all(tmp_dir).playbooks.first
+        exit_decl = playbook.exits['agendado']
+        expect(exit_decl.name).to eq('agendado')
+        expect(exit_decl.precondition).to eq('booking')
+        expect(playbook.load_errors).to be_empty
+      end
+
       it 'records unparseable YAML and still loads the other files' do
         File.write(File.join(tmp_dir, 'a.md'), "---\n#{header}created: 2024-01-01\n---\n")
         File.write(File.join(tmp_dir, 'b.md'), "---\nname: ok\n---\n")

@@ -6,9 +6,22 @@ class Erp::Younus::Client
   base_uri 'https://wfh.ichatr.com.br'
   default_timeout 5
 
-  def initialize(token:, id_empresa:)
+  TRANSPORT_ERRORS = [
+    SocketError,
+    Errno::ECONNREFUSED,
+    Errno::ECONNRESET,
+    Errno::EHOSTUNREACH,
+    Errno::ETIMEDOUT,
+    Errno::ENETUNREACH,
+    HTTParty::Error,
+    EOFError,
+    OpenSSL::SSL::SSLError
+  ].freeze
+
+  def initialize(token:, id_empresa:, settings: {})
     @token = token
     @id_empresa = id_empresa
+    @settings = (settings || {}).transform_keys(&:to_s)
   end
 
   def find_by_id(external_id)
@@ -19,22 +32,101 @@ class Erp::Younus::Client
     get_request('/webhook/pessoas', { idEmpresa: @id_empresa, nrTelcelpessoa: phone }, mode: :search)
   end
 
+  def find_person(phone)
+    get_request(
+      '/webhook/pesquisar-pessoa',
+      { idEmpresa: setting_int('id_empresa', default: @id_empresa), nrTelcelpessoa: phone },
+      mode: :search
+    )
+  end
+
+  def create_person(name, phone)
+    payload = {
+      nmPessoa: name,
+      idEmpresa: setting_int('id_empresa', default: @id_empresa),
+      idUsuario: setting_int('id_usuario'),
+      idConvenio: setting_int('id_convenio'),
+      nrConvenio: @settings['nr_convenio'].to_s,
+      idOrigempessoa: setting_int('id_origem_pessoa'),
+      nrTelcelpessoa: phone
+    }
+
+    post_request('/webhook/incluir-cliente', payload)
+  end
+
+  def free_slots(date)
+    query = {
+      data: date.to_s,
+      idAgenda: setting_int('id_agenda'),
+      idEmpresa: setting_int('id_empresa', default: @id_empresa),
+      idServico: setting_int('id_servico')
+    }
+
+    get_request('/webhook/horarios-livres', query, mode: :slots)
+  end
+
+  def create_appointment(person_id:, title:, starts_at:, notes:)
+    obs = notes.present? ? "Agendado por Scout: #{notes}" : 'Agendado por Scout'
+    clean_title = title.to_s[0...100]
+
+    payload = {
+      idAgenda: setting_int('id_agenda'),
+      idPessoa: Integer(person_id.to_s, 10),
+      nmTitulo: clean_title,
+      idEmpresa: setting_int('id_empresa', default: @id_empresa),
+      idServico: setting_int('id_servico'),
+      idUsuario: setting_int('id_usuario'),
+      idConvenio: setting_int('id_convenio'),
+      dtIniAgenda: starts_at,
+      observacoes: obs
+    }
+
+    post_request('/webhook/incluir-agendamento', payload)
+  end
+
   private
 
-  def get_request(path, query, mode: :single)
-    response = self.class.get(
-      path,
-      query: query,
-      headers: {
-        'token' => @token,
-        'Content-Type' => 'application/json'
-      }
-    )
+  def setting_int(key, default: nil)
+    val = @settings[key] || default
+    Integer(val.to_s, 10)
+  end
 
-    handle_response(response, mode: mode)
+  def headers
+    {
+      'token' => @token,
+      'Content-Type' => 'application/json'
+    }
+  end
+
+  def get_request(path, query, mode: :single)
+    with_transport_error_handling do
+      response = self.class.get(
+        path,
+        query: query,
+        headers: headers
+      )
+
+      handle_response(response, mode: mode)
+    end
+  end
+
+  def post_request(path, payload)
+    with_transport_error_handling do
+      response = self.class.post(
+        path,
+        body: payload.to_json,
+        headers: headers
+      )
+
+      handle_response(response, mode: :write)
+    end
+  end
+
+  def with_transport_error_handling
+    yield
   rescue Timeout::Error
     raise Erp::ApiError, 'Connection timed out'
-  rescue SocketError, Errno::ECONNREFUSED
+  rescue *TRANSPORT_ERRORS
     raise Erp::ApiError, 'Network error'
   rescue JSON::ParserError
     raise Erp::ApiError, 'Malformed response from ERP'
@@ -54,21 +146,63 @@ class Erp::Younus::Client
   end
 
   def parse_success_response(response, mode: :single)
-    body = response.parsed_response
-    body = JSON.parse(response.body) if body.is_a?(String)
-    body = body.first if body.is_a?(Array)
+    body = coerce_response_body(response)
+    return unless body
 
-    return unless body.is_a?(Hash) && body['sucesso']
-
-    dados = body['dados']
-    return if dados.blank?
-
-    if mode == :search
-      { record: dados.dig(0, 'json'), multiple_matches: dados.length > 1 }
+    if mode == :write
+      handle_write_response(body)
     else
-      dados.dig(0, 'json')
+      handle_read_response(body, mode)
     end
   rescue TypeError
     raise Erp::ApiError, 'Malformed response from ERP'
+  end
+
+  def coerce_response_body(response)
+    body = response.parsed_response
+    body = JSON.parse(response.body) if body.is_a?(String)
+    body = body.first if body.is_a?(Array)
+    body.is_a?(Hash) ? body : nil
+  end
+
+  def handle_write_response(body)
+    raise Erp::ApiError, (body['mensagem'] || 'Declined by ERP') unless body['sucesso']
+
+    extract_single_record(body['dados'])
+  end
+
+  def handle_read_response(body, mode)
+    raise Erp::ApiError, (body['mensagem'] || 'Declined by ERP') if mode == :slots && !body['sucesso']
+    return unless body['sucesso']
+
+    case mode
+    when :slots
+      body['horarios'] || []
+    when :search
+      extract_search_response(body['dados'])
+    else
+      extract_single_record(body['dados'])
+    end
+  end
+
+  def extract_search_response(dados)
+    return if dados.blank?
+
+    if dados.is_a?(Array)
+      record = dados.dig(0, 'json') || dados.first
+      { record: record, multiple_matches: dados.length > 1 }
+    elsif dados.is_a?(Hash)
+      { record: dados, multiple_matches: false }
+    end
+  end
+
+  def extract_single_record(dados)
+    return if dados.blank?
+
+    if dados.is_a?(Array)
+      dados.dig(0, 'json') || dados.first
+    elsif dados.is_a?(Hash)
+      dados
+    end
   end
 end

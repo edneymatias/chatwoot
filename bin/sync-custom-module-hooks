@@ -251,7 +251,7 @@ MANIFEST = if ENV['TEST_MANIFEST']
                {
                  file: 'config/integration/apps.yml',
                  anchor: "      'conversation_activity_score',\n      'transcript_activity_score',\n    ]",
-                 insert: "\n\nyounus:\n  id: younus\n  logo: younus.png\n  i18n_key: younus\n  action: /younus\n  hook_type: account\n  allow_multiple_hooks: false\n  category: erp\n  feature_flag: erp_integration\n  visible_properties: ['id_empresa', 'token']\n  settings_json_schema:\n    {\n      'type': 'object',\n      'properties':\n        {\n          'token': { 'type': 'string' },\n          'id_empresa': { 'type': 'string' },\n        },\n      'required': ['token', 'id_empresa'],\n      'additionalProperties': false,\n    }\n  settings_form_schema:\n    [\n      {\n        'label': 'API Token',\n        'type': 'text',\n        'name': 'token',\n        'validation': 'required',\n      },\n      {\n        'label': 'Company ID',\n        'type': 'text',\n        'name': 'id_empresa',\n        'validation': 'required',\n      },\n    ]"
+                 insert: "\n\nyounus:\n  id: younus\n  logo: younus.png\n  i18n_key: younus\n  action: /younus\n  hook_type: account\n  allow_multiple_hooks: false\n  category: erp\n  feature_flag: erp_integration\n  visible_properties: ['id_empresa', 'token', 'id_usuario', 'id_convenio', 'nr_convenio', 'id_origem_pessoa', 'id_agenda', 'id_servico']\n  settings_json_schema:\n    {\n      'type': 'object',\n      'properties':\n        {\n          'token': { 'type': 'string' },\n          'id_empresa': { 'type': 'string' },\n          'id_usuario': { 'type': 'string', 'pattern': '^\\d*$' },\n          'id_convenio': { 'type': 'string', 'pattern': '^\\d*$' },\n          'nr_convenio': { 'type': 'string' },\n          'id_origem_pessoa': { 'type': 'string', 'pattern': '^\\d*$' },\n          'id_agenda': { 'type': 'string', 'pattern': '^\\d*$' },\n          'id_servico': { 'type': 'string', 'pattern': '^\\d*$' },\n        },\n      'required': ['token', 'id_empresa'],\n      'additionalProperties': false,\n    }\n  settings_form_schema:\n    [\n      {\n        'label': 'API Token',\n        'type': 'text',\n        'name': 'token',\n        'validation': 'required',\n      },\n      {\n        'label': 'Company ID',\n        'type': 'text',\n        'name': 'id_empresa',\n        'validation': 'required',\n      },\n      {\n        'label': 'User ID',\n        'type': 'text',\n        'name': 'id_usuario',\n      },\n      {\n        'label': 'Agreement ID',\n        'type': 'text',\n        'name': 'id_convenio',\n      },\n      {\n        'label': 'Agreement number',\n        'type': 'text',\n        'name': 'nr_convenio',\n      },\n      {\n        'label': 'Person origin ID',\n        'type': 'text',\n        'name': 'id_origem_pessoa',\n      },\n      {\n        'label': 'Schedule ID',\n        'type': 'text',\n        'name': 'id_agenda',\n      },\n      {\n        'label': 'Service ID',\n        'type': 'text',\n        'name': 'id_servico',\n      },\n    ]"
                },
                {
                  file: 'app/services/automation_rules/action_service.rb',
@@ -719,6 +719,26 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  file: 'config/initializers/01_inject_enterprise_edition_module.rb',
                  anchor: "  def const_get_maybe_false(mod, name)\n    mod&.const_defined?(name, false) && mod&.const_get(name, false)\n  end",
                  insert: "  def const_get_maybe_false(mod, name)\n    return false unless mod\n\n    mod.const_defined?(name, false) ? mod.const_get(name, false) : false\n  end",
+                 replace: true
+               },
+               # Silence enum deprecation noise in test suite while preserving all other warnings
+               {
+                 file: 'config/environments/test.rb',
+                 anchor: "  # Print deprecation notices to the stderr.\n  config.active_support.deprecation = :stderr",
+                 insert: "  # Every model's `enum` definition triggers \"Defining enums with keyword arguments\n  # is deprecated\" once per class load (dozens of times per rspec run, pure noise:\n  # see docs/kanban/backlog/token-cost-vs-test-fidelity/notas.md, lever 1). Silence\n  # only that known message; forward every other deprecation to stderr as before so\n  # a genuinely new deprecation (e.g. introduced by an upstream sync) still surfaces.\n  config.active_support.deprecation = lambda do |message, _callstack, _deprecator|\n    next if message.include?('Defining enums with keyword arguments')\n\n    warn message\n  end",
+                 replace: true
+               },
+               # Langfuse trace metadata root key for execution trace fields
+               {
+                 file: 'lib/integrations/llm_instrumentation_constants.rb',
+                 anchor: "  ATTR_LANGFUSE_TAGS = 'langfuse.trace.tags'",
+                 insert: "\n  ATTR_LANGFUSE_METADATA_ROOT = 'langfuse.trace.metadata'"
+               },
+               # Langfuse trace metadata scalar serialization for playbook and activation_reason
+               {
+                 file: 'lib/integrations/llm_instrumentation_helpers.rb',
+                 anchor: "    return attrs unless params[:metadata].is_a?(Hash)\n\n    params[:metadata].each do |key, value|\n      attrs[format(ATTR_LANGFUSE_METADATA, key)] = value.to_s\n    end\n\n    attrs\n  end",
+                 insert: "    append_propagated_metadata_attributes(attrs, params[:metadata]) if params[:metadata].is_a?(Hash)\n\n    attrs\n  end\n\n  def append_propagated_metadata_attributes(attrs, metadata)\n    trace_relevant_keys = %w[playbook activation_reason]\n    metadata_for_trace = {}\n\n    metadata.each do |key, value|\n      if value.is_a?(Hash) || value.is_a?(Array)\n        attrs[format(ATTR_LANGFUSE_METADATA, key)] = value.to_json\n      else\n        metadata_for_trace[key] = value if trace_relevant_keys.include?(key.to_s)\n        attrs[format(ATTR_LANGFUSE_METADATA, key)] = value.to_s\n      end\n    end\n\n    attrs[ATTR_LANGFUSE_METADATA_ROOT] = metadata_for_trace.to_json if metadata_for_trace.present?\n  end",
                  replace: true
                }
              ]

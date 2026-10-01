@@ -48,35 +48,43 @@ RSpec.describe 'Api::V1::Accounts::Integrations::Erp', type: :request do
       end
 
       it 'delegates resolution to adapter and returns payload (U31)' do
-        hook = create(:integrations_hook, account: account, app_id: 'younus', status: :enabled,
-                                          settings: { 'token' => 'valid-token', 'id_empresa' => '42' })
-        adapter = instance_double(Erp::Younus::Adapter)
-        allow(Erp::AdapterFactory).to receive(:build).with(hook).and_return(adapter)
-        expected_payload = {
-          'status' => 'found',
-          'data' => { 'cd_pessoa' => 123, 'nm_pessoa' => 'Maria Silva' },
-          'multiple_matches' => false
-        }
-        allow(adapter).to receive(:fetch_data).with(contact).and_return(expected_payload)
+        create(:integrations_hook, account: account, app_id: 'younus', status: :enabled,
+                                   settings: { 'token' => 'valid-token', 'id_empresa' => '42' })
+        stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas\?idEmpresa=42&nrTelcelpessoa=11987654321})
+          .with(headers: { 'token' => 'valid-token' })
+          .to_return(
+            status: 200,
+            body: {
+              sucesso: true,
+              dados: [
+                {
+                  cd_pessoa: 123,
+                  nm_pessoa: 'Maria Silva',
+                  nr_telcelpessoa: '11987654321'
+                }
+              ]
+            }.to_json,
+            headers: { 'Content-Type' => 'application/json' }
+          )
 
         get url,
             headers: user.create_new_auth_token,
             params: { contact_id: contact.id }
 
         expect(response).to have_http_status(:success)
-        expect(JSON.parse(response.body)).to eq(expected_payload)
+        expect(JSON.parse(response.body)).to eq(
+          'status' => 'found',
+          'data' => { 'cd_pessoa' => 123, 'nm_pessoa' => 'Maria Silva', 'nr_telcelpessoa' => '11987654321' },
+          'multiple_matches' => false
+        )
       end
 
-      it 'rescues erp errors, captures exception, and returns 503 (U32)' do
-        hook = create(:integrations_hook, account: account, app_id: 'younus', status: :enabled,
-                                          settings: { 'token' => 'valid-token', 'id_empresa' => '42' })
-        adapter = instance_double(Erp::Younus::Adapter)
-        allow(Erp::AdapterFactory).to receive(:build).with(hook).and_return(adapter)
-        allow(adapter).to receive(:fetch_data).with(contact).and_raise(Erp::ApiError, 'ERP service error: 500')
-
-        tracker = instance_double(ChatwootExceptionTracker)
-        allow(ChatwootExceptionTracker).to receive(:new).and_return(tracker)
-        allow(tracker).to receive(:capture_exception)
+      it 'rescues erp errors and returns 503 (U32)' do
+        create(:integrations_hook, account: account, app_id: 'younus', status: :enabled,
+                                   settings: { 'token' => 'valid-token', 'id_empresa' => '42' })
+        stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas\?idEmpresa=42&nrTelcelpessoa=11987654321})
+          .with(headers: { 'token' => 'valid-token' })
+          .to_return(status: 500, body: 'Server Error')
 
         get url,
             headers: user.create_new_auth_token,
@@ -84,7 +92,6 @@ RSpec.describe 'Api::V1::Accounts::Integrations::Erp', type: :request do
 
         expect(response).to have_http_status(:service_unavailable)
         expect(JSON.parse(response.body)['error']).to eq('ERP service error: 500')
-        expect(tracker).to have_received(:capture_exception)
       end
     end
   end

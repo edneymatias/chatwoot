@@ -1,10 +1,17 @@
 # Fase 07 — Capabilities e Agendamento Ponta a Ponta (Brief)
 
-**Status**: Pronto para speckit
+**Status**: Aprovado em 2026-09-30 — prova no playground contra o ERP real (US3, spec 089 T054,
+SC-010) transferida para o [brief 13](13-disciplina-de-interrupcao-e-prova-do-agendamento.md)
 **Data**: 2026-09-24
 **Master doc**: `docs/kanban/scoutv2/design.md` §4.5 (capabilities), §6 (Fase 2)
 **Depends on**: Brief 06 — `agendamento` já existe e degrada com `requires` insatisfeito; este brief
 satisfaz as capabilities e fecha o fluxo.
+**Aprovação**: aprovado pelo código e pela verificação roteirizada (spec
+`089-scout-v2-capabilities-scheduling`, T001–T053). O teste no playground de 2026-09-30 (conversa
+147) não chegou ao agendamento: aberturas indevidas de interrupção pularam a `identificacao` (contato
+sem telefone) e o hook de dev não tinha os identificadores de capability. A verificação da US3 contra
+o hook real é feita efetivamente no brief 13, depois das correções que a tornam alcançável; T054 é
+marcada lá.
 
 ---
 

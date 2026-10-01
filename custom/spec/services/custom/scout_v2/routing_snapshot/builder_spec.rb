@@ -230,6 +230,62 @@ RSpec.describe Custom::ScoutV2::RoutingSnapshot::Builder do
         snapshot = described_class.call(conversation: conversation, catalog: catalog)
         expect(snapshot.completed_playbooks).to eq(%w[identificacao qualificacao])
       end
+
+      describe 'satisfied_capabilities resolution' do
+        before do
+          account.enable_features!('erp_integration')
+          stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pessoas})
+            .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: { 'Content-Type' => 'application/json' })
+        end
+
+        it 'resolves all capabilities when hook has all identifiers' do
+          create(
+            :integrations_hook,
+            account: account,
+            app_id: 'younus',
+            status: :enabled,
+            settings: {
+              'token' => 'tok',
+              'id_empresa' => '648',
+              'id_usuario' => '172793',
+              'id_convenio' => '1',
+              'nr_convenio' => '12345',
+              'id_origem_pessoa' => '11',
+              'id_agenda' => '3',
+              'id_servico' => '1'
+            }
+          )
+
+          snapshot = described_class.call(conversation: conversation, catalog: catalog)
+          expect(snapshot.satisfied_capabilities).to eq(%w[scheduling customer_registry])
+        end
+
+        it 'resolves customer_registry only when hook lacks id_agenda' do
+          create(
+            :integrations_hook,
+            account: account,
+            app_id: 'younus',
+            status: :enabled,
+            settings: {
+              'token' => 'tok',
+              'id_empresa' => '648',
+              'id_usuario' => '172793',
+              'id_convenio' => '1',
+              'nr_convenio' => '12345',
+              'id_origem_pessoa' => '11',
+              'id_servico' => '1'
+            }
+          )
+
+          snapshot = described_class.call(conversation: conversation, catalog: catalog)
+          expect(snapshot.satisfied_capabilities).to eq(%w[customer_registry])
+        end
+
+        it 'returns empty array when account has no hook' do
+          snapshot = described_class.call(conversation: conversation, catalog: catalog)
+          expect(snapshot.satisfied_capabilities).to eq([])
+        end
+      end
     end
   end
 end

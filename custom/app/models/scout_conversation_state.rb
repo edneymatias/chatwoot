@@ -68,6 +68,34 @@ class ScoutConversationState < ApplicationRecord
     self
   end
 
+  def remember_customer!(id:, name:)
+    update!(capability_state: capability_state.merge(
+      'customer' => {
+        'id' => id.to_s,
+        'name' => name
+      }
+    ))
+    self
+  end
+
+  def remember_slots!(slots)
+    current_slots = capability_state['offered_slots'] || {}
+    update!(capability_state: capability_state.merge(
+      'offered_slots' => current_slots.merge(slots.transform_keys(&:to_s))
+    ))
+    self
+  end
+
+  def remember_booking!(appointment_id:, starts_at:)
+    update!(capability_state: capability_state.merge(
+      'booking' => {
+        'appointment_id' => appointment_id.to_s,
+        'starts_at' => starts_at
+      }
+    ))
+    self
+  end
+
   private
 
   def updated_completed_playbooks(completed)

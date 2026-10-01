@@ -338,4 +338,76 @@ RSpec.describe ScoutConversationState, type: :model do
       expect(unsaved_state.unsatisfied_flags).to eq(record)
     end
   end
+
+  describe '#remember_customer!' do
+    let(:state) { described_class.create!(account: account, conversation: conversation) }
+
+    it 'records customer with stringified id and name in capability_state' do
+      state.remember_customer!(id: 123, name: 'Maria Silva')
+      state.reload
+
+      expect(state.capability_state['customer']).to eq({ 'id' => '123', 'name' => 'Maria Silva' })
+    end
+
+    it 'preserves existing keys in capability_state and replaces earlier customer' do
+      state.update!(capability_state: { 'other_key' => 'val', 'customer' => { 'id' => '99', 'name' => 'Old' } })
+      state.remember_customer!(id: '456', name: 'New Name')
+      state.reload
+
+      expect(state.capability_state['other_key']).to eq('val')
+      expect(state.capability_state['customer']).to eq({ 'id' => '456', 'name' => 'New Name' })
+    end
+  end
+
+  describe '#remember_slots!' do
+    let(:state) { described_class.create!(account: account, conversation: conversation) }
+
+    it 'records offered slots in capability_state' do
+      slots = { '2026-10-15T09:00:00-03:00' => '2026-10-15T09:00:00-03:00' }
+      state.remember_slots!(slots)
+      state.reload
+
+      expect(state.capability_state['offered_slots']).to eq(slots)
+    end
+
+    it 'merges new slots into offered_slots without replacing earlier ones' do
+      state.update!(capability_state: {
+                      'offered_slots' => { '2026-10-15T09:00:00-03:00' => '2026-10-15T09:00:00-03:00' }
+                    })
+
+      state.remember_slots!({ '2026-10-15T10:00:00-03:00' => '2026-10-15T10:00:00-03:00' })
+      state.reload
+
+      expect(state.capability_state['offered_slots']).to eq({
+                                                              '2026-10-15T09:00:00-03:00' => '2026-10-15T09:00:00-03:00',
+                                                              '2026-10-15T10:00:00-03:00' => '2026-10-15T10:00:00-03:00'
+                                                            })
+    end
+  end
+
+  describe '#remember_booking!' do
+    let(:state) { described_class.create!(account: account, conversation: conversation) }
+
+    it 'records booking with stringified appointment_id and starts_at in capability_state' do
+      state.remember_booking!(appointment_id: 987, starts_at: '2026-10-15T14:30:00-03:00')
+      state.reload
+
+      expect(state.capability_state['booking']).to eq({
+                                                        'appointment_id' => '987',
+                                                        'starts_at' => '2026-10-15T14:30:00-03:00'
+                                                      })
+    end
+
+    it 'preserves existing keys in capability_state' do
+      state.update!(capability_state: { 'customer' => { 'id' => '123', 'name' => 'Maria' } })
+      state.remember_booking!(appointment_id: '987', starts_at: '2026-10-15T14:30:00-03:00')
+      state.reload
+
+      expect(state.capability_state['customer']).to eq({ 'id' => '123', 'name' => 'Maria' })
+      expect(state.capability_state['booking']).to eq({
+                                                        'appointment_id' => '987',
+                                                        'starts_at' => '2026-10-15T14:30:00-03:00'
+                                                      })
+    end
+  end
 end

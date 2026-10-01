@@ -6,6 +6,11 @@ class Custom::ScoutV2::TurnScope
   attr_reader :catalog, :transitions, :ctx
   attr_accessor :active_procedure_name
 
+  CAPABILITY_CLASSES = {
+    'scheduling' => Custom::ScoutV2::Capabilities::Scheduling,
+    'customer_registry' => Custom::ScoutV2::Capabilities::CustomerRegistry
+  }.freeze
+
   def initialize(chat:, catalog:, baseline_instructions:, tool_wrapper:, playground: false)
     @chat = chat
     @catalog = catalog
@@ -69,10 +74,11 @@ class Custom::ScoutV2::TurnScope
 
     return tools unless requires_satisfied
 
+    cap_tools = capability_tools_for(playbook, scout: scout, conversation: conversation)
     exits = playbook.exits.values.map do |exit_decl|
       Custom::ScoutV2::Exits::ExitTool.new(scout, conversation, declaration: exit_decl, scope: self)
     end
-    tools + exits
+    tools + cap_tools + exits
   end
 
   def setup_initial_tools!(decision:, ctx:, scout:, conversation:, openable:)
@@ -119,6 +125,33 @@ class Custom::ScoutV2::TurnScope
       else
         original_execute.call(**args)
       end
+    end
+  end
+
+  def capability_tools_for(playbook, scout:, conversation:)
+    requires = playbook.requires || []
+    return [] if requires.empty?
+
+    hook = Custom::ScoutV2::Capabilities::Registry.find_erp_hook(conversation.account)
+    return [] unless hook
+
+    requires.flat_map do |req|
+      cap_class = CAPABILITY_CLASSES[req.to_s]
+      next [] unless cap_class
+
+      resolution = Custom::ScoutV2::Capabilities::Registry.resolve(req, account: conversation.account, hook: hook)
+      next [] unless resolution.satisfied?
+
+      build_operation_tools(cap_class, resolution.provider, scout: scout, conversation: conversation)
+    end
+  end
+
+  def build_operation_tools(cap_class, provider, scout:, conversation:)
+    instance = cap_class.new(provider: provider, conversation: conversation)
+    instance.class.operations.values.map do |op|
+      Custom::ScoutV2::Capabilities::OperationTool.new(
+        scout, conversation, capability_instance: instance, operation: op
+      )
     end
   end
 end

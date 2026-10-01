@@ -137,7 +137,7 @@ RSpec.describe Custom::ScoutV2::UnsatisfiedItems do
           scout: scout,
           opportunity: opportunity,
           satisfied_capabilities: %w[scheduling customer_registry],
-          satisfied_business_facts: %w[politica_reagendamento]
+          satisfied_business_facts: []
         )
 
         record = described_class.call(playbook: agendamento, conversation: conversation, scout: scout, ctx: ctx)

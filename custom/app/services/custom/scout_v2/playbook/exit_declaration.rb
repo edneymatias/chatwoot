@@ -1,13 +1,14 @@
 # frozen_string_literal: true
 
-Custom::ScoutV2::Playbook::ExitDeclaration = Data.define(:name, :kind, :fields, :target, :stage) do
-  def initialize(name:, kind:, fields: {}, target: nil, stage: nil)
+Custom::ScoutV2::Playbook::ExitDeclaration = Data.define(:name, :kind, :fields, :target, :stage, :precondition) do
+  def initialize(name:, kind:, fields: {}, target: nil, stage: nil, precondition: nil)
     super(
       name: name,
       kind: kind,
       fields: fields.freeze,
       target: target,
-      stage: stage
+      stage: stage,
+      precondition: precondition
     )
   end
 end

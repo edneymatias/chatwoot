@@ -1,0 +1,14 @@
+{
+  "sucesso": true,
+  "mensagem": "Agendamento cadastrado com sucesso.",
+  "dados": {
+    "idMvtoagenda": 4468657,
+    "idEmpresa": 648,
+    "idAgenda": 3,
+    "idPessoa": 784868,
+    "nmTitulo": "Teste Lead Scout",
+    "dtIniagenda": "2026-10-15T11:00:00Z",
+    "idService": 1,
+    "idUsuario": 172793
+  }
+}

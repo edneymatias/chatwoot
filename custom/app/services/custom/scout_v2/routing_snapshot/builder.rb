@@ -32,7 +32,7 @@ class Custom::ScoutV2::RoutingSnapshot::Builder
       pending_fields: Custom::ScoutV2::RoutingSnapshot::PendingFields.call(scout: scout, opportunity: opportunity),
       active_playbook: resolve_active_playbook(state),
       transitions: @turn_transition_count,
-      satisfied_capabilities: [],
+      satisfied_capabilities: Custom::ScoutV2::Capabilities::Registry.satisfied_names(account: @conversation.account),
       completed_playbooks: state.completed_playbooks || [],
       satisfied_business_facts: []
     )

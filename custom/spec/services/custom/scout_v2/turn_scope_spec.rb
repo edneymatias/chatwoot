@@ -180,5 +180,108 @@ RSpec.describe Custom::ScoutV2::TurnScope do
       satisfied_actions = turn_scope_satisfied.actions_for(agendamento, scout: scout, conversation: conversation).map(&:name)
       expect(satisfied_actions).to include('exit_agendado', 'exit_sem_horario')
     end
+
+    it 'registers capability OperationTools when all requires are satisfied and omits them when unsatisfied (FR-018, FR-026)' do
+      setup_younus_hook
+
+      ctx_satisfied = Custom::ScoutV2::RoutingSnapshot.new(
+        conversation: conversation,
+        satisfied_capabilities: %w[scheduling customer_registry]
+      )
+      turn_scope.setup_initial_tools!(
+        decision: Custom::ScoutV2::Router::Decision.new(playbook: playbook_with_reqs, confidence: 1.0),
+        ctx: ctx_satisfied,
+        scout: scout,
+        conversation: conversation,
+        openable: []
+      )
+
+      actions = turn_scope.actions_for(playbook_with_reqs, scout: scout, conversation: conversation)
+      action_names = actions.map(&:name)
+      expect(action_names).to include('scheduling_list_slots', 'scheduling_book')
+      expect(action_names).not_to include('call_custom_api')
+
+      ctx_unsatisfied = Custom::ScoutV2::RoutingSnapshot.new(
+        conversation: conversation,
+        satisfied_capabilities: []
+      )
+      turn_scope_unsatisfied = described_class.new(
+        chat: chat,
+        catalog: catalog,
+        baseline_instructions: 'Baseline',
+        tool_wrapper: tool_wrapper
+      )
+      turn_scope_unsatisfied.setup_initial_tools!(
+        decision: Custom::ScoutV2::Router::Decision.new(playbook: playbook_with_reqs, confidence: 1.0),
+        ctx: ctx_unsatisfied,
+        scout: scout,
+        conversation: conversation,
+        openable: []
+      )
+      unsatisfied_actions = turn_scope_unsatisfied.actions_for(playbook_with_reqs, scout: scout, conversation: conversation).map(&:name)
+      expect(unsatisfied_actions).not_to include('scheduling_list_slots', 'scheduling_book')
+    end
+
+    it 'does NOT register capability OperationTools or exit_agendado during an interruption takeover while agendamento is pinned (FR-018)' do
+      setup_younus_hook
+      shipped_catalog = Custom::ScoutV2::Playbook::Loader.load_all(Rails.root.join('custom/playbooks'))
+      agendamento = shipped_catalog['agendamento']
+      openable = Custom::ScoutV2::Playbook::Catalog.new([shipped_catalog['pausa']])
+
+      ScoutConversationState.create!(account: account, conversation: conversation, active_playbook: 'agendamento', activation_reason: 'state')
+      ctx = Custom::ScoutV2::RoutingSnapshot.new(
+        conversation: conversation,
+        satisfied_capabilities: %w[scheduling customer_registry],
+        satisfied_business_facts: []
+      )
+
+      turn_scope_pinned = build_pinned_turn_scope(shipped_catalog, agendamento, openable, ctx)
+      open_tool = Custom::ScoutV2::Tools::OpenPlaybook.new(scout, conversation, openable: openable, scope: turn_scope_pinned)
+
+      expect(chat.tools.keys).to include(
+        :scheduling_list_slots, :scheduling_book, :customer_registry_find_by_phone, :customer_registry_create, :exit_agendado
+      )
+
+      open_tool.execute(name: 'pausa')
+
+      expect(chat.tools.keys).to include(:search_knowledge_base, :open_playbook, :exit_handoff)
+      expect(chat.tools.keys).not_to include(
+        :scheduling_list_slots, :scheduling_book, :customer_registry_find_by_phone, :customer_registry_create, :exit_agendado, :exit_sem_horario
+      )
+    end
+
+    def setup_younus_hook
+      account.enable_features!('erp_integration')
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pessoas})
+        .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: { 'Content-Type' => 'application/json' })
+
+      create(:integrations_hook, account: account, app_id: 'younus', status: :enabled, settings: {
+               'token' => 'secret-token-123',
+               'id_empresa' => '648',
+               'id_usuario' => '172793',
+               'id_convenio' => '1',
+               'nr_convenio' => 'CARD-123',
+               'id_origem_pessoa' => '11',
+               'id_agenda' => '3',
+               'id_servico' => '1'
+             })
+    end
+
+    def build_pinned_turn_scope(shipped_catalog, agendamento, openable, ctx)
+      scope = described_class.new(
+        chat: chat,
+        catalog: shipped_catalog,
+        baseline_instructions: 'Baseline',
+        tool_wrapper: tool_wrapper
+      )
+      scope.setup_initial_tools!(
+        decision: Custom::ScoutV2::Router::Decision.new(playbook: agendamento, confidence: 1.0),
+        ctx: ctx,
+        scout: scout,
+        conversation: conversation,
+        openable: openable
+      )
+      scope
+    end
   end
 end

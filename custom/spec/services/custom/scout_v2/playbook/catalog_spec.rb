@@ -195,28 +195,55 @@ RSpec.describe Custom::ScoutV2::Playbook::Catalog do
                                              ])
         expect(agendamento.tools).to be_empty
         expect(agendamento.requires).to eq(%w[scheduling customer_registry])
-        expect(agendamento.needs).to eq(%w[politica_reagendamento])
+        expect(agendamento.needs).to be_empty
 
         expect(agendamento.exits.keys).to contain_exactly('agendado', 'sem_horario')
         exit_ag = agendamento.exits['agendado']
         expect(exit_ag.kind).to eq('terminal')
         expect(exit_ag.stage).to be_nil
-        expect(exit_ag.fields).to eq({ 'inicio' => 'datetime' })
-
+        expect(exit_ag.fields).to eq({})
+        expect(exit_ag.precondition).to eq('booking')
         exit_sh = agendamento.exits['sem_horario']
         expect(exit_sh.kind).to eq('terminal')
         expect(exit_sh.stage).to be_nil
         expect(exit_sh.fields).to eq({ 'motivo' => 'string' })
       end
 
-      it 'has agendamento raw body carrying exactly five markers and no literal PENDENTE' do
+      it 'has agendamento raw body carrying exactly four markers and no literal PENDENTE', :aggregate_failures do
         expect(agendamento).to be_present
         body = agendamento.body
         expect(body).not_to include('PENDENTE')
         expect(body.scan(/\[\[depends:\s*customer_registry\s*\]\]/).count).to eq(1)
         expect(body.scan(/\[\[depends:\s*scheduling\s*\]\]/).count).to eq(3)
-        expect(body.scan(/\[\[depends:\s*politica_reagendamento\s*\]\]/).count).to eq(1)
-        expect(body.scan(/\[\[depends:.*?\]\]/).count).to eq(5)
+        expect(body.scan(/\[\[depends:\s*politica_reagendamento\s*\]\]/).count).to eq(0)
+        expect(body.scan(/\[\[depends:.*?\]\]/).count).to eq(4)
+        expect(body).to include('customer_registry_find_by_phone')
+        expect(body).to include('customer_registry_create')
+        expect(body).to include('scheduling_list_slots')
+        expect(body).to include('scheduling_book')
+        expect(body).to include('exit_agendado')
+        expect(body).to include('exit_sem_horario')
+        expect(body).to include('exit_handoff')
+      end
+
+      it 'asserts agendamento body invariants per contracts/turn_assembly.md §4', :aggregate_failures do
+        expect(agendamento).to be_present
+        body = agendamento.body
+
+        expect(body).to match(/not_found.*confirme o nome.*customer_registry_create/im)
+        expect(body).to match(/duas.*ambíguas.*exit_handoff/im)
+        expect(body).to match(/no máximo três horários/i)
+        expect(body).to match(/linguagem natural/i)
+        expect(body).to match(/slot_id/i)
+        expect(body).to match(/scheduling_book.*exit_agendado/im)
+        expect(body).to match(/scheduling_list_slots.*três dias seguintes/im)
+        expect(body).to match(/exit_sem_horario.*nenhuma disponibilidade/im)
+        expect(body).to match(/urgência clínica/i)
+        expect(body).to match(/não prometa/i)
+        expect(body).to match(/não repita a chamada/i)
+        expect(body).to match(/não peça o telefone/i)
+        expect(body).to match(/não chame ferramentas customer_registry_\*/i)
+        expect(body).not_to match(/reagendamento|cancelamento/i)
       end
 
       it 'declares qualificado exit on qualificacao transitioning to agendamento with qualified stage' do

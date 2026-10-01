@@ -5,7 +5,8 @@
 **Master doc**: `docs/kanban/ciclo 13/scoutv2/design.md` §4.11 (ativação e configuração de modelo), §6 (Fase 5 + checklist de promoção), §4.9
 **Depends on**: Brief 03, que declara a flag `scout_v2` e os dois pontos de despacho que este brief
 usa em produção; Briefs 06 (as seis playbooks) e 07 (capabilities), sem os quais uma conta real em
-v2 perderia agendamento. Os Briefs 08 e 09 não bloqueiam a promoção.
+v2 perderia agendamento; Brief 13, que carrega a prova do agendamento contra o ERP real que o 07
+transferiu para ele. Os Briefs 08 e 09 não bloqueiam a promoção.
 
 ---
 

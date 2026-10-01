@@ -133,7 +133,7 @@ RSpec.describe Erp::Younus::Client do
     end
 
     it 'rescues connection errors and raises Erp::ApiError (U16)' do
-      [SocketError, Errno::ECONNREFUSED].each do |err|
+      [SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH, EOFError, OpenSSL::SSL::SSLError].each do |err|
         stub_request(:get, base_url)
           .with(query: { idEmpresa: id_empresa, nrTelcelpessoa: phone })
           .to_raise(err)
@@ -213,6 +213,238 @@ RSpec.describe Erp::Younus::Client do
         .to_return(status: 500, body: 'Server Error')
 
       expect { client.find_by_id(external_id) }.to raise_error(Erp::ApiError, 'ERP service error: 500')
+    end
+  end
+
+  describe 'new capability endpoints with settings injection' do
+    subject(:configured_client) do
+      described_class.new(
+        token: 'distinct-token-xyz',
+        id_empresa: '648',
+        settings: {
+          'id_empresa' => '648',
+          'id_usuario' => '172793',
+          'id_convenio' => '1',
+          'nr_convenio' => 'CARD-12345',
+          'id_origem_pessoa' => '11',
+          'id_agenda' => '3',
+          'id_servico' => '1'
+        }
+      )
+    end
+
+    let(:fixtures_path) { Rails.root.join('custom/spec/fixtures/erp/younus') }
+
+    describe '#find_person' do
+      let(:phone) { '5511999990000' }
+      let(:url) { 'https://wfh.ichatr.com.br/webhook/pesquisar-pessoa' }
+
+      it 'issues GET with distinctive configured settings as integer and phone' do
+        stub_request(:get, url)
+          .with(
+            query: { idEmpresa: 648, nrTelcelpessoa: phone },
+            headers: { 'token' => 'distinct-token-xyz', 'Content-Type' => 'application/json' }
+          )
+          .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_found.json"), headers: { 'Content-Type' => 'application/json' })
+
+        result = configured_client.find_person(phone)
+
+        expect(WebMock).to have_requested(:get, url)
+          .with(query: { idEmpresa: 648, nrTelcelpessoa: phone })
+        expect(result[:record]['idPessoa']).to eq(784_868)
+        expect(result[:multiple_matches]).to be(false)
+      end
+
+      it 'handles multiple matches using find_person_multiple fixture' do
+        stub_request(:get, /#{url}/)
+          .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_multiple.json"), headers: { 'Content-Type' => 'application/json' })
+
+        result = configured_client.find_person(phone)
+        expect(result[:multiple_matches]).to be(true)
+      end
+
+      it 'handles no match using find_person_none fixture returning nil' do
+        stub_request(:get, /#{url}/)
+          .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_none.json"), headers: { 'Content-Type' => 'application/json' })
+
+        result = configured_client.find_person(phone)
+        expect(result).to be_nil
+      end
+    end
+
+    describe '#create_person' do
+      let(:url) { 'https://wfh.ichatr.com.br/webhook/incluir-cliente' }
+
+      it 'issues POST with configured identifiers as integers and nrConvenio as string' do
+        stub = stub_request(:post, url)
+               .with(
+                 headers: { 'token' => 'distinct-token-xyz', 'Content-Type' => 'application/json' },
+                 body: {
+                   nmPessoa: 'João Santos',
+                   idEmpresa: 648,
+                   idUsuario: 172_793,
+                   idConvenio: 1,
+                   nrConvenio: 'CARD-12345',
+                   idOrigempessoa: 11,
+                   nrTelcelpessoa: '5511988880000'
+                 }.to_json
+               )
+               .to_return(status: 200, body: File.read("#{fixtures_path}/create_person.json"), headers: { 'Content-Type' => 'application/json' })
+
+        result = configured_client.create_person('João Santos', '5511988880000')
+
+        expect(stub).to have_been_requested
+        expect(result['idPessoa']).to eq(784_868)
+      end
+
+      it 'raises Erp::ApiError on sucesso: false response' do
+        stub_request(:post, url)
+          .to_return(status: 200, body: File.read("#{fixtures_path}/error_declined.json"), headers: { 'Content-Type' => 'application/json' })
+
+        expect { configured_client.create_person('Fail', '123') }
+          .to raise_error(Erp::ApiError, 'Não foi possível cadastrar o agendamento.')
+      end
+    end
+
+    describe '#free_slots' do
+      let(:url) { 'https://wfh.ichatr.com.br/webhook/horarios-livres' }
+
+      it 'issues GET with date, idAgenda, idEmpresa, and idServico' do
+        stub = stub_request(:get, url)
+               .with(
+                 query: { data: '2026-10-15', idAgenda: 3, idEmpresa: 648, idServico: 1 },
+                 headers: { 'token' => 'distinct-token-xyz', 'Content-Type' => 'application/json' }
+               )
+               .to_return(status: 200, body: File.read("#{fixtures_path}/free_slots.json"), headers: { 'Content-Type' => 'application/json' })
+
+        result = configured_client.free_slots('2026-10-15')
+
+        expect(stub).to have_been_requested
+        expect(result).to include('2026-10-15 08:00')
+      end
+
+      it 'returns empty array when no slots available' do
+        stub_request(:get, /#{url}/)
+          .to_return(status: 200, body: File.read("#{fixtures_path}/free_slots_empty.json"), headers: { 'Content-Type' => 'application/json' })
+
+        result = configured_client.free_slots('2026-10-15')
+        expect(result).to eq([])
+      end
+
+      it 'raises Erp::ApiError when response is sucesso: false' do
+        stub_request(:get, /#{url}/)
+          .to_return(
+            status: 200,
+            body: { sucesso: false, mensagem: 'Agenda não encontrada' }.to_json,
+            headers: { 'Content-Type' => 'application/json' }
+          )
+
+        expect { configured_client.free_slots('2026-10-15') }
+          .to raise_error(Erp::ApiError, 'Agenda não encontrada')
+      end
+    end
+
+    describe '#create_appointment' do
+      let(:url) { 'https://wfh.ichatr.com.br/webhook/incluir-agendamento' }
+
+      it 'issues POST with configured identifiers and appointment parameters' do
+        stub = stub_request(:post, url)
+               .with(
+                 headers: { 'token' => 'distinct-token-xyz', 'Content-Type' => 'application/json' },
+                 body: {
+                   idAgenda: 3,
+                   idPessoa: 784_868,
+                   nmTitulo: 'Teste Lead Scout',
+                   idEmpresa: 648,
+                   idServico: 1,
+                   idUsuario: 172_793,
+                   idConvenio: 1,
+                   dtIniAgenda: '2026-10-15T14:30:00-03:00',
+                   observacoes: 'Agendado por Scout: prefere tarde'
+                 }.to_json
+               )
+               .to_return(status: 200, body: File.read("#{fixtures_path}/create_appointment.json"), headers: { 'Content-Type' => 'application/json' })
+
+        result = configured_client.create_appointment(
+          person_id: '784868',
+          title: 'Teste Lead Scout',
+          starts_at: '2026-10-15T14:30:00-03:00',
+          notes: 'prefere tarde'
+        )
+
+        expect(stub).to have_been_requested
+        expect(result['idMvtoagenda']).to eq(4_468_657)
+      end
+
+      it 'raises Erp::ApiError on declined appointment' do
+        stub_request(:post, url)
+          .to_return(status: 200, body: File.read("#{fixtures_path}/error_declined.json"), headers: { 'Content-Type' => 'application/json' })
+
+        expect do
+          configured_client.create_appointment(
+            person_id: '123',
+            title: 'Test',
+            starts_at: '2026-10-15T14:30:00-03:00',
+            notes: nil
+          )
+        end.to raise_error(Erp::ApiError, 'Não foi possível cadastrar o agendamento.')
+      end
+
+      it 'rescues transport failures (reset, unreachable, eof, ssl, timed out, net unreachable, httparty) and raises Erp::ApiError' do
+        failures = [Errno::ECONNRESET, Errno::EHOSTUNREACH, EOFError, OpenSSL::SSL::SSLError,
+                    Errno::ETIMEDOUT, Errno::ENETUNREACH, HTTParty::Error]
+        failures.each do |err|
+          stub_request(:post, url).to_raise(err)
+
+          expect do
+            configured_client.create_appointment(
+              person_id: '123',
+              title: 'Test',
+              starts_at: '2026-10-15T14:30:00-03:00',
+              notes: nil
+            )
+          end.to raise_error(Erp::ApiError, 'Network error')
+        end
+      end
+    end
+
+    context 'with leading-zero identifiers in settings (T083)' do
+      let(:leading_zero_client) do
+        described_class.new(
+          token: 'distinct-token-xyz',
+          id_empresa: '08',
+          settings: {
+            'id_empresa' => '08',
+            'id_usuario' => '09',
+            'id_convenio' => '01',
+            'nr_convenio' => '00123',
+            'id_origem_pessoa' => '05',
+            'id_agenda' => '03',
+            'id_servico' => '07'
+          }
+        )
+      end
+
+      it 'parses identifiers with base 10 without raising ArgumentError and sends base 10 integers' do
+        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/horarios-livres')
+          .with(query: { data: '2026-10-15', idAgenda: 3, idEmpresa: 8, idServico: 7 })
+          .to_return(status: 200, body: File.read("#{fixtures_path}/free_slots.json"), headers: { 'Content-Type' => 'application/json' })
+
+        expect { leading_zero_client.free_slots('2026-10-15') }.not_to raise_error
+
+        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-agendamento')
+          .with(body: hash_including({ 'idAgenda' => 3, 'idPessoa' => 8, 'idEmpresa' => 8, 'idServico' => 7, 'idUsuario' => 9, 'idConvenio' => 1 }))
+          .to_return(status: 200, body: File.read("#{fixtures_path}/create_appointment.json"), headers: { 'Content-Type' => 'application/json' })
+
+        expect do
+          leading_zero_client.create_appointment(
+            person_id: '08',
+            title: 'Test',
+            starts_at: '2026-10-15T14:30:00-03:00',
+            notes: nil
+          )
+        end.not_to raise_error
+      end
     end
   end
   # rubocop:enable Rails/DynamicFindBy

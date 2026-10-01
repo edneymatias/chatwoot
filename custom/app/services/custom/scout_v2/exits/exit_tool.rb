@@ -43,6 +43,11 @@ class Custom::ScoutV2::Exits::ExitTool < Custom::Scout::Tools::BaseTool
   end
 
   def execute(**payload)
+    if @declaration.precondition.present?
+      precondition_error = Custom::ScoutV2::Exits::Preconditions.check(@declaration.precondition, self)
+      return { error: precondition_error } if precondition_error.present?
+    end
+
     problems = Custom::ScoutV2::Exits::PayloadValidator.call(@declaration, payload)
     return invalid_payload_error(problems) if problems.any?
 

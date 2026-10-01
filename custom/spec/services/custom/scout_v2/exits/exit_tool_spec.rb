@@ -242,5 +242,66 @@ RSpec.describe Custom::ScoutV2::Exits::ExitTool do
         expect(scope.escalated?).to be true
       end
     end
+
+    context 'with exit precondition (FR-021, FR-022, US3-AS9)' do
+      let(:declaration) do
+        Custom::ScoutV2::Playbook::ExitDeclaration.new(
+          name: 'agendado',
+          kind: 'terminal',
+          fields: {},
+          target: nil,
+          stage: nil,
+          precondition: 'booking'
+        )
+      end
+
+      let!(:state) { ScoutConversationState.create!(account: account, conversation: conversation) }
+
+      it 'returns error before dispatch when booking is not present in capability_state' do
+        result = tool.execute
+
+        expect(result[:error]).to eq(
+          'Você ainda não realizou nenhum agendamento nesta conversa. Chame scheduling_book antes de exit_agendado, ou transfira com exit_handoff.'
+        )
+        expect(state.reload.last_exit).to be_nil
+        expect(state.completed_playbooks).to be_empty
+        expect(scope.ended?).to be false
+      end
+
+      it 'runs precondition before payload validation so an unbooked call with undeclared fields returns the booking error' do
+        result = tool.execute(inicio: '2026-10-15T08:00:00-03:00')
+        expect(result[:error]).to eq(
+          'Você ainda não realizou nenhum agendamento nesta conversa. Chame scheduling_book antes de exit_agendado, ou transfira com exit_handoff.'
+        )
+      end
+
+      it 'rejects assistant-supplied fields as undeclared when booking is present' do
+        state.update!(capability_state: {
+                        'booking' => {
+                          'appointment_id' => '4468657',
+                          'starts_at' => '2026-10-15T08:00:00-03:00'
+                        }
+                      })
+
+        result = tool.execute(inicio: '2026-10-15T08:00:00-03:00')
+        expect(result[:error]).to include("campo 'inicio' não declarado")
+      end
+
+      it 'dispatches exit and includes booked start and reference in outcome message when booking is present' do
+        state.update!(capability_state: {
+                        'booking' => {
+                          'appointment_id' => '4468657',
+                          'starts_at' => '2026-10-15T08:00:00-03:00'
+                        }
+                      })
+
+        result = tool.execute
+        expect(result).to eq(
+          "Desfecho 'agendado' registrado. Início: 2026-10-15T08:00:00-03:00. Referência: 4468657. Escreva agora sua resposta final ao cliente."
+        )
+        state.reload
+        expect(state.last_exit).to eq('agendado')
+      end
+    end
   end
 end

@@ -29,10 +29,21 @@ class Custom::ScoutV2::Exits::Terminal
     return error if error
 
     @scope.end_turn!
-    "Desfecho '#{@declaration.name}' registrado. Escreva agora sua resposta final ao cliente."
+    success_message
   end
 
   private
+
+  def success_message
+    if @declaration.precondition == 'booking'
+      state = ScoutConversationState.for_conversation(@conversation)
+      booking = state.capability_state['booking'] || {}
+      "Desfecho '#{@declaration.name}' registrado. Início: #{booking['starts_at']}. " \
+        "Referência: #{booking['appointment_id']}. Escreva agora sua resposta final ao cliente."
+    else
+      "Desfecho '#{@declaration.name}' registrado. Escreva agora sua resposta final ao cliente."
+    end
+  end
 
   def apply_stage_move_if_declared
     return nil unless @declaration.stage

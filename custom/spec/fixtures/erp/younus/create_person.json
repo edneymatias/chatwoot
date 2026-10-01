@@ -1,0 +1,20 @@
+{
+  "sucesso": true,
+  "mensagem": "Cliente cadastrado com sucesso.",
+  "dados": {
+    "idPessoa": 784868,
+    "idEmpresa": 648,
+    "pessoaTipo": 3,
+    "nmPessoa": "Teste Lead Scout",
+    "tpPessoa": "F",
+    "nrCpfcnpjpessoa": "",
+    "nrTelcelpessoa": "5511999990648",
+    "idUsuario": 172793,
+    "dtCadpessoa": "2026-09-30 17:30:29",
+    "dsConvenio": "Particular",
+    "idConvenio": 1,
+    "nrConvenio": "",
+    "idPerfil": 1,
+    "origemPessoa": 11
+  }
+}

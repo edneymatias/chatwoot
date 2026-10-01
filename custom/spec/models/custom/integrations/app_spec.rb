@@ -22,7 +22,7 @@ RSpec.describe Integrations::App do
       expect(app).to be_present
       expect(app.params[:category]).to eq('erp')
       expect(app.params[:feature_flag]).to eq('erp_integration')
-      expect(app.visible_properties).to eq(%w[id_empresa token])
+      expect(app.visible_properties).to eq(%w[id_empresa token id_usuario id_convenio nr_convenio id_origem_pessoa id_agenda id_servico])
       expect(app.params[:allow_multiple_hooks]).to be(false)
       expect(app.params[:hook_type]).to eq('account')
     end

@@ -21,6 +21,7 @@ class Custom::ScoutV2::Playbook::DependencyRules
     validate_requires
     validate_needs
     validate_markers
+    validate_exit_preconditions
   end
 
   private
@@ -100,6 +101,19 @@ class Custom::ScoutV2::Playbook::DependencyRules
       elsif declared.exclude?(name)
         @violations << "#{@file_ref}: Pending-step marker references undeclared requirement: #{name}"
       end
+    end
+  end
+
+  def validate_exit_preconditions
+    (@playbook.exits || {}).each do |exit_name, exit_decl|
+      next if exit_decl.nil? || exit_decl.precondition.blank?
+
+      precondition = exit_decl.precondition
+      unless Custom::ScoutV2::Exits::Preconditions.known?(precondition)
+        @violations << "#{@file_ref}: Unknown exit precondition for '#{exit_name}': #{precondition}"
+      end
+
+      @violations << "#{@file_ref}: Exit '#{exit_name}' declares a precondition but is not terminal" unless exit_decl.kind == 'terminal'
     end
   end
 end

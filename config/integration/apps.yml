@@ -347,7 +347,7 @@ younus:
   allow_multiple_hooks: false
   category: erp
   feature_flag: erp_integration
-  visible_properties: ['id_empresa', 'token']
+  visible_properties: ['id_empresa', 'token', 'id_usuario', 'id_convenio', 'nr_convenio', 'id_origem_pessoa', 'id_agenda', 'id_servico']
   settings_json_schema:
     {
       'type': 'object',
@@ -355,6 +355,12 @@ younus:
         {
           'token': { 'type': 'string' },
           'id_empresa': { 'type': 'string' },
+          'id_usuario': { 'type': 'string', 'pattern': '^\d*$' },
+          'id_convenio': { 'type': 'string', 'pattern': '^\d*$' },
+          'nr_convenio': { 'type': 'string' },
+          'id_origem_pessoa': { 'type': 'string', 'pattern': '^\d*$' },
+          'id_agenda': { 'type': 'string', 'pattern': '^\d*$' },
+          'id_servico': { 'type': 'string', 'pattern': '^\d*$' },
         },
       'required': ['token', 'id_empresa'],
       'additionalProperties': false,
@@ -372,5 +378,35 @@ younus:
         'type': 'text',
         'name': 'id_empresa',
         'validation': 'required',
+      },
+      {
+        'label': 'User ID',
+        'type': 'text',
+        'name': 'id_usuario',
+      },
+      {
+        'label': 'Agreement ID',
+        'type': 'text',
+        'name': 'id_convenio',
+      },
+      {
+        'label': 'Agreement number',
+        'type': 'text',
+        'name': 'nr_convenio',
+      },
+      {
+        'label': 'Person origin ID',
+        'type': 'text',
+        'name': 'id_origem_pessoa',
+      },
+      {
+        'label': 'Schedule ID',
+        'type': 'text',
+        'name': 'id_agenda',
+      },
+      {
+        'label': 'Service ID',
+        'type': 'text',
+        'name': 'id_servico',
       },
     ]

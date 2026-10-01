@@ -1,0 +1,70 @@
+{
+  "sucesso": true,
+  "mensagem": "Cliente(s) encontrdos com sucesso.",
+  "quantidade": 1,
+  "dados": [
+    {
+      "json": {
+        "idPessoa": 784868,
+        "idEmpresa": 648,
+        "pessoaTipo": 3,
+        "nmPessoa": "Teste Lead Scout",
+        "tpPessoa": "F",
+        "nrCpfcnpjpessoa": "00000000000",
+        "nmEndpessoa": "REDACTED",
+        "nrEndpessoa": "REDACTED",
+        "compEndpessoa": "REDACTED",
+        "nmBaipessoa": "REDACTED",
+        "nmCidpessoa": "REDACTED",
+        "ufEndpessoa": "REDACTED",
+        "nmPaispessoa": "REDACTED",
+        "nrCeppessoa": "REDACTED",
+        "nrTelrespessoa": null,
+        "nrTelcelpessoa": "5511999990648",
+        "nrTelcompessoa": null,
+        "emailPessoa": "teste.scout@example.com",
+        "tpSxpessoa": "M",
+        "dtNascpessoa": "2000-01-01T00:00:00.000Z",
+        "nmNacpessoa": null,
+        "idProfpessoa": null,
+        "idUsuario": 172793,
+        "idEspecpessoa": null,
+        "dtCadpessoa": "2026-09-30 17:30:29",
+        "dtUltaltpessoa": "2026-09-30 17:30:29",
+        "dtUltacesso": "2026-09-30 17:30:29",
+        "stTermo": 1,
+        "stCadastro": 1,
+        "stPessoa": 1,
+        "nrRgpessoa": null,
+        "estCivilpessoa": 1,
+        "dsConvenio": "Particular",
+        "idConvenio": 1,
+        "nrConvenio": null,
+        "nrFicha": null,
+        "dsProfissao": null,
+        "nmConvenio": null,
+        "idPerfil": 1,
+        "observacoes": null,
+        "descricaoOrigem": "REDACTED",
+        "origemPessoa": 11,
+        "nrConselho": null,
+        "siglaConselho": null,
+        "ufConselho": null,
+        "indClientePadrao": false,
+        "tipo": "REDACTED",
+        "atendimentos": {
+          "ultimo": {
+            "quando": "2026-09-30T00:00:00+00:00",
+            "comQuem": "REDACTED",
+            "compareceu": true
+          },
+          "proximo": null
+        },
+        "financeiro": null
+      },
+      "pairedItem": {
+        "item": 0
+      }
+    }
+  ]
+}

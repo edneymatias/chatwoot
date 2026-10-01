@@ -664,8 +664,8 @@ RSpec.describe 'Playground First Cut Catalog (US1)', type: :request do
 
       expect(system_text.scan(/\(PENDENTE — indisponível: customer_registry\)/).count).to eq(1)
       expect(system_text.scan(/\(PENDENTE — indisponível: scheduling\)/).count).to eq(3)
-      expect(system_text.scan(/\(PENDENTE — indisponível: politica_reagendamento\)/).count).to eq(1)
-      expect(system_text.scan(/\(PENDENTE — indisponível:.*?\)/).count).to eq(5)
+      expect(system_text.scan(/\(PENDENTE — indisponível: politica_reagendamento\)/).count).to eq(0)
+      expect(system_text.scan(/\(PENDENTE — indisponível:.*?\)/).count).to eq(4)
     end
 
     it 'verifies US3-AS3: agendamento is not pinned by state without a phone on record', :aggregate_failures do
@@ -734,7 +734,7 @@ RSpec.describe 'Playground First Cut Catalog (US1)', type: :request do
       expect(tool_names).not_to include('exit_agendado', 'exit_sem_horario')
     end
 
-    it 'verifies US1/US3 transition: qualificacao offers exit_qualificado, moves to agendamento with 5 pending lines', :aggregate_failures do
+    it 'verifies US1/US3 transition: qualificacao offers exit_qualificado, moves to agendamento with 4 pending lines', :aggregate_failures do
       contact.update!(name: 'Carlos Silva', phone_number: '+5511999999999')
       Opportunity.create!(
         account: account,
@@ -770,7 +770,7 @@ RSpec.describe 'Playground First Cut Catalog (US1)', type: :request do
       qual_call = tool_calls.find { |tc| tc['tool_name'] == 'exit_qualificado' }
       expect(qual_call).to be_present
       result_body = qual_call['result'].to_s
-      expect(result_body.scan(/\(PENDENTE — indisponível:.*?\)/).count).to eq(5)
+      expect(result_body.scan(/\(PENDENTE — indisponível:.*?\)/).count).to eq(4)
 
       state.reload
       expect(state.active_playbook).to eq('agendamento')
@@ -870,7 +870,7 @@ RSpec.describe 'Playground First Cut Catalog (US1)', type: :request do
         expect(parsed['procedure']).to eq('agendamento')
         expect(parsed['pending_fields']).to eq([])
         expect(parsed['unmet_requires']).to eq(%w[scheduling customer_registry])
-        expect(parsed['unmet_needs']).to eq(%w[politica_reagendamento])
+        expect(parsed['unmet_needs']).to eq([])
 
         expect(child_span.attributes).not_to have_key('langfuse.trace.metadata.unsatisfied_flags')
       end
@@ -911,7 +911,7 @@ RSpec.describe 'Playground First Cut Catalog (US1)', type: :request do
         unsatisfied = state.unsatisfied_flags || {}
         expect(unsatisfied['procedure']).to eq('agendamento')
         expect(unsatisfied['unmet_requires']).to match_array(%w[scheduling customer_registry])
-        expect(unsatisfied['unmet_needs']).to include('politica_reagendamento')
+        expect(unsatisfied['unmet_needs']).to eq([])
 
         # Verify trace metadata captures qualificacao pinning
         turn_spans = exporter.finished_spans.select { |s| s.name == 'llm.scout_v2.turn_runner' }

@@ -1,0 +1,31 @@
+{
+  "sucesso": true,
+  "mensagem": "Cliente(s) encontrdos com sucesso.",
+  "quantidade": 2,
+  "dados": [
+    {
+      "json": {
+        "idPessoa": 784868,
+        "idEmpresa": 648,
+        "pessoaTipo": 3,
+        "nmPessoa": "Teste Lead Scout",
+        "nrTelcelpessoa": "5511999990648"
+      },
+      "pairedItem": {
+        "item": 0
+      }
+    },
+    {
+      "json": {
+        "idPessoa": 784869,
+        "idEmpresa": 648,
+        "pessoaTipo": 3,
+        "nmPessoa": "Teste Lead Scout Segunda",
+        "nrTelcelpessoa": "5511999990648"
+      },
+      "pairedItem": {
+        "item": 1
+      }
+    }
+  ]
+}
