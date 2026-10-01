@@ -75,8 +75,9 @@ RSpec.configure do |config|
 
   # Filter lines from Rails gems in backtraces.
   config.filter_rails_from_backtrace!
-  # arbitrary gems may also be filtered via:
-  # config.filter_gems_from_backtrace("gem name")
+  # webmock/climate_control backtraces add 10+ noise lines to every failure without
+  # aiding diagnosis (docs/kanban/backlog/token-cost-vs-test-fidelity/notas.md, lever 1).
+  config.filter_gems_from_backtrace('webmock', 'climate_control')
   config.include SlackStubs
   config.include FileUploadHelpers
   config.include CsvSpecHelpers

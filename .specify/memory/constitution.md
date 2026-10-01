@@ -89,9 +89,15 @@ both of this fork's stacks: RSpec under `spec/` and `custom/spec/`, and Vitest u
 - Tests are never weakened, skipped, deleted, or filtered out to reach green. When a test and the
   code disagree, the feature's `spec.md` — or, absent one, the stated requirement — decides which
   is wrong.
-- Every acceptance criterion in a feature's `spec.md` has at least one test exercising the real
-  entry point (an RSpec `type: :request` spec, or a Vitest component/store test), not only a test
-  of an internal implementation detail.
+- Every acceptance criterion in a feature's `spec.md` has at least one test exercising the entry
+  point of its own claim, not only a test of an internal implementation detail: a decision/predicate
+  criterion (the system selects, classifies, computes, or routes a value) is proven by a direct call
+  to the real deciding service's public method; a persistence/effect criterion whose scenario does
+  not depend on transport-layer behavior is proven by calling the real service/job directly; a
+  contract criterion (an HTTP response shape, a side effect reachable only through the full
+  request/job path, or rendered UI) requires the real `type: :request` spec, job dispatch, or Vitest
+  component/store test. Every user story MUST have at least one contract-criterion test proving its
+  full path is wired end to end; not every acceptance scenario needs one.
 - Refactoring happens only on a green suite and never changes a test in the same commit as a
   behavior change.
 - Test strength is verified, not assumed. Tests MUST be resistant to mutation (see Principle VII);
@@ -104,7 +110,12 @@ both of this fork's stacks: RSpec under `spec/` and `custom/spec/`, and Vitest u
 themselves (rootless Podman, container-only dev). A behavior change exercised once by hand in dev
 is a regression waiting for the next upstream sync; a test that failed first and now passes is
 the only durable evidence the behavior was ever built correctly, and the only thing that catches
-it breaking again when `develop` is merged in.
+it breaking again when `develop` is merged in. Requiring a `type: :request`/component test for
+every acceptance scenario regardless of its claim turned the entry-point boundary into a
+per-scenario cost multiplier without added mutation-detection power: a decision made by one class
+doesn't need HTTP/job/Rack around it to prove a mutant broke it, and paying that boot cost per
+scenario bought process overhead, not additional real coverage (amended 2026-09-29, v1.5.0 — see
+`docs/kanban/backlog/token-cost-vs-test-fidelity/notas.md`).
 
 ### VII. Observable Behavior and Mutation Resistance (NON-NEGOTIABLE)
 Tests exist solely to guarantee observable behavior and detect real business regressions, never
@@ -224,4 +235,4 @@ Every plan or feature produced under Spec Kit MUST pass a Constitution Check aga
 principles above before implementation begins; violations must be justified explicitly (see the
 Complexity Tracking section of the plan template) or the approach must be revised.
 
-**Version**: 1.4.0 | **Ratified**: 2026-07-29 | **Last Amended**: 2026-09-18
+**Version**: 1.5.0 | **Ratified**: 2026-07-29 | **Last Amended**: 2026-09-29

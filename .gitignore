@@ -98,6 +98,7 @@ yarn-debug.log*
 .claude/settings.local.json
 .claude/*.lock
 .cursor
+.obsidian/
 .codex/
 .qwen/
 CLAUDE.local.md

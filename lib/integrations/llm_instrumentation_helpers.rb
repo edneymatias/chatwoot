@@ -64,28 +64,25 @@ module Integrations::LlmInstrumentationHelpers
     attrs[ATTR_LANGFUSE_SESSION_ID] = session_id if session_id.present?
     attrs[ATTR_LANGFUSE_TAGS] = [params[:feature_name].to_s] if params[:feature_name].present?
 
-    return attrs unless params[:metadata].is_a?(Hash)
+    append_propagated_metadata_attributes(attrs, params[:metadata]) if params[:metadata].is_a?(Hash)
 
-    # Create combined metadata JSON for trace.metadata (only trace-relevant scalar fields)
-    # Include only fields relevant to execution trace: playbook, activation_reason
+    attrs
+  end
+
+  def append_propagated_metadata_attributes(attrs, metadata)
     trace_relevant_keys = %w[playbook activation_reason]
     metadata_for_trace = {}
-    params[:metadata].each do |key, value|
-      # Convert value to appropriate format for JSON serialization
+
+    metadata.each do |key, value|
       if value.is_a?(Hash) || value.is_a?(Array)
-        # For nested structures, set individual attribute with JSON
         attrs[format(ATTR_LANGFUSE_METADATA, key)] = value.to_json
       else
-        # For scalars, add to combined metadata only if trace-relevant, and always as individual attribute
         metadata_for_trace[key] = value if trace_relevant_keys.include?(key.to_s)
         attrs[format(ATTR_LANGFUSE_METADATA, key)] = value.to_s
       end
     end
 
-    # Set combined metadata JSON (contains only scalar top-level fields)
     attrs[ATTR_LANGFUSE_METADATA_ROOT] = metadata_for_trace.to_json if metadata_for_trace.present?
-
-    attrs
   end
 
   def propagated_observation_metadata_attributes(params)

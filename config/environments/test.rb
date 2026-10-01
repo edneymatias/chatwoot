@@ -45,8 +45,16 @@ Rails.application.configure do
   config.action_mailer.delivery_method = :test
   config.active_job.queue_adapter = :test
 
-  # Print deprecation notices to the stderr.
-  config.active_support.deprecation = :stderr
+  # Every model's `enum` definition triggers "Defining enums with keyword arguments
+  # is deprecated" once per class load (dozens of times per rspec run, pure noise:
+  # see docs/kanban/backlog/token-cost-vs-test-fidelity/notas.md, lever 1). Silence
+  # only that known message; forward every other deprecation to stderr as before so
+  # a genuinely new deprecation (e.g. introduced by an upstream sync) still surfaces.
+  config.active_support.deprecation = lambda do |message, _callstack, _deprecator|
+    next if message.include?('Defining enums with keyword arguments')
+
+    warn message
+  end
 
   # Raises error for missing translations.
   # config.action_view.raise_on_missing_translations = true
