@@ -86,8 +86,12 @@ migration); no frontend change — the playground already renders `tool_calls`.
 two small reads (`reload_active_opportunity` for rendering/recording) and one `update!` of
 `unsatisfied_flags`.
 
-**Constraints**: v1 byte-for-byte unchanged (FR-024); `completed_playbooks` written only inside the
-exits' existing transaction/lock, in the same `update!` as the routing change; no `Tool::Halt`; no
+**Constraints**: v1's existing method bodies are unchanged (FR-024) — the only additions to
+`custom/app/services/custom/scout/` are two additive members from Brief 087, already reviewed and
+accepted, called only from v2 code: `handoff_service.rb#transfer!` and
+`opportunity_stage_transition_service.rb#moved?` (insertions only, no v1 method body touched, no other
+v1 file); `completed_playbooks` written only inside the exits' existing transaction/lock, in the same
+`update!` as the routing change; no `Tool::Halt`; no
 `return` inside transaction blocks; `Metrics/ClassLength` ≤ 175 — `Playbook::Validator` (≈175) and
 `TurnRunner` (≈164) are at the limit, so dependency checks move to `Playbook::DependencyRules` and
 turn-completion recording to `UnsatisfiedItems` (`.trace!` builds the record and sets the span

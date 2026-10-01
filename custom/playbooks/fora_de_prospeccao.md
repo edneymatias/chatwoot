@@ -18,4 +18,4 @@ Reconheça quando a mensagem não for uma nova prospecção comercial:
 Diante de qualquer uma dessas quatro situações:
 - Mesmo que pareça simples, não tente resolver a demanda diretamente.
 - Acione exit_handoff imediatamente informando o motivo adequado da transferência.
-- Lembre-se: uma solicitação preventiva ou recorrente de um novo lead continua sendo oportunidade comercial e deve ser atendida pelo fluxo comercial normal, não por esta playbook.
+- Lembre-se: uma solicitação de baixa complexidade, preventiva ou recorrente de um novo lead continua sendo oportunidade comercial e deve ser atendida pelo fluxo comercial normal, não por esta playbook.

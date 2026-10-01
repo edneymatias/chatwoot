@@ -92,7 +92,7 @@ class Custom::ScoutV2::TurnRunner
     openable = Custom::ScoutV2::Playbook::OpenableSet.call(catalog: catalog, pinned: decision.playbook)
     baseline_instructions = build_instructions(nil, ctx, openable)
     instructions = decision.playbook.present? ? build_instructions(decision.playbook, ctx, openable) : baseline_instructions
-    chat = @scout.llm_chat.with_instructions(instructions)
+    chat = Custom::ScoutV2::Tools::UnavailableToolCallRecorder.install!(chat: @scout.llm_chat.with_instructions(instructions), recorder: self)
 
     # Wire real TurnScope with all initialization infrastructure
     tool_wrapper = proc { |tool| wrap_tool(tool, simulated: false) }

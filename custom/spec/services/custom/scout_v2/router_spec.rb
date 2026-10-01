@@ -183,16 +183,19 @@ RSpec.describe Custom::ScoutV2::Router do
         [Struct.new(:name, :phone_number).new('lindo-peixe-123', nil), Struct.new(:name, :phone_number).new('Carlos Silva', '+5511999999999')]
       end
       let(:test_opportunities) do
-        [
-          nil,
-          { opp: Struct.new(:status).new('open'), pending: ['orcamento'], role: :initial },
-          { opp: Struct.new(:status).new('open'), pending: [], role: :initial },
-          { opp: Struct.new(:status).new('open'), pending: [], role: :qualified },
-          { opp: Struct.new(:status).new('lost'), pending: [], role: :unqualified }
-        ]
+        opportunity_statuses = [nil, 'open', 'lost']
+        pending_field_options = [[], ['orcamento']]
+        stage_roles = %i[none qualified unqualified initial]
+
+        opportunity_statuses.each_with_object([]) do |status, combos|
+          pending_field_options.product(stage_roles).each do |pending, role|
+            combos << { opp: status.nil? ? nil : Struct.new(:status).new(status), pending: pending, role: role }
+          end
+        end
       end
       let(:completed_subsets) do
-        [[], ['identificacao'], ['qualificacao'], %w[identificacao qualificacao], %w[identificacao qualificacao agendamento]]
+        playbook_names = %w[identificacao qualificacao agendamento]
+        (0..playbook_names.size).flat_map { |n| playbook_names.combination(n).to_a }
       end
 
       it 'never routes to a situational playbook under any state combination' do
