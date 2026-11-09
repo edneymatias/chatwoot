@@ -14,6 +14,8 @@ class Whatsapp::PopulateTemplateParametersService
     return { type: 'text', text: '' } if button.blank?
 
     case button['type']
+    when 'quick_reply'
+      build_quick_reply_parameter(button)
     when 'copy_code'
       coupon_code = button['parameter'].to_s.strip
       raise ArgumentError, 'Coupon code cannot be empty' if coupon_code.blank?
@@ -45,6 +47,14 @@ class Whatsapp::PopulateTemplateParametersService
   end
 
   private
+
+  def build_quick_reply_parameter(button)
+    payload = button['parameter'].to_s.strip
+    raise ArgumentError, 'Quick reply payload cannot be empty' if payload.blank?
+    raise ArgumentError, 'Quick reply payload cannot exceed 128 characters' if payload.length > 128
+
+    { type: 'payload', payload: payload }
+  end
 
   def build_string_parameter(value)
     sanitized_value = sanitize_parameter(value)
