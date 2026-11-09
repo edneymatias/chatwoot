@@ -276,6 +276,27 @@ MANIFEST = if ENV['TEST_MANIFEST']
                  insert: "  def render_liquid(processed_params)\n    render_value(processed_params)\n  rescue Liquid::Error\n    processed_params\n  end\n\n  def render_value(value)\n    case value\n    when Hash then value.transform_values { |v| render_value(v) }\n    when Array then value.map { |v| render_value(v) }\n    when String then render_string(value)\n    else value\n    end\n  end\n\n  def render_string(string)\n    return string unless string.match?(LIQUID_EXPRESSION)\n\n    Liquid::Template.parse(string).render!(drops)\n  end",
                  replace: true
                },
+               # Upstream `Whatsapp::PopulateTemplateParametersService#build_button_parameter` had no
+               # `quick_reply` branch, so quick reply buttons fell through to a `text` parameter, which Meta
+               # rejects (quick replies require a `payload` parameter). Without it a template cannot carry a
+               # per-message id on its quick replies, the outbound half of chatwoot/chatwoot#12030. Accepted
+               # direct-upstream patch: `quick_reply` buttons are sent as { type: 'payload', payload: } (1-128
+               # chars), built by a private `#build_quick_reply_parameter` to keep `#build_button_parameter`
+               # within Metrics/MethodLength. The inbound half (keeping the reply id) lives in the
+               # Custom::Whatsapp::IncomingMessageBaseService overlay. Retire both entries if upstream adds an
+               # equivalent `quick_reply` branch.
+               {
+                 file: 'app/services/whatsapp/populate_template_parameters_service.rb',
+                 anchor: "    case button['type']\n    when 'copy_code'",
+                 insert: "    case button['type']\n    when 'quick_reply'\n      build_quick_reply_parameter(button)\n    when 'copy_code'",
+                 replace: true
+               },
+               {
+                 file: 'app/services/whatsapp/populate_template_parameters_service.rb',
+                 anchor: "  private\n\n  def build_string_parameter(value)",
+                 insert: "  private\n\n  def build_quick_reply_parameter(button)\n    payload = button['parameter'].to_s.strip\n    raise ArgumentError, 'Quick reply payload cannot be empty' if payload.blank?\n    raise ArgumentError, 'Quick reply payload cannot exceed 128 characters' if payload.length > 128\n\n    { type: 'payload', payload: payload }\n  end\n\n  def build_string_parameter(value)",
+                 replace: true
+               },
                {
                  file: 'app/javascript/dashboard/i18n/locale/en/settings.json',
                  anchor: '  "SIDEBAR": {',
