@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Custom::Whatsapp::IncomingMessageBaseService
+  include Custom::Whatsapp::InteractiveReplyAttributes
+
   private
 
   def process_statuses
