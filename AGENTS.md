@@ -127,6 +127,13 @@ commands with `docker compose exec <service>`.
   upstream work; update it with `git fetch upstream && git merge --ff-only upstream/develop`. It
   is **never** merged into `ichatr-main`.
 - There is **no `release/*` branch scheme** — releases are tagged directly off `ichatr-main`.
+- **GitHub settings**: `ichatr-main` is the repository's default branch, so new PRs, `gh pr create`
+  and closing keywords (`Fixes #N`) target it. Existing clones still pointing `origin/HEAD` at
+  `develop` can refresh it with `git remote set-head origin -a`. Both `ichatr-main` and `develop` are
+  protected by repository rulesets that block force-pushes and branch deletion. Fast-forward pushes
+  stay allowed, because the `develop` mirror sync and the release workflow's CHANGELOG commit to
+  `ichatr-main` both push directly. If a push is rejected as non-fast-forward, rebase or fast-forward;
+  never relax or bypass the ruleset.
 - **Upstream sync target is always the latest tagged upstream release, never `upstream/develop`
   HEAD.** `develop` HEAD can carry upstream features that are incomplete, mid-rollout across
   multiple PRs, or not yet part of any release — merging it directly risks shipping unfinished
