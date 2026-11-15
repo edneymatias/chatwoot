@@ -58,6 +58,11 @@ the webhook payload, and Chatwoot already persists it verbatim:
 - Observed real payload shape: `source_url`, `source_id` (the actual Meta ad ID),
   `source_type`, `headline`, `body`, `media_type`, `image_url`.
 
+  > **Atualização (2026-10-20)**: hoje a Cloud API manda mais campos. Na caixa 15 ("WhastApp Cloud"),
+  > desde 01/08/2026 chegam também `ctwa_clid` (40 de 46 mensagens de anúncio), `thumbnail_url`,
+  > `video_url` e `welcome_message`. O `ctwa_clid` é a base do sinal de volta para a Meta, na Fase 27
+  > (`docs/kanban/backlog/01-meta-capi-sinal-de-volta-ctwa/spec27.md`).
+
 `source_id` — the field needed to resolve back to campaign/ad-set/ad via the Marketing
 Graph API — was present here from the start. No patch needed for this number.
 

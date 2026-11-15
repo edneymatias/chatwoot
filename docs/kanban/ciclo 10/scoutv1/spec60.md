@@ -55,6 +55,7 @@ Lead clica no Anúncio ──► Msg 1 com Referral (Criativo/Headline) ──�
    - Ao executar o transbordo (`handoff`), o responsável é atribuído ao SDR/Vendedor humano definitivo.
 4. **Disparo de Conversão Meta CAPI (Opcional)**:
    - Ao qualificar o lead com sucesso, o sistema pode enviar o evento de conversão Meta CAPI (ex: `LeadQualificado` ou `Contact`) usando o `ctwa_clid` da mensagem inicial.
+   - > **Atualização (2026-10-20)**: este item saiu do Scout e foi absorvido pela Fase 27 (`docs/kanban/backlog/01-meta-capi-sinal-de-volta-ctwa/spec27.md`). O evento passa a sair da mudança de etapa no kanban (etapa marco e ganho), e não da qualificação pelo Scout. Quando o Scout mover o card para a etapa marco, o evento sai sozinho. Atenção: hoje o `ctwa_clid` só chega pela caixa da Cloud API; a caixa 3 (Evolution) não repassa o campo (ver a Fase 27).
 
 ---
 

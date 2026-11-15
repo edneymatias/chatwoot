@@ -146,6 +146,14 @@ upstream's, not something to fix incidentally here.
   backlog item, not a requirement of this spec.
 - **`ctwa_clid` capture** — not present in Cloud API's observed real payload (Phase 26) nor
   confirmed present in Baileys' `ExternalAdReplyInfo`; nothing concrete to capture yet.
+
+  > **Correção (2026-10-20)**: as duas premissas acima estavam erradas ou ficaram desatualizadas.
+  > (1) `ExternalAdReplyInfo` tem `optional string ctwaClid = 13;` (Baileys 7.0.0-rc14,
+  > `WAProto/WAProto.proto:1368`), no mesmo struct de onde este patch tira `sourceId`/`sourceType`.
+  > (2) A Cloud API manda o campo: na caixa 15 ("WhastApp Cloud"), 40 de 46 mensagens de anúncio
+  > desde 01/08/2026 trazem `referral.ctwa_clid`. Na caixa 3 (Evolution), 0 de 224, porque este patch
+  > não extrai o campo. A captura passou para a Fase 27 (`backlog/01-meta-capi-sinal-de-volta-ctwa/spec27.md`), que também
+  > precisa confirmar se o WhatsApp de fato preenche o campo para o número conectado pela ponte.
 - **Chatwoot-side reading/surfacing of `referral`** (conversation badge, Opportunity field
   population, attribution reporting) — Phase 41, to be detailed after this patch lands.
 - **Fixing the pre-existing `isAdsMessage`/`thumbnailUrl` bug** noted in "Impact analysis" —

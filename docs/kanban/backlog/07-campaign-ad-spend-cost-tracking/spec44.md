@@ -1,7 +1,7 @@
 # Phase 44: Daily Campaign Ad Spend Collection & Consolidation
 
 **Status**: placeholder — pending brainstorm session
-**Depends on**: Phase 27 (Facebook Campaign Integration, `docs/kanban/backlog/01-facebook-campaign-integration/spec27.md`) for campaign identifiers/metadata; Phase 26 (WhatsApp/Meta referral attribution, `docs/kanban/ciclo 7/08-whatsapp-referral-attribution/spec26.md`) for the per-opportunity campaign linkage this phase's cost data will eventually be joined against.
+**Depends on**: Phase 26/46 (`ciclo 7/08-whatsapp-referral-attribution/spec26.md`, `ciclo 8/13-meta-referral-attribution-refinements/spec46.md`) for campaign identifiers/metadata — the campaign/ad-set/ad name resolution once planned for Phase 27 was delivered there; Phase 27 (`docs/kanban/backlog/01-meta-capi-sinal-de-volta-ctwa/spec27.md`) is now only the Conversions API feedback loop and shares the Meta token/client with this phase; Phase 26 (WhatsApp/Meta referral attribution, `docs/kanban/ciclo 7/08-whatsapp-referral-attribution/spec26.md`) for the per-opportunity campaign linkage this phase's cost data will eventually be joined against.
 
 ## Quick Preview
 
