@@ -772,10 +772,11 @@ que o v1 (`open_playbook` no meio do turno, exits com payload validado). Se o mo
 falhar nisso de forma observável no Langfuse, o primeiro remédio é trocar o modelo da conta;
 configuração por engine só com evidência de conflito.
 
-**Depreciação.** Quando todas as contas tiverem `scout_v2`, o v1 sai do código junto com os branches
-de despacho, e o v2 passa a ser incondicional. A entrada da flag não é apagada: a posição de bit é
-persistida (`features.yml:15-16`), então ela fica com `deprecated: true` (convenção de
-`features.yml:10`) e sem nenhuma leitura restante no código.
+**Depreciação (revista em 2026-10-01).** Depreciar é **esconder, não apagar**: com `scout_v2`, a tela
+do scout deixa de mostrar o que só o v1 lê (persona, Tools e Produtos, cujo conteúdo vai para Conhecimento); sem a flag,
+deixa de mostrar o que só o v2 lê (role, scope, estilo). Nenhum código, dado ou entrada de
+`features.yml` é removido, e alternar a flag troca engine e tela sem perda (brief 10, decisões 6 e
+9). A remoção do v1 do código fica para decisão explícita futura.
 
 **Alternativa descartada: coluna `engine` por scout.** Era a versão anterior desta decisão. Três
 problemas: (1) o Super Admin não tem tela de scout, então "expor no super admin" exigiria dashboard
@@ -872,8 +873,8 @@ Chunking determinístico · visualização dos pares com metadados.
 **Prova:** mesma fonte reprocessada duas vezes → mesma contagem.
 
 ### Fase 5 — Produção
-Promoção por conta via `scout_v2`, com preflight · sinalização das `ScoutTool` fora de uso ·
-observabilidade de ativação · depreciação do v1.
+Promoção por conta via `scout_v2`, com preflight · tela do scout condicionada à engine ·
+observabilidade de ativação · depreciação reversível do v1 (esconder, não apagar).
 **Prova:** primeira conta real em v2, com `activation_reason` legível em toda conversa.
 
 Fases 3 e 4 são independentes entre si e das anteriores.
@@ -943,7 +944,7 @@ texto aparece numa string, o que é testar implementação, não comportamento.
 | Duas bases (v1 e v2) convivendo | Namespace separado; serviços de comportamento do v1 sem diff; uma engine por conta, nunca as duas (§4.11); depreciação explícita na fase 5. |
 | Remover o auditor expõe erro que ele cobria | Verificação estrutural substitui a estocástica (decisões 9 + 12); instrumentação desde a fase 1; reintrodução cirúrgica é a fase 6.7, com evidência. |
 | Playbook curada não cobre especificidade de um cliente | Parametrização por dado (estágios, campos, catálogo, persona) primeiro; packs por vertical (6.2) quando houver segundo vertical. |
-| `scout_v2` desativa as `ScoutTool` da conta | Preflight obrigatório antes de marcar a flag; sinalização na UI de tools; 6.1 quando houver demanda. |
+| `scout_v2` desativa as `ScoutTool` da conta | Preflight obrigatório antes de marcar a flag; página de Tools escondida na conta v2 (brief 10); 6.1 quando houver demanda. |
 | `scout_v2` marcada por engano numa conta de produção antes da fase 5 | Flag nasce `enabled: false` e só o Super Admin a altera; rollback é desmarcar, sem deploy. O estado v2 gravado (`ichatr_scout_conversation_states`) é ignorado pelo v1. |
 | Modelo configurado na conta não sustenta o tool calling do v2 | Mesma `ScoutAccountConfig` do v1 (decisão 13); falha aparece no Langfuse (`activation_reason`, `exit_action`); primeiro remédio é trocar o modelo da conta, não criar configuração por engine. |
 | Nota humana útil fica invisível ao modelo | Consequência aceita do gate por origem (§4.8): o custo de ignorar um fato é menor que o de obedecer a uma instrução acidental. Promoção manual cobre o caso real. |

@@ -19,18 +19,23 @@ documento separaria a remoção de um mecanismo da sua substituição (briefs 05
 | 07 | [Capabilities e agendamento ponta a ponta](07-capabilities-e-agendamento.md) | Fase 2 | 3 | 06 — aprovado em 2026-09-30; prova no playground transferida para o 13 |
 | 08 | [Memória tipada de contato](08-memoria-tipada.md) | Fase 3 | 3 | 04 (só a linha de política em `Memory`) |
 | 09 | [Conhecimento determinístico](09-conhecimento-deterministico.md) | Fase 4 | 3 | — |
-| 10 | [Produção: promoção por flag `scout_v2` e depreciação do v1](10-producao-flag-scout-v2.md) | Fase 5 | 4 | 03 (flag e despacho), 06, 07, 12, 13 |
+| 10 | [Produção: promoção por flag `scout_v2` e depreciação reversível do v1](10-producao-flag-scout-v2.md) | Fase 5 | 4 | 03 (flag e despacho), 06, 07, 12, 13, 14 |
 | 11 | [Interrupção por trigger](11-interrupcao-por-trigger.md) | Fase 1 | 3 | 04 |
 | 12 | [Configuração do scout para o v2: Identity e estilo na tela](12-configuracao-do-scout-v2.md) | Fase 1 | 2 | 04 |
 | 13 | [Disciplina de interrupção e prova definitiva do agendamento](13-disciplina-de-interrupcao-e-prova-do-agendamento.md) | Fase 2 (prova) | 3 | 06, 07, 11 |
+| 14 | [Processo do negócio no cadastro do ERP: convênio, carteirinha e origem](14-convenio-e-origem-do-paciente.md) | Fase 2 | 3 | 07 — executa antes da prova herdada do 13 |
 
-**Caminho crítico:** 01 → 02 → 03 → 04 → 11 → 05 → 06 → 07 → 13 → 10. O 11 foi acrescentado depois
+**Caminho crítico:** 01 → 02 → 03 → 04 → 11 → 05 → 06 → 07 → 13 → 14 → 10. O 11 foi acrescentado depois
 (revisão do design §4.4 em 2026-09-25) e por isso tem número no fim da lista, mas executa entre o 04 e
 o 05. O 12 (revisão da decisão 6 em 2026-09-25) sai do caminho crítico: pode rodar a qualquer momento
 entre o 04 e o 10, de preferência antes do 06. O 13 nasceu do teste de playground do 07 em 2026-09-30
 (interrupções indevidas, identificação pulada, latência não atribuível) e carrega a prova no ERP real
-que o 07 deixou para ele; o 10 só promove conta real depois dessa prova.
-**Sequência recomendada a partir do 04:** 11 → 12 → 05 → 06 → 07 → 13 → 10. O 12 vem logo depois do 11
+que o 07 deixou para ele; o 10 só promove conta real depois dessa prova. O 14 nasceu da configuração
+do hook para essa prova (2026-10-01): convênio e origem são dados do paciente, coletados pelo processo
+de cada negócio (atributos da qualificação), não da conta; ele não
+depende das US1–US3 do 13, mas precisa estar entregue antes da prova herdada, para que ela exercite o
+contrato final de cadastro.
+**Sequência recomendada a partir do 04:** 11 → 12 → 05 → 06 → 07 → 13 → 14 → 10. O 12 vem logo depois do 11
 porque não depende de nada além do 04 e porque as verificações de playground do 05 e do 06 ganham com
 `role`/`scope` preenchidos.
 **Paralelizáveis:** 08 e 09 são independentes entre si e do caminho crítico (design §6, "Fases 3 e 4

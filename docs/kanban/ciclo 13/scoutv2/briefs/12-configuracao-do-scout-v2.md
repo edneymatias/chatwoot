@@ -70,7 +70,7 @@ servem de molde para o v2.
 | 3 | O v2 **não lê `persona`**; ela fica intocada e segue alimentando o v1 | Rollback pela flag tem de devolver o v1 como era. A remoção de `persona` é da depreciação (brief 10) |
 | 4 | **Sem migração automática** de `persona` para `role`/`scope` | Não há separação determinística de prosa; separar por LLM é estocástico e o próprio Captain exige revisão. E o conteúdo foi escrito para o v1: no v2 boa parte vira enum, campo obrigatório ou playbook. Quem conhece o negócio escreve `role`/`scope` do zero |
 | 5 | `scout_params` aceita `role`, `scope`, `tone`, `response_length` e `greeting`; valor fora do enum ou acima do limite devolve **422** | `AGENTS.md`: validar na borda e responder 422, sem coerção de valor malformado |
-| 6 | A tela de configuração do scout mostra os cinco campos **sempre**, sem condicionar à flag `scout_v2`, com textos de ajuda indicando que valem para a nova versão do Scout | O administrador precisa preencher **antes** da promoção, enquanto a conta ainda roda v1. Condicionar à flag criaria o ovo e a galinha: os campos só apareceriam depois de o v2 já estar respondendo clientes. Mostrar configuração não é escolher engine (brief 10, decisão 2) |
+| 6 | A tela de configuração do scout mostra os cinco campos **sempre**, sem condicionar à flag `scout_v2`, com textos de ajuda indicando que valem para a nova versão do Scout. **Revista pelo brief 10 (decisões 9 e 10, 2026-10-01): os cinco campos passam a aparecer só com `scout_v2`** | O administrador precisa preencher **antes** da promoção, enquanto a conta ainda roda v1. Condicionar à flag criaria o ovo e a galinha: os campos só apareceriam depois de o v2 já estar respondendo clientes. Mostrar configuração não é escolher engine (brief 10, decisão 2) |
 | 7 | O texto de ajuda de `greeting` orienta a deixar em branco quando a caixa de entrada já envia saudação | Evita saudação duplicada com `inboxes.greeting_enabled` sem código novo |
 
 ## 5. Escopo preliminar
@@ -86,8 +86,9 @@ servem de molde para o v2.
 
 ## 6. Fora de escopo
 
-- Remover `persona` (coluna, alias, API, tela): depreciação, brief 10.
-- Condicionar campos à flag `scout_v2` ou mostrar engine ao administrador (brief 10, decisão 2).
+- Remover `persona` (coluna, alias, API, tela): fora do brief 10 também (depreciação reversível,
+  esconder sem apagar).
+- Condicionar campos à flag `scout_v2`: feito no brief 10 (decisão 9).
 - Assistente de migração que sugira `role`/`scope` a partir da `persona`: sem evidência de que a
   reescrita manual seja gargalo.
 - Tom `Custom` ou texto livre de estilo (design decisão 6).
