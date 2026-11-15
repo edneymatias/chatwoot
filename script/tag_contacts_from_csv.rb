@@ -29,10 +29,17 @@ HELP_TEXT = <<~HELP
                                            label      (padrão) só a etiqueta
                                            attribute  só o atributo personalizado
                                            both       etiqueta e atributo na mesma execução
-    --label NAME          LABEL          Nome da etiqueta, gravado em minúsculas. Padrão: cliente. Usada em
-                                         mode label/both. Se não existir na conta, é criada (cor #1f93ff).
+    --label NAMES         LABEL          Uma ou mais etiquetas separadas por vírgula (ex.: boulevard,notificacao-boulevard),
+                                         gravadas em minúsculas, sem repetição. Padrão: cliente. Usada em mode
+                                         label/both. Só letras, números, hífen e underscore (mín. 2 caracteres): um
+                                         nome inválido aborta a execução inteira, antes de gravar. As que não existirem
+                                         na conta são criadas (cor #1f93ff).
     --attribute-key KEY   ATTRIBUTE_KEY  Chave do atributo personalizado (ex.: ultima_visita).
                                          Obrigatória em mode attribute/both.
+    --overwrite           OVERWRITE=true Só com mode attribute/both. Por padrão o atributo NÃO sobrescreve: se o contato
+                                         já tem a chave com outro valor, ela é preservada (e listada em
+                                         atributos_preservados.csv). Com --overwrite, o valor do CSV substitui o
+                                         existente. Chave ausente ou vazia é sempre gravada.
     --account-id ID       ACCOUNT_ID     Restringe a uma conta. Se omitida, processa TODAS as contas: o mesmo
                                          telefone em várias contas altera todos os contatos. Em instalação
                                          multi-conta, sempre informe. Obrigatória com --create-missing.
@@ -88,14 +95,19 @@ HELP_TEXT = <<~HELP
     # Só etiqueta em contatos que já existem (CSV só com a coluna telefone)
     bundle exec rails runner script/tag_contacts_from_csv.rb --csv tmp/telefones.csv --label cliente --account-id 2
 
+    # Duas etiquetas de uma vez
+    bundle exec rails runner script/tag_contacts_from_csv.rb --csv tmp/telefones.csv --label boulevard,cliente --account-id 2
+
   COMPORTAMENTO
     - Telefone: busca exata (phone_number IN ...) nas variantes com/sem +, com/sem 55 e com/sem nono dígito.
     - Duplicatas: antes de processar, linhas com o mesmo telefone (após normalizar) são reduzidas a uma;
       a última linha vence. As descartadas vão para linhas_duplicadas.csv.
     - Idempotente: contato que já tem a etiqueta (e o mesmo valor do atributo) é contado como
       "já estava correto" e não é alterado.
-    - O atributo SOBRESCREVE o valor existente da chave quando for diferente (mesmo que a data
-      anterior seja mais recente). Outros atributos do contato são preservados. Sem backup.
+    - O atributo só é gravado quando a chave está ausente/vazia no contato. Se já houver OUTRO valor, ele é
+      PRESERVADO (contador "Atributo preservado" e atributos_preservados.csv); a etiqueta, em mode both, é
+      aplicada normalmente. Use --overwrite para substituir (mesmo que a data anterior seja mais recente;
+      sem backup). Outros atributos do contato são sempre preservados.
     - Contato novo: criado com nome, telefone, etiqueta e atributo em uma única gravação (e vínculo
       com a inbox, se informada), numa transação por linha; se falhar, nada da linha é gravado.
     - Se a inbox já tiver um vínculo com o mesmo identificador (source_id) de outro contato, o vínculo
@@ -116,6 +128,7 @@ HELP_TEXT = <<~HELP
       linhas_duplicadas.csv
       contatos_criados.csv            (com --dry-run: contatos_a_criar.csv; coluna final = id do contato)
       erros.csv
+      atributos_preservados.csv       (sem --overwrite; motivo = valor que o contato já tinha)
 
   ANTES DE RODAR EM PRODUÇÃO
     Confirme o ambiente (echo $RAILS_ENV), use --account-id e --dry-run, e compare o resumo
@@ -236,23 +249,23 @@ def ensure_label(account, label_name)
   end
 end
 
-def apply_contact_change(contact, label_name, attribute_key, attribute_value)
-  if label_name
-    ensure_label(contact.account, label_name)
-    contact.label_list.add(label_name)
+def apply_contact_change(contact, label_names, attribute_key, attribute_value)
+  if label_names
+    label_names.each { |label| ensure_label(contact.account, label) }
+    contact.label_list.add(label_names)
   end
   contact.custom_attributes = contact.custom_attributes.merge(attribute_key => attribute_value) if attribute_key
   contact.save!
 end
 
 # Contato, etiqueta, atributo e vínculo com a inbox numa única transação: falhou, nada da linha fica gravado.
-def create_contact(account, row, label_name, attribute_key, inbox)
+def create_contact(account, row, label_names, attribute_key, inbox)
   ActiveRecord::Base.transaction do
     contact = account.contacts.new(name: row.name, phone_number: row.phone)
     contact.custom_attributes = { attribute_key => row.value } if attribute_key
-    if label_name
-      ensure_label(account, label_name)
-      contact.label_list.add(label_name)
+    if label_names
+      label_names.each { |label| ensure_label(account, label) }
+      contact.label_list.add(label_names)
     end
     contact.save!
     ContactInboxBuilder.new(contact: contact, inbox: inbox).perform if inbox
@@ -282,7 +295,8 @@ options = {
   account_id: ENV['ACCOUNT_ID']&.to_i,
   create_missing: ENV['CREATE_MISSING'] == 'true',
   inbox_id: ENV['INBOX_ID']&.to_i,
-  dry_run: ENV['DRY_RUN'] == 'true'
+  dry_run: ENV['DRY_RUN'] == 'true',
+  overwrite: ENV['OVERWRITE'] == 'true'
 }
 
 begin
@@ -294,6 +308,7 @@ begin
     parser.on('--account-id ID', Integer) { |value| options[:account_id] = value }
     parser.on('--[no-]create-missing') { |value| options[:create_missing] = value }
     parser.on('--inbox-id ID', Integer) { |value| options[:inbox_id] = value }
+    parser.on('--[no-]overwrite') { |value| options[:overwrite] = value }
     parser.on('--[no-]dry-run') { |value| options[:dry_run] = value }
     parser.on('-h', '--help') do
       puts HELP_TEXT
@@ -315,11 +330,24 @@ end
 mode = (options[:mode] || 'label').downcase.strip
 fail_with "❌ Modo inválido: '#{mode}'. Use 'label', 'attribute' ou 'both'. Ajuda: --help" unless %w[label attribute both].include?(mode)
 
-label_name = (options[:label] || 'cliente').downcase.strip if %w[label both].include?(mode)
+label_names = nil
+if %w[label both].include?(mode)
+  label_names = (options[:label] || 'cliente').split(',').map { |label| label.strip.downcase }.reject(&:blank?).uniq
+  fail_with '❌ --label (LABEL) sem nenhuma etiqueta. Ajuda: --help' if label_names.empty?
+
+  invalid_labels = label_names.grep_v(RegexHelper::UNICODE_CHARACTER_NUMBER_HYPHEN_UNDERSCORE)
+  if invalid_labels.any?
+    fail_with "❌ Nome(s) de etiqueta inválido(s): #{invalid_labels.map { |label| "'#{label}'" }.join(', ')}. Nada foi processado.",
+              '   Use só letras, números, hífen e underscore, com pelo menos 2 caracteres. Ajuda: --help'
+  end
+end
 attribute_key = options[:attribute_key]&.strip if %w[attribute both].include?(mode)
 if %w[attribute both].include?(mode) && attribute_key.blank?
   fail_with "❌ --attribute-key (ATTRIBUTE_KEY) é obrigatório quando o modo é #{mode}. Ajuda: --help"
 end
+
+overwrite = options[:overwrite]
+fail_with "❌ --overwrite só vale com --mode attribute ou both (modo atual: #{mode}). Ajuda: --help" if overwrite && attribute_key.nil?
 
 target_account_id = options[:account_id]
 create_missing = options[:create_missing]
@@ -377,8 +405,9 @@ puts '  CHATWOOT - IMPORTAÇÃO EM MASSA PARA CONTATOS'
 puts '=================================================='
 puts "Arquivo: #{csv_path}"
 puts "Modo: #{mode}"
-puts "Tag: '#{label_name}'" if label_name
+puts "Etiquetas: #{label_names.map { |label| "'#{label}'" }.join(', ')}" if label_names
 puts "Atributo: '#{attribute_key}'" if attribute_key
+puts "Sobrescrever atributo existente: #{overwrite ? 'SIM' : 'NÃO (valor existente é preservado)'}" if attribute_key
 puts "Conta: #{target_account_id ? "ID #{target_account_id}" : 'Todas as contas'}"
 puts "Criar contatos inexistentes: #{create_missing ? 'SIM' : 'NÃO'}"
 puts "Inbox dos contatos criados: #{inbox ? "#{inbox.name} (ID #{inbox.id})" : 'nenhuma'}" if create_missing
@@ -390,12 +419,13 @@ stats = {
   found_contacts: 0,
   changed: 0,
   unchanged: 0,
+  attribute_preserved: 0,
   created: 0,
   not_found_lines: 0,
   invalid_lines: 0,
   duplicate_lines: 0,
   error_lines: 0,
-  by_account: Hash.new { |h, k| h[k] = { name: '', found: 0, changed: 0, unchanged: 0, created: 0 } }
+  by_account: Hash.new { |h, k| h[k] = { name: '', found: 0, changed: 0, unchanged: 0, created: 0, preserved: 0 } }
 }
 
 not_found_rows = []
@@ -403,6 +433,7 @@ invalid_rows = []
 duplicate_rows = []
 created_rows = []
 error_rows = []
+preserved_rows = []
 
 # Validação linha a linha e dedup pelo telefone canônico: a última linha vence.
 unique_rows = {}
@@ -447,17 +478,26 @@ rows_to_process.each_with_index do |row, idx|
       acc_stats[:name] = contact.account.name if acc_stats[:name].blank?
       acc_stats[:found] += 1
 
-      label_ok = label_name.nil? || contact.label_list.map(&:downcase).include?(label_name)
-      attribute_ok = attribute_key.nil? || contact.custom_attributes[attribute_key] == row.value
+      label_ok = label_names.nil? || (label_names - contact.label_list.map(&:downcase)).empty?
+      existing = attribute_key && contact.custom_attributes[attribute_key]
+      attribute_differs = attribute_key && existing != row.value
+      attribute_preserved = attribute_differs && !overwrite && !existing.nil? && existing != ''
+      write_attribute = attribute_differs && !attribute_preserved
 
-      if label_ok && attribute_ok
+      if attribute_preserved
+        stats[:attribute_preserved] += 1
+        acc_stats[:preserved] += 1
+        preserved_rows << (report_fields(row) + ["valor existente: #{existing}"])
+      end
+
+      if label_ok && !write_attribute
         stats[:unchanged] += 1
         acc_stats[:unchanged] += 1
       else
         stats[:changed] += 1
         acc_stats[:changed] += 1
 
-        apply_contact_change(contact, label_name, attribute_key, row.value) unless dry_run
+        apply_contact_change(contact, label_names, write_attribute ? attribute_key : nil, row.value) unless dry_run
       end
     end
   elsif create_missing
@@ -468,7 +508,7 @@ rows_to_process.each_with_index do |row, idx|
       invalid_rows << (report_fields(row) + ['nome ausente (obrigatório para criar o contato)'])
     else
       begin
-        contact = dry_run ? nil : create_contact(target_account, row, label_name, attribute_key, inbox)
+        contact = dry_run ? nil : create_contact(target_account, row, label_names, attribute_key, inbox)
         acc_stats = stats[:by_account][target_account.id]
         acc_stats[:name] = target_account.name if acc_stats[:name].blank?
         acc_stats[:created] += 1
@@ -496,6 +536,7 @@ puts "Linhas duplicadas descartadas (a última vence): #{stats[:duplicate_lines]
 puts "Contatos correspondentes encontrados: #{stats[:found_contacts]}"
 puts "Contatos #{dry_run ? 'que seriam alterados' : 'alterados agora'}: #{stats[:changed]}"
 puts "Contatos que já estavam corretos: #{stats[:unchanged]}"
+puts "Atributo preservado (já tinha outro valor; use --overwrite para substituir): #{stats[:attribute_preserved]}" if attribute_key && !overwrite
 puts "Contatos #{dry_run ? 'que seriam criados' : 'criados agora'}: #{stats[:created]}" if create_missing
 puts "Telefones sem contato no Chatwoot: #{stats[:not_found_lines]}" unless create_missing
 puts "Linhas inválidas (telefone/data/nome/formatação): #{stats[:invalid_lines]}"
@@ -505,8 +546,10 @@ puts 'Resumo por Conta:'
 stats[:by_account].each do |acc_id, data|
   created = ''
   created = " | #{dry_run ? 'A criar' : 'Criados'}: #{data[:created]}" if create_missing
+  preserved = ''
+  preserved = " | Atributo preservado: #{data[:preserved]}" if attribute_key && !overwrite
   puts "  - [#{acc_id}] #{data[:name]}: Encontrados: #{data[:found]} | " \
-       "#{dry_run ? 'A alterar' : 'Alterados'}: #{data[:changed]} | Já corretos: #{data[:unchanged]}#{created}"
+       "#{dry_run ? 'A alterar' : 'Alterados'}: #{data[:changed]} | Já corretos: #{data[:unchanged]}#{created}#{preserved}"
 end
 puts '=================================================='
 
@@ -516,5 +559,6 @@ write_report(report_dir, 'linhas_invalidas.csv', REPORT_HEADERS, invalid_rows)
 write_report(report_dir, 'linhas_duplicadas.csv', REPORT_HEADERS, duplicate_rows)
 write_report(report_dir, dry_run ? 'contatos_a_criar.csv' : 'contatos_criados.csv', %w[telefone nome data linha id], created_rows)
 write_report(report_dir, 'erros.csv', REPORT_HEADERS, error_rows)
+write_report(report_dir, 'atributos_preservados.csv', REPORT_HEADERS, preserved_rows)
 
 # rubocop:enable Rails/Output, Rails/Exit, Metrics/AbcSize, Metrics/MethodLength, Metrics/BlockLength
