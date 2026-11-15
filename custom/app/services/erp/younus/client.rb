@@ -25,16 +25,16 @@ class Erp::Younus::Client
   end
 
   def find_by_id(external_id)
-    get_request('/webhook/pessoa', { idEmpresa: @id_empresa, idPessoa: external_id })
+    get_request('/webhook/api/v1/empresas/pessoas', { idEmpresa: @id_empresa, idPessoa: external_id })
   end
 
   def search_by_phone(phone)
-    get_request('/webhook/pessoas', { idEmpresa: @id_empresa, nrTelcelpessoa: phone }, mode: :search)
+    get_request('/webhook/api/v1/empresas/pessoas/pesquisar', { idEmpresa: @id_empresa, nrTelcelpessoa: phone }, mode: :search)
   end
 
   def find_person(phone)
     get_request(
-      '/webhook/pesquisar-pessoa',
+      '/webhook/api/v1/empresas/pessoas/pesquisar',
       { idEmpresa: setting_int('id_empresa', default: @id_empresa), nrTelcelpessoa: phone },
       mode: :search
     )
@@ -51,7 +51,7 @@ class Erp::Younus::Client
       nrTelcelpessoa: phone
     }
 
-    post_request('/webhook/incluir-cliente', payload)
+    post_request('/webhook/api/v1/empresas/pessoas', payload)
   end
 
   def free_slots(date)
@@ -62,7 +62,7 @@ class Erp::Younus::Client
       idServico: setting_int('id_servico')
     }
 
-    get_request('/webhook/horarios-livres', query, mode: :slots)
+    get_request('/webhook/api/v1/empresas/agendas/horarios-livres', query, mode: :slots)
   end
 
   def create_appointment(person_id:, title:, starts_at:, notes:)
@@ -81,7 +81,7 @@ class Erp::Younus::Client
       observacoes: obs
     }
 
-    post_request('/webhook/incluir-agendamento', payload)
+    post_request('/webhook/api/v1/empresas/agendas/agendamentos', payload)
   end
 
   private
@@ -177,7 +177,7 @@ class Erp::Younus::Client
 
     case mode
     when :slots
-      body['horarios'] || []
+      body['dados'] || []
     when :search
       extract_search_response(body['dados'])
     else

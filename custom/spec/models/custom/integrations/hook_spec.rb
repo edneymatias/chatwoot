@@ -7,7 +7,7 @@ RSpec.describe Custom::Integrations::Hook do
 
   before do
     account.enable_features!('erp_integration')
-    stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas})
+    stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar})
       .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: { 'Content-Type' => 'application/json' })
   end
 
@@ -55,13 +55,13 @@ RSpec.describe Custom::Integrations::Hook do
 
       expect(hook.save).to be(true)
       expect(
-        a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas\?idEmpresa=42&nrTelcelpessoa=0})
+        a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar\?idEmpresa=42&nrTelcelpessoa=0})
           .with(headers: { 'token' => 'valid-token' })
       ).to have_been_made
     end
 
     it 'halts save and adds localized invalid_credentials error when adapter raises Erp::AuthenticationError (U27)' do
-      stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas})
+      stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar})
         .to_return(status: 401, body: { sucesso: false, mensagem: 'Invalid credentials' }.to_json, headers: { 'Content-Type' => 'application/json' })
 
       hook = Integrations::Hook.new(
@@ -75,7 +75,7 @@ RSpec.describe Custom::Integrations::Hook do
     end
 
     it 'halts save and adds localized connection_error when adapter raises Erp::ApiError (U28)' do
-      stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas})
+      stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar})
         .to_return(status: 500, body: 'Server down')
 
       hook = Integrations::Hook.new(
@@ -97,7 +97,7 @@ RSpec.describe Custom::Integrations::Hook do
       )
 
       expect(hook.save).to be(true)
-      expect(a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas})).not_to have_been_made
+      expect(a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar})).not_to have_been_made
     end
 
     it 'skips validation on update when settings and status are untouched (U29)' do
@@ -106,11 +106,11 @@ RSpec.describe Custom::Integrations::Hook do
         app_id: 'younus',
         settings: valid_settings
       )
-      expect(a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas})).to have_been_made.once
+      expect(a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar})).to have_been_made.once
 
       hook.update!(account_id: account.id)
       # Called once during create!, not called again during update!
-      expect(a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas})).to have_been_made.once
+      expect(a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar})).to have_been_made.once
     end
   end
 
@@ -138,7 +138,7 @@ RSpec.describe Custom::Integrations::Hook do
       )
 
       expect(hook.erp_integration?).to be(false)
-      expect(a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas})).not_to have_been_made
+      expect(a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar})).not_to have_been_made
     end
   end
 

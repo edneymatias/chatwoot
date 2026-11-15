@@ -234,7 +234,7 @@ RSpec.describe Custom::ScoutV2::RoutingSnapshot::Builder do
       describe 'satisfied_capabilities resolution' do
         before do
           account.enable_features!('erp_integration')
-          stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pessoas})
+          stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
             .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: { 'Content-Type' => 'application/json' })
         end
 

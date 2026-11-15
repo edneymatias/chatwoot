@@ -59,10 +59,10 @@ Naming: the adapter's `person_name` is what the client receives as `title:` (the
 
 | Client method | HTTP | Path | Query / JSON body |
 |---|---|---|---|
-| `find_person(phone)` | GET | `/webhook/pesquisar-pessoa` | `idEmpresa`, `nrTelcelpessoa=<phone>` |
-| `create_person(name, phone)` | POST | `/webhook/incluir-cliente` | `nmPessoa=<name>`, `idEmpresa`, `idUsuario`, `idConvenio`, `nrConvenio`, `idOrigempessoa`, `nrTelcelpessoa=<phone>` |
-| `free_slots(date)` | GET | `/webhook/horarios-livres` | `data=<YYYY-MM-DD>`, `idAgenda`, `idEmpresa`, `idServico` |
-| `create_appointment(person_id:, title:, starts_at:, notes:)` | POST | `/webhook/incluir-agendamento` | `idAgenda`, `idPessoa`, `nmTitulo` (≤ 100 chars), `idEmpresa`, `idServico`, `idUsuario`, `idConvenio`, `dtIniAgenda` (`YYYY-MM-DDTHH:mm:ss-03:00`), `observacoes` (`"Agendado por Scout: <notes>"`) |
+| `find_person(phone)` | GET | `/webhook/api/v1/empresas/pessoas/pesquisar` | `idEmpresa`, `nrTelcelpessoa=<phone>` |
+| `create_person(name, phone)` | POST | `/webhook/api/v1/empresas/pessoas` | `nmPessoa=<name>`, `idEmpresa`, `idUsuario`, `idConvenio`, `nrConvenio`, `idOrigempessoa`, `nrTelcelpessoa=<phone>` |
+| `free_slots(date)` | GET | `/webhook/api/v1/empresas/agendas/horarios-livres` | `data=<YYYY-MM-DD>`, `idAgenda`, `idEmpresa`, `idServico` |
+| `create_appointment(person_id:, title:, starts_at:, notes:)` | POST | `/webhook/api/v1/empresas/agendas/agendamentos` | `idAgenda`, `idPessoa`, `nmTitulo` (≤ 100 chars), `idEmpresa`, `idServico`, `idUsuario`, `idConvenio`, `dtIniAgenda` (`YYYY-MM-DDTHH:mm:ss-03:00`), `observacoes` (`"Agendado por Scout: <notes>"`) |
 
 Numeric identifiers are sent as integers (`Integer(setting)`), `nrConvenio` as a string; `idPessoa`
 as an integer. The key set above is exactly the key set of the four `ScoutTool` parameter schemas
@@ -79,15 +79,27 @@ argument.
 | timeout / socket / refused | `Erp::ApiError('Connection timed out' \| 'Network error')` |
 | unparseable body | `Erp::ApiError('Malformed response from ERP')` |
 | POST answered 200 with `sucesso: false` | `Erp::ApiError(<mensagem>)` — a declined write is never success |
-| GET `/webhook/horarios-livres` answered 200 with `sucesso: false` | `Erp::ApiError(<mensagem>)` — failure to list slots is an ERP error |
+| GET `/webhook/api/v1/empresas/agendas/horarios-livres` answered 200 with `sucesso: false` | `Erp::ApiError(<mensagem>)` — failure to list slots is an ERP error |
 | GET person lookup answered 200 with `sucesso: false` or empty `dados` | not an error: `not_found` / `[]` |
 
 No retries anywhere. `OperationTool` rescues `Erp::Error` only.
 
-> Response envelopes of the three new endpoints are **unverified** at plan time (research §9). Task 0
-> captures real bodies into `custom/spec/fixtures/erp/younus/` and this section's parsing rules
-> (`dados[].json` envelope assumed, as `/webhook/pessoas`) are confirmed or corrected there before
-> the client specs are written.
+> **Path migration (2026-10-02)**: the vendor moved every endpoint under `/webhook/api/v1/empresas/…`.
+> The pre-migration paths (`/webhook/pesquisar-pessoa`, `/incluir-cliente`, `/horarios-livres`,
+> `/incluir-agendamento`) are no longer used by the client. `Erp::Younus::Client#find_by_id` is
+> `GET /webhook/api/v1/empresas/pessoas` (`idEmpresa`, `idPessoa`) and `#search_by_phone` shares
+> `/pessoas/pesquisar` with `find_person`.
+>
+> **Slot envelope (observed against the real ERP, 2026-10-02)**: `free_slots` reads the slots from
+> `dados` (array of `"YYYY-MM-DD HH:mm"` strings) — **not** `horarios`. A day without business hours
+> answers `sucesso: true`, `mensagem: "A agenda não possui expediente na data informada."` and
+> `dados: []`. A misconfigured agenda answers `sucesso: false` without `dados`
+> (→ `Erp::ApiError(<mensagem>)`) or HTTP 500 `{"code":0,"message":"No item to return was found"}`
+> for an unknown `idAgenda` (→ `Erp::ApiError`).
+>
+> The envelopes of `pessoas/pesquisar` (found case), `POST pessoas` and `POST agendas/agendamentos`
+> are still assumed to be `dados[].json` as the person lookup; only the "not found" answer
+> (`sucesso: false`, `mensagem: "Nenhum cliente encontrado."`) was observed.
 
 ## 4. Hook settings schema (`config/integration/apps.yml`, `younus`)
 

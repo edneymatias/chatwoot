@@ -7,7 +7,7 @@ RSpec.describe Erp::Younus::Adapter do
 
   before do
     account.enable_features!('erp_integration')
-    stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pessoas')
+    stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
       .with(query: { idEmpresa: 648, nrTelcelpessoa: '0' }, headers: { 'token' => 'secret-erp-token-999' })
       .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: json_headers)
   end
@@ -42,7 +42,7 @@ RSpec.describe Erp::Younus::Adapter do
 
   describe '#test_connection' do
     it 'calls client.search_by_phone("0") and returns true on success (U19)' do
-      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pessoas')
+      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
         .with(query: { idEmpresa: 648, nrTelcelpessoa: '0' }, headers: { 'token' => 'secret-erp-token-999' })
         .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: json_headers)
 
@@ -50,7 +50,7 @@ RSpec.describe Erp::Younus::Adapter do
     end
 
     it 'returns true even when record is found (U19)' do
-      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pessoas')
+      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
         .with(query: { idEmpresa: 648, nrTelcelpessoa: '0' }, headers: { 'token' => 'secret-erp-token-999' })
         .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_found.json"), headers: json_headers)
 
@@ -58,7 +58,7 @@ RSpec.describe Erp::Younus::Adapter do
     end
 
     it 'propagates Erp::AuthenticationError raised by client on 401 (U20)' do
-      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pessoas')
+      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
         .with(query: { idEmpresa: 648, nrTelcelpessoa: '0' }, headers: { 'token' => 'secret-erp-token-999' })
         .to_return(status: 401, body: 'Unauthorized')
 
@@ -66,7 +66,7 @@ RSpec.describe Erp::Younus::Adapter do
     end
 
     it 'propagates Erp::ApiError raised by client on 5xx (U20)' do
-      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pessoas')
+      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
         .with(query: { idEmpresa: 648, nrTelcelpessoa: '0' }, headers: { 'token' => 'secret-erp-token-999' })
         .to_return(status: 500, body: 'Internal Server Error')
 
@@ -82,7 +82,7 @@ RSpec.describe Erp::Younus::Adapter do
         dados: [{ json: { cd_pessoa: 123, nm_pessoa: 'Maria Silva' } }]
       }.to_json
 
-      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pessoa')
+      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas')
         .with(query: { idEmpresa: 648, idPessoa: '123' }, headers: { 'token' => 'secret-erp-token-999' })
         .to_return(status: 200, body: body, headers: json_headers)
 
@@ -97,7 +97,7 @@ RSpec.describe Erp::Younus::Adapter do
         dados: [{ json: { cd_pessoa: 123, nm_pessoa: 'Maria Silva' } }]
       }.to_json
 
-      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pessoas')
+      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
         .with(query: { idEmpresa: 648, nrTelcelpessoa: '11987654321' }, headers: { 'token' => 'secret-erp-token-999' })
         .to_return(status: 200, body: body, headers: json_headers)
 
@@ -131,7 +131,7 @@ RSpec.describe Erp::Younus::Adapter do
   describe 'capability provider methods' do
     describe '#find_person' do
       it 'normalizes single match to found status with person id and name' do
-        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pesquisar-pessoa')
+        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
           .with(query: { idEmpresa: 648, nrTelcelpessoa: '5511999990648' }, headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_found.json"), headers: json_headers)
 
@@ -143,7 +143,7 @@ RSpec.describe Erp::Younus::Adapter do
       end
 
       it 'normalizes multiple matches to ambiguous status without picking any person' do
-        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pesquisar-pessoa')
+        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
           .with(query: { idEmpresa: 648, nrTelcelpessoa: '5511999990648' }, headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_multiple.json"), headers: json_headers)
 
@@ -155,7 +155,7 @@ RSpec.describe Erp::Younus::Adapter do
       end
 
       it 'normalizes empty/declined search response to not_found status' do
-        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pesquisar-pessoa')
+        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
           .with(query: { idEmpresa: 648, nrTelcelpessoa: '5511999990648' }, headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_none.json"), headers: json_headers)
 
@@ -173,7 +173,7 @@ RSpec.describe Erp::Younus::Adapter do
           dados: [{ json: { pessoaTipo: 3 } }]
         }.to_json
 
-        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pesquisar-pessoa')
+        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
           .with(query: { idEmpresa: 648, nrTelcelpessoa: '5511999990648' }, headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: body, headers: json_headers)
 
@@ -190,7 +190,7 @@ RSpec.describe Erp::Younus::Adapter do
           dados: [{ json: { idPessoa: 'not-a-number', nmPessoa: 'Invalid ID' } }]
         }.to_json
 
-        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pesquisar-pessoa')
+        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
           .with(query: { idEmpresa: 648, nrTelcelpessoa: '5511999990648' }, headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: body, headers: json_headers)
 
@@ -203,7 +203,7 @@ RSpec.describe Erp::Younus::Adapter do
 
     describe '#create_person' do
       it 'normalizes created person to contract shape with id and name' do
-        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-cliente')
+        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas')
           .with(headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: File.read("#{fixtures_path}/create_person.json"), headers: json_headers)
 
@@ -221,7 +221,7 @@ RSpec.describe Erp::Younus::Adapter do
           dados: { nmPessoa: 'João Santos' }
         }.to_json
 
-        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-cliente')
+        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas')
           .with(headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: body, headers: json_headers)
 
@@ -239,7 +239,7 @@ RSpec.describe Erp::Younus::Adapter do
           dados: { idPessoa: 'not-a-number', nmPessoa: 'Invalid ID' }
         }.to_json
 
-        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-cliente')
+        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas')
           .with(headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: body, headers: json_headers)
 
@@ -253,7 +253,7 @@ RSpec.describe Erp::Younus::Adapter do
 
     describe '#list_free_slots' do
       it 'normalizes slot strings to ISO 8601 with -03:00 offset sorted ascending' do
-        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/horarios-livres')
+        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres')
           .with(query: { data: '2026-10-15', idAgenda: 3, idEmpresa: 648, idServico: 1 }, headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: File.read("#{fixtures_path}/free_slots.json"), headers: json_headers)
 
@@ -265,7 +265,7 @@ RSpec.describe Erp::Younus::Adapter do
       end
 
       it 'returns empty array when client returns empty' do
-        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/horarios-livres')
+        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres')
           .with(query: { data: '2026-10-15', idAgenda: 3, idEmpresa: 648, idServico: 1 }, headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: File.read("#{fixtures_path}/free_slots_empty.json"), headers: json_headers)
 
@@ -275,7 +275,7 @@ RSpec.describe Erp::Younus::Adapter do
 
     describe '#create_appointment' do
       it 'normalizes created appointment to contract shape' do
-        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-agendamento')
+        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos')
           .with(headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: File.read("#{fixtures_path}/create_appointment.json"), headers: json_headers)
 
@@ -299,7 +299,7 @@ RSpec.describe Erp::Younus::Adapter do
           dados: { nmTitulo: 'Teste Lead Scout', dtIniagenda: '2026-10-15T14:30:00Z' }
         }.to_json
 
-        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-agendamento')
+        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos')
           .with(headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: body, headers: json_headers)
 
@@ -323,7 +323,7 @@ RSpec.describe Erp::Younus::Adapter do
           dados: { idPessoa: 784_868, cd_pessoa: 784_868, nmTitulo: 'Teste Lead Scout' }
         }.to_json
 
-        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-agendamento')
+        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos')
           .with(headers: { 'token' => 'secret-erp-token-999' })
           .to_return(status: 200, body: body, headers: json_headers)
 

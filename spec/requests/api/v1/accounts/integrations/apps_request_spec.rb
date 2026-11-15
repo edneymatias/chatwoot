@@ -4,7 +4,7 @@ RSpec.describe 'Api::V1::Accounts::Integrations::Apps' do
   let(:account) { create(:account) }
 
   before do
-    stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas\?idEmpresa=42&nrTelcelpessoa=0})
+    stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar\?idEmpresa=42&nrTelcelpessoa=0})
       .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: { 'Content-Type' => 'application/json' })
   end
 

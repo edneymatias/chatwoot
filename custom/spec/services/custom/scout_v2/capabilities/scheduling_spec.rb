@@ -30,7 +30,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::Scheduling do
 
   before do
     account.enable_features!('erp_integration')
-    stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pessoas')
+    stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
       .with(query: { idEmpresa: 648, nrTelcelpessoa: '0' }, headers: { 'token' => 'secret-erp-token-999' })
       .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: json_headers)
   end
@@ -49,7 +49,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::Scheduling do
       expect(error).to eq(
         'Já existe um agendamento confirmado nesta conversa. Não agende novamente; encerre com exit_agendado.'
       )
-      expect(WebMock).not_to have_requested(:any, %r{wfh\.ichatr\.com\.br/webhook/incluir-agendamento})
+      expect(WebMock).not_to have_requested(:any, %r{wfh\.ichatr\.com\.br/webhook/api/v1/empresas/agendas/agendamentos})
     end
 
     it 'rejects when customer is not resolved in this conversation before any request (FR-013)' do
@@ -62,7 +62,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::Scheduling do
         'Nenhum cliente foi localizado ou cadastrado nesta conversa. ' \
         'Use customer_registry_find_by_phone (ou customer_registry_create) antes de agendar.'
       )
-      expect(WebMock).not_to have_requested(:any, %r{wfh\.ichatr\.com\.br/webhook/incluir-agendamento})
+      expect(WebMock).not_to have_requested(:any, %r{wfh\.ichatr\.com\.br/webhook/api/v1/empresas/agendas/agendamentos})
     end
 
     it 'rejects when slot_id was never offered in this conversation before any request (FR-014)' do
@@ -76,7 +76,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::Scheduling do
         "O horário '2026-10-15T14:00:00-03:00' não foi oferecido nesta conversa. " \
         'Liste os horários com scheduling_list_slots e escolha um dos retornados.'
       )
-      expect(WebMock).not_to have_requested(:any, %r{wfh\.ichatr\.com\.br/webhook/incluir-agendamento})
+      expect(WebMock).not_to have_requested(:any, %r{wfh\.ichatr\.com\.br/webhook/api/v1/empresas/agendas/agendamentos})
     end
 
     it 'returns nil when all preconditions are satisfied' do
@@ -104,7 +104,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::Scheduling do
     end
 
     it 'books an offered slot, calls provider with customer and slot start, and remembers booking' do
-      stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-agendamento')
+      stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos')
         .with(headers: { 'token' => 'secret-erp-token-999' })
         .to_return(status: 200, body: File.read("#{fixtures_path}/create_appointment.json"), headers: json_headers)
 
@@ -114,7 +114,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::Scheduling do
                              appointment_id: '4468657',
                              starts_at: '2026-10-15T08:00:00-03:00'
                            })
-      expect(WebMock).to have_requested(:post, 'https://wfh.ichatr.com.br/webhook/incluir-agendamento')
+      expect(WebMock).to have_requested(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos')
         .with(body: hash_including({
                                      'idAgenda' => 3,
                                      'idPessoa' => 784_868,
@@ -130,11 +130,11 @@ RSpec.describe Custom::ScoutV2::Capabilities::Scheduling do
     end
 
     it 'allows booking an earlier offered slot even after listing slots for another day' do
-      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/horarios-livres')
+      stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres')
         .with(query: { data: '2026-10-17', idAgenda: 3, idEmpresa: 648, idServico: 1 }, headers: { 'token' => 'secret-erp-token-999' })
-        .to_return(status: 200, body: { sucesso: true, horarios: ['2026-10-17 14:00'] }.to_json, headers: json_headers)
+        .to_return(status: 200, body: { sucesso: true, dados: ['2026-10-17 14:00'] }.to_json, headers: json_headers)
 
-      stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-agendamento')
+      stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos')
         .with(headers: { 'token' => 'secret-erp-token-999' })
         .to_return(status: 200, body: File.read("#{fixtures_path}/create_appointment.json"), headers: json_headers)
 
@@ -151,7 +151,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::Scheduling do
         dados: { nmTitulo: 'Teste Lead Scout' }
       }.to_json
 
-      stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-agendamento')
+      stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos')
         .with(headers: { 'token' => 'secret-erp-token-999' })
         .to_return(status: 200, body: body, headers: json_headers)
 
@@ -174,7 +174,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::Scheduling do
         dados: { idPessoa: 784_868, cd_pessoa: 784_868, nmTitulo: 'Teste Lead Scout' }
       }.to_json
 
-      stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-agendamento')
+      stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos')
         .with(headers: { 'token' => 'secret-erp-token-999' })
         .to_return(status: 200, body: body, headers: json_headers)
 

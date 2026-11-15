@@ -150,7 +150,7 @@ with opaque ids fits unchanged); `book` accepts a `slot_id` only if it is a key 
 (FR-014) and sends the mapped `starts_at` as `dtIniAgenda` — never the model's value. The start text
 in the *model-facing* list is what natural-language options are built from. The `-03:00` offset is fixed (Brasília, no DST) per the spec Assumption; see plan Risks.
 
-**Rationale**: the vendor endpoint returns times, not identifiers (`horarios-livres` takes
+**Rationale**: the vendor endpoint returns times, not identifiers (`agendas/horarios-livres` takes
 `data, idAgenda, idEmpresa, idServico` and the booking takes `dtIniAgenda`); a synthetic id equal to
 the start is stable across repeated listings, so "slots from earlier listings remain bookable" holds
 with no id bookkeeping. Membership validation — not the id's opacity — is what prevents the model from
@@ -245,18 +245,23 @@ array on the agent span (needs the runner to aggregate — `TurnRunner` is at th
 
 | Operation | Vendor call | Query / body keys |
 |---|---|---|
-| find_by_phone | `GET /webhook/pesquisar-pessoa` | `idEmpresa`, `nrTelcelpessoa` |
-| create | `POST /webhook/incluir-cliente` | `nmPessoa`, `idEmpresa`, `idUsuario`, `idConvenio`, `nrConvenio`, `idOrigempessoa`, `nrTelcelpessoa` |
-| list_slots | `GET /webhook/horarios-livres` | `data` (YYYY-MM-DD), `idAgenda`, `idEmpresa`, `idServico` |
-| book | `POST /webhook/incluir-agendamento` | `idAgenda`, `idEmpresa`, `idServico`, `idUsuario`, `idConvenio`, `idPessoa`, `nmTitulo`, `dtIniAgenda` (`YYYY-MM-DDTHH:mm:ss-03:00`), `observacoes` |
+| find_by_phone | `GET /webhook/api/v1/empresas/pessoas/pesquisar` | `idEmpresa`, `nrTelcelpessoa` |
+| create | `POST /webhook/api/v1/empresas/pessoas` | `nmPessoa`, `idEmpresa`, `idUsuario`, `idConvenio`, `nrConvenio`, `idOrigempessoa`, `nrTelcelpessoa` |
+| list_slots | `GET /webhook/api/v1/empresas/agendas/horarios-livres` | `data` (YYYY-MM-DD), `idAgenda`, `idEmpresa`, `idServico` |
+| book | `POST /webhook/api/v1/empresas/agendas/agendamentos` | `idAgenda`, `idEmpresa`, `idServico`, `idUsuario`, `idConvenio`, `idPessoa`, `nmTitulo`, `dtIniAgenda` (`YYYY-MM-DDTHH:mm:ss-03:00`), `observacoes` |
 
 Auth header `token`, `Content-Type: application/json`, base `https://wfh.ichatr.com.br` — the same as
 `Erp::Younus::Client`.
 
-**Not observable**: response bodies. A probe from the `rails` container of `pesquisar-pessoa` timed
-out after 85 s (`Net::ReadTimeout`), so the envelope of the new endpoints is unverified. The existing
-`/webhook/pessoas` returns `{sucesso:, mensagem:, dados:[{json: {...}}]}` with `cd_pessoa`,
-`nm_pessoa`; the new client methods parse with the same envelope helper and fall back to "deviation"
+**Observed (2026-10-02, after the vendor moved every endpoint under `/webhook/api/v1/empresas/…`)**:
+`agendas/horarios-livres` answers `{sucesso: true, mensagem:, dados: ["YYYY-MM-DD HH:mm", …]}`; a day
+without business hours answers `sucesso: true` with `dados: []`; a misconfigured agenda answers
+`sucesso: false` (no `dados`) or HTTP 500. The person lookups answer `{sucesso: false, mensagem:
+"Nenhum cliente encontrado."}` when nothing matches. The found-person body and both write bodies
+were not observed. At planning time the bodies were unobservable: a probe of the pre-migration
+`pesquisar-pessoa` timed out after 85 s (`Net::ReadTimeout`). The person lookups are assumed to
+return `{sucesso:, mensagem:, dados:[{json: {...}}]}` with `cd_pessoa`, `nm_pessoa`; the new client
+methods parse with the same envelope helper and fall back to "deviation"
 rather than raising on unknown shapes.
 
 **Decision**:

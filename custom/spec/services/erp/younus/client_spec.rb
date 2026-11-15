@@ -7,7 +7,7 @@ RSpec.describe Erp::Younus::Client do
 
   let(:token) { 'valid-secret-token' }
   let(:id_empresa) { '42' }
-  let(:base_url) { 'https://wfh.ichatr.com.br/webhook/pessoas' }
+  let(:base_url) { 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar' }
 
   describe '#search_by_phone' do
     let(:phone) { '11987654321' }
@@ -154,7 +154,7 @@ RSpec.describe Erp::Younus::Client do
   # rubocop:disable Rails/DynamicFindBy
   describe '#find_by_id' do
     let(:external_id) { '123' }
-    let(:pessoa_url) { 'https://wfh.ichatr.com.br/webhook/pessoa' }
+    let(:pessoa_url) { 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas' }
 
     it 'issues GET to webhook pessoa with correct headers and query (U1)' do
       stub = stub_request(:get, pessoa_url)
@@ -237,7 +237,7 @@ RSpec.describe Erp::Younus::Client do
 
     describe '#find_person' do
       let(:phone) { '5511999990000' }
-      let(:url) { 'https://wfh.ichatr.com.br/webhook/pesquisar-pessoa' }
+      let(:url) { 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar' }
 
       it 'issues GET with distinctive configured settings as integer and phone' do
         stub_request(:get, url)
@@ -273,7 +273,7 @@ RSpec.describe Erp::Younus::Client do
     end
 
     describe '#create_person' do
-      let(:url) { 'https://wfh.ichatr.com.br/webhook/incluir-cliente' }
+      let(:url) { 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas' }
 
       it 'issues POST with configured identifiers as integers and nrConvenio as string' do
         stub = stub_request(:post, url)
@@ -307,7 +307,7 @@ RSpec.describe Erp::Younus::Client do
     end
 
     describe '#free_slots' do
-      let(:url) { 'https://wfh.ichatr.com.br/webhook/horarios-livres' }
+      let(:url) { 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres' }
 
       it 'issues GET with date, idAgenda, idEmpresa, and idServico' do
         stub = stub_request(:get, url)
@@ -345,7 +345,7 @@ RSpec.describe Erp::Younus::Client do
     end
 
     describe '#create_appointment' do
-      let(:url) { 'https://wfh.ichatr.com.br/webhook/incluir-agendamento' }
+      let(:url) { 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos' }
 
       it 'issues POST with configured identifiers and appointment parameters' do
         stub = stub_request(:post, url)
@@ -426,13 +426,13 @@ RSpec.describe Erp::Younus::Client do
       end
 
       it 'parses identifiers with base 10 without raising ArgumentError and sends base 10 integers' do
-        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/horarios-livres')
+        stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres')
           .with(query: { data: '2026-10-15', idAgenda: 3, idEmpresa: 8, idServico: 7 })
           .to_return(status: 200, body: File.read("#{fixtures_path}/free_slots.json"), headers: { 'Content-Type' => 'application/json' })
 
         expect { leading_zero_client.free_slots('2026-10-15') }.not_to raise_error
 
-        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-agendamento')
+        stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos')
           .with(body: hash_including({ 'idAgenda' => 3, 'idPessoa' => 8, 'idEmpresa' => 8, 'idServico' => 7, 'idUsuario' => 9, 'idConvenio' => 1 }))
           .to_return(status: 200, body: File.read("#{fixtures_path}/create_appointment.json"), headers: { 'Content-Type' => 'application/json' })
 

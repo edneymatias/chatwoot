@@ -56,7 +56,7 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
   end
 
   before do
-    stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pessoas\?.*nrTelcelpessoa=0})
+    stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar\?.*nrTelcelpessoa=0})
       .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: { 'Content-Type' => 'application/json' })
     account.enable_features!('scout', 'scout_v2', 'opportunities', 'erp_integration')
     ScoutAccountConfig.create!(account_id: account.id, api_key: 'test-key', model_name: 'gemini-2.0-flash')
@@ -107,7 +107,7 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
       state = ScoutConversationState.for_conversation(sandbox_conversation)
       state.record_state_activation!('qualificacao')
 
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pesquisar-pessoa})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
         .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_found.json"), headers: { 'Content-Type' => 'application/json' })
 
       stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
@@ -144,10 +144,10 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
 
       # Part A: customer found -> 0 create requests
       find_body = File.read("#{fixtures_path}/find_person_found.json")
-      stub_find = stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pesquisar-pessoa})
-                  .to_return(status: 200, body: find_body, headers: json_headers)
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
+        .to_return(status: 200, body: find_body, headers: json_headers)
       create_body = File.read("#{fixtures_path}/create_person.json")
-      stub_create = stub_request(:post, %r{https://wfh.ichatr.com.br/webhook/incluir-cliente})
+      stub_create = stub_request(:post, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas})
                     .to_return(status: 200, body: create_body, headers: json_headers)
 
       stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
@@ -159,7 +159,7 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
 
       post_message('Olá, quero agendar')
       expect(response).to have_http_status(:ok)
-      expect(stub_find).to have_been_requested
+      expect(a_request(:get, %r{wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar\?.*nrTelcelpessoa=[1-9]})).to have_been_made.once
       expect(stub_create).not_to have_been_requested
 
       state = ScoutConversationState.for_conversation(sandbox_conversation)
@@ -167,7 +167,7 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
 
       # Part B: customer not found -> customer_registry_create
       state.update!(capability_state: {})
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pesquisar-pessoa})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
         .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_none.json"), headers: { 'Content-Type' => 'application/json' })
 
       stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
@@ -196,11 +196,11 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
         status: :open
       )
 
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pesquisar-pessoa})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
         .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_found.json"), headers: { 'Content-Type' => 'application/json' })
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/horarios-livres})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres})
         .to_return(status: 200, body: File.read("#{fixtures_path}/free_slots.json"), headers: { 'Content-Type' => 'application/json' })
-      stub_request(:post, %r{https://wfh.ichatr.com.br/webhook/incluir-agendamento})
+      stub_request(:post, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos})
         .to_return(status: 200, body: File.read("#{fixtures_path}/create_appointment.json"), headers: { 'Content-Type' => 'application/json' })
 
       stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
@@ -256,17 +256,17 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
         status: :open
       )
 
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pesquisar-pessoa})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
         .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_found.json"), headers: { 'Content-Type' => 'application/json' })
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/horarios-livres\?.*data=2026-10-15})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres\?.*data=2026-10-15})
         .to_return(status: 200, body: File.read("#{fixtures_path}/free_slots_empty.json"), headers: { 'Content-Type' => 'application/json' })
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/horarios-livres\?.*data=2026-10-16})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres\?.*data=2026-10-16})
         .to_return(
           status: 200,
-          body: { sucesso: true, mensagem: 'OK', horarios: ['2026-10-16 08:00', '2026-10-16 08:40'] }.to_json,
+          body: { sucesso: true, mensagem: 'OK', dados: ['2026-10-16 08:00', '2026-10-16 08:40'] }.to_json,
           headers: { 'Content-Type' => 'application/json' }
         )
-      stub_request(:post, %r{https://wfh.ichatr.com.br/webhook/incluir-agendamento})
+      stub_request(:post, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos})
         .to_return(status: 200, body: File.read("#{fixtures_path}/create_appointment.json"), headers: { 'Content-Type' => 'application/json' })
 
       stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
@@ -288,7 +288,7 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
       expect(state.capability_state['booking']).to be_present
       expect(state.capability_state['booking']['starts_at']).to eq('2026-10-16T08:00:00-03:00')
       expect(state.capability_state['booking']['appointment_id']).to eq('4468657')
-      expect(a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/horarios-livres\?.*data=2026-10-19})).not_to have_been_made
+      expect(a_request(:get, %r{wfh\.ichatr\.com\.br/webhook/.*/horarios-livres\?.*data=2026-10-19})).not_to have_been_made
     end
 
     it 'verifies AS7: no-slot path triggering exit_sem_horario with motivo', :aggregate_failures do
@@ -302,9 +302,9 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
         status: :open
       )
 
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pesquisar-pessoa})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
         .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_found.json"), headers: { 'Content-Type' => 'application/json' })
-      slot_req = stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/horarios-livres})
+      slot_req = stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/agendas/horarios-livres})
                  .to_return(status: 200, body: File.read("#{fixtures_path}/free_slots_empty.json"),
                             headers: { 'Content-Type' => 'application/json' })
 
@@ -333,7 +333,7 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
 
       # Probed the requested date plus at most three following days (4 calls total, none beyond 2026-10-18)
       expect(slot_req).to have_been_requested.times(4)
-      expect(a_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/horarios-livres\?.*data=2026-10-19})).not_to have_been_made
+      expect(a_request(:get, %r{wfh\.ichatr\.com\.br/webhook/.*/horarios-livres\?.*data=2026-10-19})).not_to have_been_made
 
       # Hand-back after exit_sem_horario: flip to pending, follow-up message receives no scheduling tools or ERP calls (T084, US3/AC10, SC-007)
       sandbox_conversation.update!(status: :pending)
@@ -354,11 +354,11 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
 
     it 'verifies SC-004: booking within four lead messages', :aggregate_failures do
       create_qualified_opportunity
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pesquisar-pessoa})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
         .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_found.json"), headers: json_headers)
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/horarios-livres})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres})
         .to_return(status: 200, body: File.read("#{fixtures_path}/free_slots.json"), headers: json_headers)
-      stub_request(:post, %r{https://wfh.ichatr.com.br/webhook/incluir-agendamento})
+      stub_request(:post, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos})
         .to_return(status: 200, body: File.read("#{fixtures_path}/create_appointment.json"), headers: json_headers)
 
       lead_messages_count = 0
@@ -454,9 +454,9 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
 
       # Part C: Two ambiguous lookups
       state.update!(completed_playbooks: [], last_exit: nil)
-      find_req = stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pesquisar-pessoa})
-                 .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_multiple.json"),
-                            headers: { 'Content-Type' => 'application/json' })
+      stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar})
+        .to_return(status: 200, body: File.read("#{fixtures_path}/find_person_multiple.json"),
+                   headers: { 'Content-Type' => 'application/json' })
 
       stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
         .with { |req| provider_requests << JSON.parse(req.body) }
@@ -476,7 +476,7 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
       ambiguous_call = response.parsed_body['tool_calls'].find { |tc| tc['tool_name'] == 'exit_handoff' }
       expect(ambiguous_call).to be_present
       expect(ambiguous_call['result']).to include('Transferência para atendimento humano realizada')
-      expect(find_req).to have_been_requested.twice
+      expect(a_request(:get, %r{wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar\?.*nrTelcelpessoa=[1-9]})).to have_been_made.twice
     end
 
     it 'verifies hand-back after transfer exit_handoff (T084, US3/AC10, SC-007)', :aggregate_failures do
@@ -566,7 +566,7 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
 
     it 'verifies AS12 and SC-009: ERP timeout / credential rejection transfers in same turn with no booking promise', :aggregate_failures do
       # Credential failure 401
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pesquisar-pessoa})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
         .to_return(status: 401, body: File.read("#{fixtures_path}/error_unauthorized.txt"))
 
       stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
@@ -712,7 +712,7 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
     end
 
     it 'verifies AS1-3 and SC-001: mistyped input gets { error: } with 0 requests and in-turn correction succeeds', :aggregate_failures do
-      slots_stub = stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/horarios-livres})
+      slots_stub = stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres})
                    .to_return(status: 200, body: File.read("#{fixtures_path}/free_slots.json"), headers: { 'Content-Type' => 'application/json' })
 
       stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
@@ -734,10 +734,10 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
     end
 
     it 'verifies AS4 and SC-008: ERP answer missing declared output field completes normally with deviation in trace', :aggregate_failures do
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/horarios-livres})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres})
         .to_return(
           status: 200,
-          body: { sucesso: true, mensagem: 'OK', horarios: [{ slot_id: 'slot-1' }] }.to_json,
+          body: { sucesso: true, mensagem: 'OK', dados: [{ slot_id: 'slot-1' }] }.to_json,
           headers: json_headers
         )
       stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})
@@ -810,12 +810,12 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
 
     it 'verifies AS2-5, AS9, SC-002: ERP requests carry hook identifiers and contact phone, spans record injected, no token', :aggregate_failures do
       find_body = File.read("#{fixtures_path}/find_person_found.json")
-      stub_find = stub_request(:get, 'https://wfh.ichatr.com.br/webhook/pesquisar-pessoa')
+      stub_find = stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar')
                   .with(query: { idEmpresa: 648, nrTelcelpessoa: '11999990648' }, headers: { 'token' => 'secret-erp-token-999' })
                   .to_return(status: 200, body: find_body, headers: json_headers)
 
       slots_body = File.read("#{fixtures_path}/free_slots.json")
-      stub_slots = stub_request(:get, 'https://wfh.ichatr.com.br/webhook/horarios-livres')
+      stub_slots = stub_request(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres')
                    .with(query: { data: '2026-10-15', idAgenda: 3, idEmpresa: 648, idServico: 1 }, headers: { 'token' => 'secret-erp-token-999' })
                    .to_return(status: 200, body: slots_body, headers: json_headers)
 
@@ -823,7 +823,7 @@ RSpec.describe 'Playground Scheduling (US3)', type: :request do
         idAgenda: 3, idPessoa: 784_868, nmTitulo: 'Teste Lead Scout', idEmpresa: 648, idServico: 1,
         idUsuario: 172_793, idConvenio: 1, dtIniAgenda: '2026-10-15T08:00:00-03:00', observacoes: 'Agendado por Scout'
       }
-      stub_app = stub_request(:post, 'https://wfh.ichatr.com.br/webhook/incluir-agendamento')
+      stub_app = stub_request(:post, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos')
                  .with(body: app_payload.to_json, headers: { 'token' => 'secret-erp-token-999' })
                  .to_return(status: 200, body: File.read("#{fixtures_path}/create_appointment.json"), headers: json_headers)
       stub_request(:post, %r{generativelanguage\.googleapis\.com/.*:generateContent})

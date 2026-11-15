@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Api::V1::Accounts::Integrations::Hooks', type: :request do
   let(:account) { create(:account) }
   let(:admin) { create(:user, account: account, role: :administrator) }
-  let(:base_url) { 'https://wfh.ichatr.com.br/webhook/pessoas' }
+  let(:base_url) { 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar' }
 
   before do
     account.enable_features!('erp_integration')

@@ -252,7 +252,7 @@ RSpec.describe Custom::ScoutV2::TurnScope do
 
     def setup_younus_hook
       account.enable_features!('erp_integration')
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pessoas})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
         .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: { 'Content-Type' => 'application/json' })
 
       create(:integrations_hook, account: account, app_id: 'younus', status: :enabled, settings: {

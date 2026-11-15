@@ -70,7 +70,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::OperationTool do
 
   before do
     account.enable_features!('erp_integration')
-    stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pessoas})
+    stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
       .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: { 'Content-Type' => 'application/json' })
   end
 
@@ -90,10 +90,10 @@ RSpec.describe Custom::ScoutV2::Capabilities::OperationTool do
     end
 
     it 'proceeds when optional input is omitted' do
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/horarios-livres})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres})
         .to_return(
           status: 200,
-          body: { sucesso: true, mensagem: 'OK', horarios: ['2026-10-15 08:00'] }.to_json,
+          body: { sucesso: true, mensagem: 'OK', dados: ['2026-10-15 08:00'] }.to_json,
           headers: { 'Content-Type' => 'application/json' }
         )
 
@@ -104,7 +104,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::OperationTool do
   end
 
   describe 'ERP error handling and no retry' do
-    let(:slots_url) { %r{https://wfh.ichatr.com.br/webhook/horarios-livres} }
+    let(:slots_url) { %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres} }
 
     it 'returns definitive refusal text on Erp::AuthenticationError without retrying' do
       stub_request(:get, slots_url).to_return(status: 401, body: 'Unauthorized')
@@ -154,7 +154,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::OperationTool do
     context 'with a write operation' do
       let(:operation) { capability.class.operations['book'] }
       let(:state) { ScoutConversationState.for_conversation(conversation) }
-      let(:book_url) { %r{https://wfh.ichatr.com.br/webhook/incluir-agendamento} }
+      let(:book_url) { %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/agendamentos} }
 
       before do
         state.update!(capability_state: {
@@ -180,10 +180,10 @@ RSpec.describe Custom::ScoutV2::Capabilities::OperationTool do
 
   describe 'soft output and deviations' do
     it 'returns data and records deviations when declared required output fields are missing' do
-      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/horarios-livres})
+      stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres})
         .to_return(
           status: 200,
-          body: { sucesso: true, mensagem: 'OK', horarios: [{ slot_id: '1' }] }.to_json,
+          body: { sucesso: true, mensagem: 'OK', dados: [{ slot_id: '1' }] }.to_json,
           headers: { 'Content-Type' => 'application/json' }
         )
 
@@ -221,11 +221,11 @@ RSpec.describe Custom::ScoutV2::Capabilities::OperationTool do
       contact = create(:contact, account: account, phone_number: '+5511999990648')
       conversation.update!(contact: contact)
 
-      slots_url = %r{https://wfh.ichatr.com.br/webhook/horarios-livres}
+      slots_url = %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres}
       stub_request(:get, slots_url)
         .to_return(
           status: 200,
-          body: { sucesso: true, mensagem: 'OK', horarios: ['2026-10-15 08:00'] }.to_json,
+          body: { sucesso: true, mensagem: 'OK', dados: ['2026-10-15 08:00'] }.to_json,
           headers: { 'Content-Type' => 'application/json' }
         )
 
@@ -237,7 +237,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::OperationTool do
       finished_span = exporter.finished_spans.find { |s| s.name == 'test_span' }
       recorded_json = finished_span.attributes['langfuse.observation.metadata.capability_call']
 
-      expect(WebMock).to have_requested(:get, 'https://wfh.ichatr.com.br/webhook/horarios-livres')
+      expect(WebMock).to have_requested(:get, 'https://wfh.ichatr.com.br/webhook/api/v1/empresas/agendas/horarios-livres')
         .with(query: { data: '2026-10-15', idAgenda: 3, idEmpresa: 648, idServico: 1 })
 
       expect(recorded_json).to be_present
@@ -269,7 +269,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::OperationTool do
         operation: create_operation
       )
 
-      stub_request(:post, %r{https://wfh\.ichatr\.com\.br/webhook/incluir-cliente})
+      stub_request(:post, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas})
         .to_return(
           status: 200,
           body: { sucesso: true, mensagem: 'OK', dados: { idPessoa: '784868', nmPessoa: 'João Silva' } }.to_json,

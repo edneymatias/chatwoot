@@ -19,7 +19,7 @@ RSpec.describe Custom::ScoutV2::Capabilities::Registry do
 
   before do
     account.enable_features!('erp_integration')
-    stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/pessoas})
+    stub_request(:get, %r{https://wfh.ichatr.com.br/webhook/api/v1/empresas/pessoas/pesquisar})
       .to_return(
         status: 200,
         body: { sucesso: true, mensagem: 'OK', dados: [] }.to_json,

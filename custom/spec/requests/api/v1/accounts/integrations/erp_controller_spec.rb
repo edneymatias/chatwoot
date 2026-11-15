@@ -9,7 +9,7 @@ RSpec.describe 'Api::V1::Accounts::Integrations::Erp', type: :request do
 
   before do
     account.enable_features!('erp_integration')
-    stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas\?idEmpresa=42&nrTelcelpessoa=0})
+    stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar\?idEmpresa=42&nrTelcelpessoa=0})
       .to_return(status: 200, body: { sucesso: true, dados: [] }.to_json, headers: { 'Content-Type' => 'application/json' })
   end
 
@@ -50,7 +50,7 @@ RSpec.describe 'Api::V1::Accounts::Integrations::Erp', type: :request do
       it 'delegates resolution to adapter and returns payload (U31)' do
         create(:integrations_hook, account: account, app_id: 'younus', status: :enabled,
                                    settings: { 'token' => 'valid-token', 'id_empresa' => '42' })
-        stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas\?idEmpresa=42&nrTelcelpessoa=11987654321})
+        stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar\?idEmpresa=42&nrTelcelpessoa=11987654321})
           .with(headers: { 'token' => 'valid-token' })
           .to_return(
             status: 200,
@@ -82,7 +82,7 @@ RSpec.describe 'Api::V1::Accounts::Integrations::Erp', type: :request do
       it 'rescues erp errors and returns 503 (U32)' do
         create(:integrations_hook, account: account, app_id: 'younus', status: :enabled,
                                    settings: { 'token' => 'valid-token', 'id_empresa' => '42' })
-        stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/pessoas\?idEmpresa=42&nrTelcelpessoa=11987654321})
+        stub_request(:get, %r{https://wfh\.ichatr\.com\.br/webhook/api/v1/empresas/pessoas/pesquisar\?idEmpresa=42&nrTelcelpessoa=11987654321})
           .with(headers: { 'token' => 'valid-token' })
           .to_return(status: 500, body: 'Server Error')
 

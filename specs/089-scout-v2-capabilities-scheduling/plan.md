@@ -208,8 +208,8 @@ MANIFEST-tracked settings-schema edit.
 ## Risks
 
 - **Vendor bodies unobserved**: the three new endpoints' response envelopes (and whether
-  `/webhook/pesquisar-pessoa` matches the `sucesso`/`dados[].json` envelope the existing
-  `/webhook/pessoas` returns) were not observable at planning time. Mitigation: soft output by
+  `/webhook/api/v1/empresas/pessoas/pesquisar` matches the `sucesso`/`dados[].json` envelope the
+  existing person lookup returns) were not observable at planning time. Mitigation: soft output by
   design; T001 captures real bodies into fixtures before parsers are written; the request-shape
   side (query/body keys) is known from the four `ScoutTool` schemas and asserted with WebMock.
 - **`nr_convenio` is required for `customer_registry`** (FR-007 "every setting the operations
