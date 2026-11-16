@@ -1,3 +1,9 @@
+## [4.18.0-ichatr.7] - 2026-11-16
+
+### 🐛 Bug Fixes
+
+- *(attribution)* Keep ad leads without ad id as unattributed_ad
+
 ## [4.18.0-ichatr.5] - 2026-09-21
 
 ### 🐛 Bug Fixes
