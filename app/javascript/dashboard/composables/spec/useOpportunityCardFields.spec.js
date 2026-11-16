@@ -66,4 +66,19 @@ describe('useOpportunityCardFields', () => {
     expect(campaignAttribution.value.adsetName).toBe('AdSet 1');
     expect(campaignAttribution.value.adName).toBe('Ad 1');
   });
+  it('computes campaignAttribution for ad leads without an ad id', () => {
+    const opportunity = ref({
+      id: 3,
+      title: 'Unattributed Ad Opportunity',
+      campaign_platform: 'instagram',
+      campaign_resolution_status: 'unattributed_ad',
+    });
+
+    const { campaignAttribution } = useOpportunityCardFields(opportunity);
+
+    expect(campaignAttribution.value).not.toBeNull();
+    expect(campaignAttribution.value.icon).toBe('i-lucide-instagram');
+    expect(campaignAttribution.value.isUnattributedAd).toBe(true);
+    expect(campaignAttribution.value.isPending).toBe(false);
+  });
 });

@@ -95,6 +95,7 @@
       "PENDING": "Resolvendo atribuição...",
       "ORGANIC_POST": "Publicação Orgânica",
       "PAID_AD": "Anúncio {platform}",
+      "UNATTRIBUTED_AD": "O WhatsApp marcou este lead como vindo de anúncio, mas não informou qual anúncio.",
       "FAILED_TOOLTIP": "Não foi possível identificar os detalhes do anúncio ou publicação (ID: {id})",
       "POPUP_TITLE_PAID": "Atribuição de Anúncio",
       "POPUP_TITLE_ORGANIC": "Publicação Orgânica",

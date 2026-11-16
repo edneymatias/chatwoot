@@ -53,6 +53,31 @@ RSpec.describe Custom::AutomationRules::ActionService do
       end
     end
 
+    context 'when referral comes from an ad without the ad card (no ad id)' do
+      before do
+        first_message.update!(content_attributes: {
+                                'referral' => {
+                                  'source_type' => 'ad',
+                                  'source_app' => 'instagram',
+                                  'conversion_source' => 'FB_Ads',
+                                  'entry_point_conversion_source' => 'ctwa_ad'
+                                }
+                              })
+        CampaignAttributionSetting.create!(account: account, enabled: true)
+      end
+
+      it 'sets the platform from source_app and marks it unattributed_ad without enqueuing a job' do
+        expect do
+          described_class.process_campaign_attribution(opportunity, first_message)
+        end.not_to have_enqueued_job(Custom::CampaignResolutionJob)
+
+        opportunity.reload
+        expect(opportunity.campaign_platform).to eq('instagram')
+        expect(opportunity.campaign_source_id).to be_nil
+        expect(opportunity.campaign_resolution_status).to eq('unattributed_ad')
+      end
+    end
+
     context 'when referral data is present with ad_id' do
       before do
         first_message.update!(content_attributes: {

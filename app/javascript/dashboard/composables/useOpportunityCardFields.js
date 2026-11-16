@@ -170,7 +170,14 @@ export function useOpportunityCardFields(opportunityRef) {
       campaign_resolution_status,
     } = opportunityRef.value;
 
-    if (!campaign_source_id && !campaign_source_url && !campaign_headline)
+    const isUnattributedAd = campaign_resolution_status === 'unattributed_ad';
+
+    if (
+      !campaign_source_id &&
+      !campaign_source_url &&
+      !campaign_headline &&
+      !isUnattributedAd
+    )
       return null;
 
     let icon = 'i-lucide-megaphone';
@@ -192,6 +199,11 @@ export function useOpportunityCardFields(opportunityRef) {
       label = [campaign_name, campaign_adset_name, campaign_ad_name]
         .filter(Boolean)
         .join('\n');
+    } else if (isUnattributedAd) {
+      label = t(
+        'OPPORTUNITIES.CAMPAIGN.UNATTRIBUTED_AD',
+        'WhatsApp marked this lead as coming from an ad, but did not send which ad.'
+      );
     } else if (isFailed) {
       label = t(
         'OPPORTUNITIES.CAMPAIGN.FAILED_TOOLTIP',
@@ -211,6 +223,7 @@ export function useOpportunityCardFields(opportunityRef) {
       isResolved,
       isFailed,
       isPending,
+      isUnattributedAd,
       campaignName: campaign_name,
       adsetName: campaign_adset_name,
       adName: campaign_ad_name,

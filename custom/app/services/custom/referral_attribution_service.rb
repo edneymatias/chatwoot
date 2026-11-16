@@ -18,7 +18,7 @@ class Custom::ReferralAttributionService
 
   def self.extract_referral_data(referral)
     source_url = referral['source_url']
-    platform = extract_platform(source_url)
+    platform = extract_platform(source_url) || extract_platform_from_source_app(referral['source_app'])
     source_id = referral['ad_id'] || referral['source_id'] || extract_source_id_from_url(source_url)
 
     {
@@ -28,7 +28,8 @@ class Custom::ReferralAttributionService
       headline: referral['headline'],
       body: referral['body'],
       thumbnail_url: referral['thumbnail_url'] || referral['image_url'] || referral['video_url'],
-      source_type: referral['source_type']
+      source_type: referral['source_type'],
+      ad_signal: ad_signal?(referral)
     }
   end
 
@@ -40,6 +41,19 @@ class Custom::ReferralAttributionService
     elsif source_url.include?('instagram') || source_url.include?('ig')
       'instagram'
     end
+  end
+
+  # WhatsApp sends source_app ("instagram"/"facebook") even when it omits the ad card (externalAdReply),
+  # so it is the only platform hint left for click-to-WhatsApp leads that arrive without an ad id.
+  def self.extract_platform_from_source_app(source_app)
+    source_app if %w[facebook instagram].include?(source_app)
+  end
+
+  # The message came from a Meta ad, even when the referral carries no ad id to resolve.
+  def self.ad_signal?(referral)
+    referral['source_type'] == 'ad' ||
+      referral['conversion_source'] == 'FB_Ads' ||
+      referral['entry_point_conversion_source'] == 'ctwa_ad'
   end
 
   def self.extract_source_id_from_url(source_url)
@@ -74,7 +88,7 @@ class Custom::ReferralAttributionService
   end
 
   def self.persist_paid_referral(opportunity, data)
-    status = compute_resolution_status(opportunity, data[:source_id])
+    status = compute_resolution_status(opportunity, data)
 
     opportunity.update!(
       campaign_platform: data[:platform],
@@ -90,11 +104,13 @@ class Custom::ReferralAttributionService
     dispatch_resolution_job_if_needed(opportunity, data[:source_id], status)
   end
 
-  def self.compute_resolution_status(opportunity, source_id)
+  def self.compute_resolution_status(opportunity, data)
     if opportunity.campaign_resolution_status == 'resolved'
       'resolved'
-    elsif source_id.present?
+    elsif data[:source_id].present?
       'pending'
+    elsif data[:ad_signal]
+      'unattributed_ad'
     else
       'not_applicable'
     end

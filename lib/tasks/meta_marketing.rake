@@ -119,6 +119,27 @@ namespace :meta_marketing do
     puts "Ad creative re-fetches enqueued: #{requeued_ads_count}"
   end
 
+  desc 'Reclassify ad leads that arrived without an ad id (not_applicable -> unattributed_ad)'
+  task :reclassify_unattributed_ads, [:account_id] => :environment do |_t, args|
+    scope = Opportunity.where(campaign_resolution_status: 'not_applicable')
+    scope = scope.where(account_id: args[:account_id]) if args[:account_id].present?
+
+    reclassified = 0
+    scope.find_each do |opportunity|
+      message = Message.incoming
+                       .where(conversation_id: opportunity.origin_conversation_id)
+                       .where("(content_attributes #>> '{}')::jsonb -> 'referral' IS NOT NULL")
+                       .order(created_at: :asc)
+                       .first
+      next unless message
+
+      Custom::ReferralAttributionService.process(opportunity, message)
+      reclassified += 1 if opportunity.reload.campaign_resolution_status == 'unattributed_ad'
+    end
+
+    puts "Opportunities reclassified as unattributed_ad: #{reclassified}"
+  end
+
   desc 'Inject a sample organic Instagram post attribution into an Opportunity without enqueuing resolution job'
   task :inject_organic_sample, [:opportunity_id] => :environment do |_t, args|
     opportunity = if args[:opportunity_id].present?

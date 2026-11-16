@@ -96,6 +96,7 @@
       "PENDING": "Resolving attribution...",
       "ORGANIC_POST": "Organic Post",
       "PAID_AD": "{platform} Ads",
+      "UNATTRIBUTED_AD": "WhatsApp marked this lead as coming from an ad, but did not send which ad.",
       "FAILED_TOOLTIP": "Unable to identify ad or post details (ID: {id})",
       "POPUP_TITLE_PAID": "Ad Attribution",
       "POPUP_TITLE_ORGANIC": "Organic Publication",

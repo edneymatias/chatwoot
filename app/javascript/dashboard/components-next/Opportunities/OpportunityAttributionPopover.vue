@@ -19,7 +19,7 @@ const popoverTitle = computed(() => {
       'Organic Publication'
     );
   }
-  if (props.attribution.isResolved) {
+  if (props.attribution.isResolved || props.attribution.isUnattributedAd) {
     return t('OPPORTUNITIES.CAMPAIGN.POPUP_TITLE_PAID', 'Ad Attribution');
   }
   return t('OPPORTUNITIES.CAMPAIGN.POPUP_TITLE_FAILED', 'Attribution Details');
@@ -67,6 +67,18 @@ const hasThumbnail = computed(() => {
             <span
               v-else-if="attribution.isResolved"
               class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-n-green-3 text-n-green-11"
+            >
+              {{
+                $t(
+                  'OPPORTUNITIES.CAMPAIGN.PAID_AD',
+                  { platform: platformName },
+                  `${platformName} Ads`
+                )
+              }}
+            </span>
+            <span
+              v-else-if="attribution.isUnattributedAd"
+              class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-n-slate-3 text-n-slate-11"
             >
               {{
                 $t(
@@ -156,7 +168,7 @@ const hasThumbnail = computed(() => {
                 </div>
               </template>
 
-              <!-- Failed or Pending -->
+              <!-- Failed, Pending or Unattributed ad -->
               <template v-else>
                 <div class="text-n-slate-11 leading-relaxed">
                   {{ attribution.label }}

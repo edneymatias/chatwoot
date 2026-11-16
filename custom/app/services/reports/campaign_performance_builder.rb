@@ -31,9 +31,11 @@ class Reports::CampaignPerformanceBuilder
   end
 
   def period_campaign_opportunities
-    base = account.opportunities
-                  .where.not(campaign_source_id: [nil, ''])
-                  .where.not(campaign_resolution_status: %w[organic_post not_applicable])
+    identified = account.opportunities
+                        .where.not(campaign_source_id: [nil, ''])
+                        .where.not(campaign_resolution_status: %w[organic_post not_applicable])
+    # Ad leads whose ad id never arrived still count as ad leads; they group under UNIDENTIFIED.
+    base = identified.or(account.opportunities.where(campaign_resolution_status: 'unattributed_ad'))
     range ? base.where(created_at: range) : base
   end
 

@@ -156,6 +156,13 @@ jobs:
         with:
           args: ${{ steps.compute-range.outputs.range }}
 
+      # Hotfix tags sit on a commit that is not an ancestor of ichatr-main, so building the CHANGELOG
+      # commit on the tag makes the push to ichatr-main non-fast-forward. Build it on the branch tip.
+      - name: Check out ichatr-main for the changelog commit
+        run: |
+          git fetch origin ichatr-main
+          git checkout -B ichatr-main origin/ichatr-main
+
       - name: Handle Empty Changelog and Prepend
         id: process-changelog
         run: |
