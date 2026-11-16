@@ -13,7 +13,7 @@ on:
 jobs:
   # Separate linting jobs for faster feedback
   lint-backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
@@ -23,7 +23,7 @@ jobs:
         run: bundle exec rubocop --parallel
 
   security-scan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
@@ -41,7 +41,7 @@ jobs:
           bundle exec bundle-audit check
 
   lint-frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -56,7 +56,7 @@ jobs:
 
   # Frontend tests run in parallel with backend
   frontend-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -71,7 +71,7 @@ jobs:
 
   # Backend tests with parallelization
   backend-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
