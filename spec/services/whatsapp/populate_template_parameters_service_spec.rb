@@ -27,6 +27,24 @@ describe Whatsapp::PopulateTemplateParametersService do
     end
   end
 
+  describe '#build_button_parameter' do
+    it 'builds a payload parameter for quick reply buttons' do
+      button = { 'type' => 'quick_reply', 'parameter' => ' agenda:confirmar:1041:4526539 ' }
+
+      expect(service.build_button_parameter(button)).to eq(type: 'payload', payload: 'agenda:confirmar:1041:4526539')
+    end
+
+    it 'rejects an empty quick reply payload' do
+      expect { service.build_button_parameter({ 'type' => 'quick_reply', 'parameter' => ' ' }) }
+        .to raise_error(ArgumentError, 'Quick reply payload cannot be empty')
+    end
+
+    it 'rejects a quick reply payload longer than 128 characters' do
+      expect { service.build_button_parameter({ 'type' => 'quick_reply', 'parameter' => 'a' * 129 }) }
+        .to raise_error(ArgumentError, 'Quick reply payload cannot exceed 128 characters')
+    end
+  end
+
   describe '#build_media_parameter' do
     context 'when URL contains spaces' do
       it 'normalizes the URL before building media parameter' do

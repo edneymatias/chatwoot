@@ -104,7 +104,8 @@ module Custom::Whatsapp::OneoffCampaignService
     if source_id.present?
       recipient.mark_sent!(source_id)
     else
-      recipient.mark_failed!(channel.last_provider_error || { message: 'WhatsApp provider did not return a message id' })
+      # last_provider_error is defined by Enterprise::Channel::Whatsapp; CI's CE run strips enterprise/, so read it defensively.
+      recipient.mark_failed!(channel.try(:last_provider_error) || { message: 'WhatsApp provider did not return a message id' })
     end
   end
 end

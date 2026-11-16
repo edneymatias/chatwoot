@@ -226,4 +226,79 @@ RSpec.describe Custom::Whatsapp::IncomingMessageBaseService do
       end
     end
   end
+
+  describe '#message_content_attributes' do
+    after do
+      Redis::Alfred.scan_each(match: 'MESSAGE_SOURCE_KEY::*') { |key| Redis::Alfred.delete(key) }
+    end
+
+    let(:message_attributes) { { 'type' => 'text', 'text' => { 'body' => 'Hello' } } }
+    let(:reply_payload) do
+      {
+        'contacts' => [{ 'profile' => { 'name' => 'Reply Contact' }, 'wa_id' => '15559876543' }],
+        'messages' => [
+          { 'id' => 'inbound_wamid_reply', 'from' => '15559876543', 'timestamp' => Time.current.to_i.to_s }.merge(message_attributes)
+        ]
+      }.with_indifferent_access
+    end
+    let(:message) do
+      Whatsapp::IncomingMessageService.new(inbox: inbox, params: reply_payload).perform
+      inbox.messages.last
+    end
+
+    context 'when the contact taps an interactive button' do
+      let(:message_attributes) do
+        {
+          'type' => 'interactive',
+          'interactive' => { 'type' => 'button_reply', 'button_reply' => { 'id' => 'confirm-4526539', 'title' => 'Confirm' } }
+        }
+      end
+
+      it 'keeps the id and title of the reply' do
+        expect(message.content).to eq('Confirm')
+        expect(message.content_attributes['whatsapp_interactive']).to eq(
+          'type' => 'button_reply', 'id' => 'confirm-4526539', 'title' => 'Confirm'
+        )
+        expect(message.webhook_data[:content_attributes]['whatsapp_interactive']['id']).to eq('confirm-4526539')
+      end
+    end
+
+    context 'when the contact picks a list option' do
+      let(:message_attributes) do
+        {
+          'type' => 'interactive',
+          'interactive' => {
+            'type' => 'list_reply',
+            'list_reply' => { 'id' => 'slot-0930', 'title' => 'Tue 09:30', 'description' => 'Dr. Paulo' }
+          }
+        }
+      end
+
+      it 'keeps the id, title and description of the reply' do
+        expect(message.content).to eq('Tue 09:30')
+        expect(message.content_attributes['whatsapp_interactive']).to eq(
+          'type' => 'list_reply', 'id' => 'slot-0930', 'title' => 'Tue 09:30', 'description' => 'Dr. Paulo'
+        )
+      end
+    end
+
+    context 'when the contact taps a template quick reply' do
+      let(:message_attributes) do
+        { 'type' => 'button', 'button' => { 'text' => 'Confirm attendance', 'payload' => 'appointment:confirm:4526539' } }
+      end
+
+      it 'keeps the payload as the reply id' do
+        expect(message.content).to eq('Confirm attendance')
+        expect(message.content_attributes['whatsapp_interactive']).to eq(
+          'type' => 'button', 'id' => 'appointment:confirm:4526539', 'title' => 'Confirm attendance'
+        )
+      end
+    end
+
+    context 'when the contact sends plain text' do
+      it 'does not add interactive attributes' do
+        expect(message.content_attributes).not_to have_key('whatsapp_interactive')
+      end
+    end
+  end
 end
